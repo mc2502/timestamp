@@ -1,15 +1,15 @@
 // 정사각형 사진에 찍는 스탬프 7종. 로고는 넣지 않는다. 캐릭터 스탬프가 기본이다.
 // 모든 값은 1080px 정사각형 기준 단위(u)이고, 실제 크기에 비율로 맞춘다.
 //
-//  odung   오둥이   왼쪽 아래 카메라 든 오둥이 + 옆 말풍선에 시각·날짜
-//  perpeng 퍼펭이   왼쪽 아래 카메라 든 퍼펭이 + 옆 말풍선에 시각·날짜
+//  odung   오둥이   여러 모습의 오둥이 + 옆에 둥근 도장(날짜 · 시각 · 끼니)
+//  perpeng 퍼펭이   여러 모습의 퍼펭이 + 옆에 둥근 도장(날짜 · 시각 · 끼니)
 //  basic   기본     왼쪽 아래 두 줄: 2026년 11월 23일 (월) / 오전 7:46
 //  big     크게     가운데 큰 시각, 아래 한 줄 날짜
 //  film    필름     오른쪽 아래 주황 디지털 숫자 '26 11 23  7:46
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=10';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=11';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -206,75 +206,97 @@ const DRAW = {
   perpeng(ctx, side, u, info, c) { drawCharacter(ctx, side, u, info, c, 'perpeng'); },
 };
 
-/* ── 캐릭터 스탬프: 카메라 든 오둥이·퍼펭이 + 말풍선 ──
-   글씨는 캐릭터 위에 얹지 않고 옆 말풍선에만 쓴다 (PT Note: 마스코트 위에 글씨 금지). */
+/* ── 캐릭터 스탬프: 여러 모습의 오둥이·퍼펭이 + 우체국 소인 같은 둥근 도장 ──
+   캐릭터는 그때그때 다른 모습(카메라, 달리기, 계단, PT 노트 …)이 나오고,
+   옆에 살짝 기울어진 둥근 도장에 날짜 · 시각 · 끼니가 찍힌다.
+   글씨는 캐릭터 위에 얹지 않고 도장 안에만 쓴다 (PT Note: 마스코트 위에 글씨 금지). */
 
-const BUBBLE = {
-  white: { fill: 'rgba(255, 255, 255, 0.95)', ink: '#191f28', sub: '#4e5968' },
-  black: { fill: 'rgba(25, 31, 40, 0.92)', ink: '#ffffff', sub: '#c9d0d9' },
-  yellow: { fill: '#ffd84a', ink: '#191f28', sub: '#4a3d0a' },
+const SEAL = {
+  white: { disc: 'rgba(255, 255, 255, 0.96)', ink: '#1b64da', sub: '#4e5968', tag: '#1b64da', tagInk: '#ffffff' },
+  black: { disc: 'rgba(25, 31, 40, 0.92)', ink: '#ffffff', sub: '#c9d0d9', tag: '#ffd84a', tagInk: '#191f28' },
+  yellow: { disc: '#ffd84a', ink: '#191f28', sub: '#4a3d0a', tag: '#191f28', tagInk: '#ffd84a' },
 };
 
-function drawCharacter(ctx, side, u, { date, chars }, c, who) {
+function drawCharacter(ctx, side, u, { date, meal, chars }, c, who) {
   const img = chars?.[who];
-  const size = 340 * u;
-  const left = 22 * u;
-  const top = side - 18 * u - size;
-  const colors = BUBBLE[Object.keys(COLORS).find((k) => COLORS[k] === c) || 'white'];
+  const scheme = SEAL[Object.keys(COLORS).find((k) => COLORS[k] === c) || 'white'];
+  const size = 290 * u; // 캐릭터
+  const left = 18 * u;
+  const top = side - 22 * u - size;
+  const R = 158 * u; // 도장 반지름
+  const cx = img ? left + size * 0.92 + R * 0.95 : 56 * u + R; // 캐릭터와 살짝만 겹치게
+  const cy = side - 44 * u - R;
 
+  // 도장: 살짝 기울여 찍은 느낌
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-0.1);
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+  ctx.shadowBlur = 22 * u;
+  ctx.shadowOffsetY = 6 * u;
+  ctx.fillStyle = scheme.disc;
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  ctx.strokeStyle = scheme.ink;
+  ctx.lineWidth = 6 * u;
+  ctx.beginPath();
+  ctx.arc(0, 0, R - 12 * u, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 2.5 * u;
+  ctx.setLineDash([7 * u, 7 * u]);
+  ctx.beginPath();
+  ctx.arc(0, 0, R - 26 * u, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 도장 안: 날짜 / 오전·오후 / 큰 시각 / 끼니 꼬리표 — 모두 가운데, 안쪽 고리 안에 들어가게
+  const [ampm, hm] = fmtClock(date).split(' ');
+  ctx.textBaseline = 'alphabetic';
+  const dp = 28 * u;
+  ctx.font = font(650, dp);
+  ctx.fillStyle = scheme.sub;
+  fillTracked(ctx, monthDay(date), 0, -62 * u, dp, TRACK.text, 'center');
+
+  const ap = 26 * u;
+  ctx.font = font(700, ap);
+  ctx.fillStyle = scheme.ink;
+  fillTracked(ctx, ampm, 0, -24 * u, ap, TRACK.label, 'center');
+
+  const tp = 84 * u;
+  ctx.font = font(800, tp);
+  fillTracked(ctx, hm, 0, 50 * u, tp, TRACK.big, 'center');
+
+  // 끼니 꼬리표
+  const label = mealLabel(meal);
+  if (label) {
+    const lp = 24 * u;
+    ctx.font = font(700, lp);
+    const lw = trackedWidth(ctx, label, lp, TRACK.label) + 28 * u;
+    const lh = 38 * u;
+    roundRect(ctx, -lw / 2, 68 * u, lw, lh, lh / 2);
+    ctx.fillStyle = scheme.tag;
+    ctx.fill();
+    ctx.fillStyle = scheme.tagInk;
+    ctx.textBaseline = 'middle';
+    fillTracked(ctx, label, 0, 68 * u + lh / 2 + 1 * u, lp, TRACK.label, 'center');
+  }
+  ctx.restore();
+
+  // 캐릭터는 도장 앞에
   if (img) {
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-    ctx.shadowBlur = 18 * u;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
+    ctx.shadowBlur = 16 * u;
     ctx.shadowOffsetY = 5 * u;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, left, top, size, size);
     ctx.restore();
   }
-
-  // 말풍선 크기
-  const tp = 66 * u;
-  const dp = 36 * u;
-  const time = fmtClock(date);
-  const day = monthDay(date);
-  ctx.font = font(800, tp);
-  const tw = trackedWidth(ctx, time, tp, TRACK.text);
-  ctx.font = font(650, dp);
-  const dw = trackedWidth(ctx, day, dp, TRACK.text);
-  const padX = 34 * u;
-  const bw = Math.max(tw, dw) + padX * 2;
-  const bh = 168 * u;
-  let bx = img ? left + size * 0.86 : 48 * u;
-  bx = Math.min(bx, side - bw - 30 * u);
-  const by = img ? top + size * 0.16 : side - 60 * u - bh;
-  const r = 44 * u;
-
-  ctx.save();
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-  ctx.shadowBlur = 22 * u;
-  ctx.shadowOffsetY = 6 * u;
-  ctx.fillStyle = colors.fill;
-  roundRect(ctx, bx, by, bw, bh, r);
-  ctx.fill();
-  if (img) {
-    // 캐릭터 쪽을 가리키는 꼬리
-    const ty = by + bh * 0.62;
-    ctx.beginPath();
-    ctx.moveTo(bx + 6 * u, ty - 22 * u);
-    ctx.quadraticCurveTo(bx - 10 * u, ty + 4 * u, bx - 30 * u, ty + 20 * u);
-    ctx.quadraticCurveTo(bx + 4 * u, ty + 16 * u, bx + 20 * u, ty + 6 * u);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = colors.ink;
-  ctx.font = font(800, tp);
-  fillTracked(ctx, time, bx + padX, by + 82 * u, tp);
-  ctx.fillStyle = colors.sub;
-  ctx.font = font(650, dp);
-  fillTracked(ctx, day, bx + padX, by + 136 * u, dp);
 }
 
 /* ── 필름 카메라 날짜 같은 7세그먼트 숫자 ── */

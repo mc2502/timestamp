@@ -1,22 +1,22 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=10';
-import { readExifDate } from './exif.js?v=10';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=10';
-import * as db from './db.js?v=10';
+} from './format.js?v=11';
+import { readExifDate } from './exif.js?v=11';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=11';
+import * as db from './db.js?v=11';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '10';
+const APP_VERSION = '11';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 저장본: 정사각형, 한 변 1080~2160px
+// 저장본: 정사각형, 한 변 1080~1620px (캐릭터 그림이 흐려지지 않는 크기, 카카오톡 전송에도 충분)
 const OUT_MIN = 1080;
-const OUT_MAX = 2160;
+const OUT_MAX = 1620;
 const MAX_ZOOM = 3;
 const JPEG_QUALITY = 0.92;
 const RELAUNCH_AFTER = 3 * 60 * 1000; // 이만큼 쉬었다 돌아오면 ‘앱 열면 바로 카메라’를 다시 띄운다
@@ -52,6 +52,12 @@ const ART = {
     camera: 'assets/mascots/perpeng-camera-v2.png',
     face: 'assets/mascots/perpeng-calendar-face-v4.png',
   },
+};
+
+// 캐릭터 스탬프에 그때그때 다르게 나오는 모습들 (PT Note 디자인 시스템 그림)
+const POSES = {
+  odung: ['assets/mascots/odung-camera-v2.png', ...['summary', 'strength', 'running', 'stairs', 'pt', 'solo', 'fullbody'].map((p) => `assets/poses/odung-${p}.png`)],
+  perpeng: ['assets/mascots/perpeng-camera-v2.png', ...['summary', 'running', 'stairs', 'pt', 'solo', 'fullbody', 'chest', 'arms'].map((p) => `assets/poses/perpeng-${p}.png`)],
 };
 
 function chooseFamily() {
@@ -149,18 +155,36 @@ async function checkForUpdate() {
   checkingUpdate = false;
 }
 
-// 캐릭터 스탬프에 쓸 카메라 든 오둥이·퍼펭이
+// 캐릭터 스탬프에 쓸 여러 모습의 오둥이·퍼펭이를 모두 미리 받아 둔다
 let charsLoading = null;
 function charsReady() {
   if (!charsLoading) {
-    charsLoading = Promise.all(Object.keys(ART).map((who) => new Promise((resolve) => {
+    charsLoading = Promise.all(Object.entries(POSES).flatMap(([who, list]) => list.map((src, i) => new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => { state.chars[who] = img; resolve(); };
+      img.onload = () => { (state.chars[who] ||= [])[i] = img; resolve(); };
       img.onerror = () => resolve();
-      img.src = ART[who].camera;
-    })));
+      img.src = src;
+    }))));
   }
   return charsLoading;
+}
+
+// 무작위로 한 모습. 바로 전과 같은 모습은 피한다.
+function randomPose(who, avoid = -1) {
+  const n = POSES[who].length;
+  if (n < 2) return 0;
+  let i = Math.floor(Math.random() * n);
+  if (i === avoid) i = (i + 1 + Math.floor(Math.random() * (n - 1))) % n;
+  return i;
+}
+
+function poseImages(pick) {
+  const out = {};
+  for (const who of Object.keys(POSES)) {
+    const list = (state.chars[who] || []).filter(Boolean);
+    out[who] = state.chars[who]?.[pick[who]] || list[0] || null;
+  }
+  return out;
 }
 
 // 캔버스에 쓸 글꼴을 미리 받아 둔다
@@ -848,7 +872,8 @@ async function quickSave(file) {
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
     const meal = mealFor(photo.takenAt);
     const look = { style: settings.stampStyle, color: settings.stampColor };
-    const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, chars: state.chars }, look);
+    const pick = { odung: randomPose('odung'), perpeng: randomPose('perpeng') };
+    const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, chars: poseImages(pick) }, look);
     const rec = {
       id: uid(),
       takenAt: photo.takenAt.getTime(),
@@ -912,7 +937,7 @@ const TIME_NOTES = {
   now: '사진에 촬영 시각이 없어 지금 시각을 넣었어요.',
 };
 
-const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: state.chars });
+const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: poseImages(e.pose) });
 const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
 async function startEdit(file) {
@@ -921,6 +946,7 @@ async function startEdit(file) {
     file: null, thumb: null, savedAt: null, sentAt: null, persistedVersion: null,
     meal: null, mealAuto: true, ready: false, crop: null, cropMoved: false,
     style: settings.stampStyle, color: settings.stampColor,
+    pose: { odung: randomPose('odung'), perpeng: randomPose('perpeng') }, // 사진마다 다른 모습
   };
   ed = mine;
   E.canvas.hidden = true;
@@ -996,6 +1022,16 @@ function fillLook() {
   }
   for (const b of $$('[data-color]', E.swatches)) b.setAttribute('aria-checked', String(b.dataset.color === ed.color));
   E.swatches.classList.toggle('is-off', !styleUsesColor(ed.style));
+  $('#pose-shuffle').hidden = !STYLES.find((s) => s.id === ed.style)?.character;
+}
+
+// 다른 모습의 오둥이·퍼펭이로 바꾼다
+function shufflePose() {
+  if (!ed?.ready || !POSES[ed.style]) return;
+  ed.pose = { ...ed.pose, [ed.style]: randomPose(ed.style, ed.pose[ed.style]) };
+  stampIn();
+  drawThumbs();
+  markDirty();
 }
 
 function fillFields() {
@@ -1191,15 +1227,20 @@ function bindEditor() {
   E.save.addEventListener('click', () => editorShare('save'));
   E.send.addEventListener('click', () => editorShare('send'));
 
+  $('#pose-shuffle').addEventListener('click', shufflePose);
+
   E.strip.addEventListener('click', (e) => {
     const b = e.target.closest('[data-style]');
-    if (!b || !ed?.ready || b.dataset.style === ed.style) return;
-    ed.style = b.dataset.style;
-    settings.stampStyle = ed.style;
-    saveSettings();
-    fillLook();
-    stampIn();
-    markDirty();
+    if (!b || !ed?.ready) return;
+    if (b.dataset.style === ed.style) { shufflePose(); return; } // 고른 캐릭터를 한 번 더 누르면 다른 모습
+    {
+      ed.style = b.dataset.style;
+      settings.stampStyle = ed.style;
+      saveSettings();
+      fillLook();
+      stampIn();
+      markDirty();
+    }
   });
 
   E.swatches.addEventListener('click', (e) => {

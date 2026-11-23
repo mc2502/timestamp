@@ -2,7 +2,7 @@
 // GitHub Pages는 파일을 10분씩 캐시하게 해서, 배포 직후 예전 파일과 새 파일이 섞일 수 있다.
 // 그래서 매번 서버에 바뀌었는지 물어보고(no-cache, 안 바뀌었으면 304로 가볍게), 끊겼을 때만 저장본을 쓴다.
 // 버전 숫자는 scripts/bump-version.sh 가 올린다.
-const VERSION = '10';
+const VERSION = '11';
 const CACHE = `timestamp-v${VERSION}`;
 const SHELL = [
   './',
@@ -16,6 +16,21 @@ const SHELL = [
   `./js/db.js?v=${VERSION}`,
   './assets/mascots/odung-camera-v2.png',
   './assets/mascots/perpeng-camera-v2.png',
+  './assets/poses/odung-fullbody.png',
+  './assets/poses/odung-pt.png',
+  './assets/poses/odung-running.png',
+  './assets/poses/odung-solo.png',
+  './assets/poses/odung-stairs.png',
+  './assets/poses/odung-strength.png',
+  './assets/poses/odung-summary.png',
+  './assets/poses/perpeng-arms.png',
+  './assets/poses/perpeng-chest.png',
+  './assets/poses/perpeng-fullbody.png',
+  './assets/poses/perpeng-pt.png',
+  './assets/poses/perpeng-running.png',
+  './assets/poses/perpeng-solo.png',
+  './assets/poses/perpeng-stairs.png',
+  './assets/poses/perpeng-summary.png',
   './assets/mascots/odung-calendar-face-v7.png',
   './assets/mascots/perpeng-calendar-face-v4.png',
   './assets/illustrations/empty-log.png',
