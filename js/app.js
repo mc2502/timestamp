@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=9';
-import { readExifDate } from './exif.js?v=9';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=9';
-import * as db from './db.js?v=9';
+} from './format.js?v=10';
+import { readExifDate } from './exif.js?v=10';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=10';
+import * as db from './db.js?v=10';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '9';
+const APP_VERSION = '10';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -120,13 +120,33 @@ async function init() {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { state.hiddenAt = Date.now(); return; }
     tick();
+    checkForUpdate();
     if (settings.launchCamera && !openSheets.length && state.hiddenAt && Date.now() - state.hiddenAt > RELAUNCH_AFTER) openLaunch();
   });
+  setTimeout(checkForUpdate, 3000);
 
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   if ('serviceWorker' in navigator && window.isSecureContext) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+}
+
+// 앱으로 돌아올 때마다 새 버전이 있는지 보고, 있으면 그 자리에서 새로 불러온다.
+// (홈 화면 앱은 켜 둔 채로 돌아오면 예전 화면이 그대로 남아 있기 때문)
+let checkingUpdate = false;
+async function checkForUpdate() {
+  if (checkingUpdate || navigator.onLine === false) return;
+  checkingUpdate = true;
+  try {
+    const res = await fetch(`index.html?check=${Date.now()}`, { cache: 'no-store' });
+    const html = res.ok ? await res.text() : '';
+    const latest = /app\.js\?v=(\d+)/.exec(html)?.[1];
+    if (latest && latest !== APP_VERSION && !openSheets.length && !refreshing) {
+      location.reload();
+      return;
+    }
+  } catch { /* 확인 못 해도 지금 버전으로 계속 쓴다 */ }
+  checkingUpdate = false;
 }
 
 // 캐릭터 스탬프에 쓸 카메라 든 오둥이·퍼펭이

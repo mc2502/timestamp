@@ -70,13 +70,25 @@ body {
   -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums;
   word-break: keep-all; overflow-wrap: anywhere;
 }
-/* 배경: PT Note 빛 세 개. 맨 위는 아이폰 상태 표시줄 띠(theme-color #eef3f9)와 같은 색에서 시작해
-   빛이 아래로 스며들게 해서, 상태 표시줄과 화면 사이에 경계선이 생기지 않게 한다. */
+/* 배경: PT Note 빛 세 개.
+   아이폰 홈 화면 앱은 상태 표시줄 띠를 theme-color(#eef3f9) 단색으로 칠한다 (실제 화면에서 측정).
+   그래서 맨 위 80px은 그 색 그대로 두고, 빛은 아주 완만한 곡선으로 460px에 걸쳐 스며들게 한다.
+   파란 빛도 위쪽 모서리가 아니라 왼쪽 가운데에 두어, 상태 표시줄 근처에 진한 색이 없게 한다. */
 :root {
   --page-bg:
-    linear-gradient(180deg, var(--canvas) 0, rgba(238, 243, 249, .92) 40px, rgba(238, 243, 249, 0) 190px),
-    radial-gradient(ellipse at 4% 12%, var(--glow-blue), transparent 52%),
-    radial-gradient(ellipse at 100% 44%, var(--glow-violet), transparent 52%),
+    linear-gradient(180deg,
+      rgb(238, 243, 249) 0,
+      rgb(238, 243, 249) 80px,
+      rgba(238, 243, 249, .96) 130px,
+      rgba(238, 243, 249, .86) 180px,
+      rgba(238, 243, 249, .68) 230px,
+      rgba(238, 243, 249, .46) 280px,
+      rgba(238, 243, 249, .26) 330px,
+      rgba(238, 243, 249, .11) 380px,
+      rgba(238, 243, 249, .03) 430px,
+      rgba(238, 243, 249, 0) 460px),
+    radial-gradient(ellipse at 0% 42%, var(--glow-blue), transparent 55%),
+    radial-gradient(ellipse at 100% 58%, var(--glow-violet), transparent 52%),
     radial-gradient(ellipse at 12% 100%, var(--glow-mint), transparent 52%),
     var(--canvas);
 }
