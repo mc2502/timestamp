@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=8"></script>
+<script type="module" src="js/app.js?v=9"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -172,47 +172,56 @@
   </div>
 </div>
 
-<!-- 스탬프 화면: 사진이 돋보이게 어둡게, 화면 전체 -->
+<!-- 스탬프 화면: PT Note 밝은 화면. 사진이 카드처럼 떠 있고, 아래에서 캐릭터 스탬프부터 고른다 -->
 <div class="sheet sheet-full" id="editor" hidden>
   <div class="editor" role="dialog" aria-modal="true" aria-labelledby="ed-t">
     <header class="ed-top">
       <button class="ed-icon" type="button" id="ed-close" aria-label="닫기" data-autofocus><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
-      <b class="ed-title" id="ed-t">스탬프</b>
+      <b class="ed-title" id="ed-t">스탬프 찍기</b>
       <button class="ed-text" type="button" id="crop-reset" hidden>원래대로</button>
     </header>
 
-    <div class="ed-photo" id="preview">
-      <div class="preview-skel" id="preview-skel"><span>사진을 준비하고 있어요</span></div>
-      <canvas id="preview-canvas" role="img" aria-label="스탬프가 찍힌 정사각형 사진 미리보기" hidden></canvas>
-      <p class="ed-hint" id="ed-hint" aria-hidden="true">끌어서 옮기고, 두 손가락으로 확대해요</p>
-    </div>
-
     <div class="ed-body">
-      <div class="styles" id="style-strip" role="radiogroup" aria-label="스탬프 모양"></div>
+      <div class="ed-photo" id="preview">
+        <div class="preview-skel" id="preview-skel"><img class="skel-face" data-art="face" alt="" aria-hidden="true" width="56" height="56"><span>사진을 준비하고 있어요</span></div>
+        <canvas id="preview-canvas" role="img" aria-label="스탬프가 찍힌 정사각형 사진 미리보기" hidden></canvas>
+        <p class="ed-hint" id="ed-hint" aria-hidden="true">끌어서 맞추고, 두 손가락으로 확대해요</p>
+      </div>
 
-      <div class="ed-row">
-        <div class="swatches" id="swatches" role="radiogroup" aria-label="글자색">
+      <h3 class="ed-label" id="style-l">스탬프</h3>
+      <div class="styles" id="style-strip" role="radiogroup" aria-labelledby="style-l"></div>
+
+      <div class="ed-card">
+        <div class="ed-line">
+          <span class="ed-line-l" id="color-l">글자색</span>
+          <div class="swatches" id="swatches" role="radiogroup" aria-labelledby="color-l">
           <button type="button" role="radio" data-color="white" aria-label="흰색" aria-checked="true"><i></i></button>
           <button type="button" role="radio" data-color="black" aria-label="검정" aria-checked="false"><i></i></button>
           <button type="button" role="radio" data-color="yellow" aria-label="노랑" aria-checked="false"><i></i></button>
+          </div>
         </div>
-        <span class="ed-time"><span id="ed-time-text"></span><i class="chev-d" aria-hidden="true"></i><input type="datetime-local" id="ed-time" aria-label="촬영 시각 바꾸기"></span>
-      </div>
-      <p class="ed-note" id="ed-time-note" hidden></p>
-
-      <div class="ed-meal" id="meal-seg" role="group" aria-label="식사">
-        <button type="button" data-meal="breakfast" aria-pressed="false">아침</button>
-        <button type="button" data-meal="lunch" aria-pressed="false">점심</button>
-        <button type="button" data-meal="dinner" aria-pressed="false">저녁</button>
-        <button type="button" data-meal="snack" aria-pressed="false">간식</button>
-        <button type="button" data-meal="none" aria-pressed="false">없음</button>
+        <div class="ed-line">
+          <label class="ed-line-l" for="ed-time">촬영 시각</label>
+          <span class="ed-time"><span id="ed-time-text"></span><i class="chev-d" aria-hidden="true"></i><input type="datetime-local" id="ed-time"></span>
+        </div>
+        <p class="ed-note" id="ed-time-note" hidden></p>
+        <div class="ed-line ed-line-col">
+          <span class="ed-line-l" id="meal-l">식사</span>
+          <div class="ed-meal" id="meal-seg" role="group" aria-labelledby="meal-l">
+            <button type="button" data-meal="breakfast" aria-pressed="false">아침</button>
+            <button type="button" data-meal="lunch" aria-pressed="false">점심</button>
+            <button type="button" data-meal="dinner" aria-pressed="false">저녁</button>
+            <button type="button" data-meal="snack" aria-pressed="false">간식</button>
+            <button type="button" data-meal="none" aria-pressed="false">없음</button>
+          </div>
+        </div>
       </div>
 
       <div class="msg-slot" id="ed-msg" aria-live="polite"></div>
     </div>
 
     <footer class="ed-foot">
-      <button class="btn ghost" type="button" id="ed-save" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장</button>
+      <button class="btn sec" type="button" id="ed-save" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장</button>
       <button class="btn pri" type="button" id="ed-send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 14l11 -11"/><path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5"/></svg>보내기</button>
     </footer>
   </div>

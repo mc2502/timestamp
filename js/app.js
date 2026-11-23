@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=8';
-import { readExifDate } from './exif.js?v=8';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=8';
-import * as db from './db.js?v=8';
+} from './format.js?v=9';
+import { readExifDate } from './exif.js?v=9';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=9';
+import * as db from './db.js?v=9';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '8';
+const APP_VERSION = '9';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -34,11 +34,10 @@ const settings = {
   instantSave: false,
   saveOriginal: false,
   effects: true,
-  stampStyle: 'basic', // 마지막에 쓴 스탬프 (즉시 저장도 이걸로)
+  stampStyle: null, // 마지막에 쓴 스탬프 (즉시 저장도 이걸로). 처음엔 그날의 캐릭터
   stampColor: 'white',
 };
 try { Object.assign(settings, JSON.parse(local.get(SETTINGS_KEY) || '{}')); } catch { /* 기본값 사용 */ }
-if (!STYLES.some((s) => s.id === settings.stampStyle)) settings.stampStyle = 'basic';
 if (!COLORS[settings.stampColor]) settings.stampColor = 'white';
 const saveSettings = () => local.set(SETTINGS_KEY, JSON.stringify(settings));
 
@@ -65,7 +64,7 @@ const FILTERS = [['all', '전체'], ...MEALS];
 
 const state = {
   family: chooseFamily(),
-  face: null,
+  chars: {}, // 카메라 든 오둥이·퍼펭이 (캐릭터 스탬프에 쓴다)
   records: [],
   thumbUrls: new Map(),
   fresh: new Set(),
@@ -78,6 +77,13 @@ const state = {
   hiddenAt: 0,
 };
 const art = ART[state.family];
+
+// 캐릭터 스탬프가 기본: 처음이거나 예전 ‘마스코트’를 쓰던 사람은 그날의 캐릭터로 시작한다
+if (!settings.charDefault || !STYLES.some((s) => s.id === settings.stampStyle)) {
+  settings.stampStyle = state.family;
+  settings.charDefault = true;
+  local.set(SETTINGS_KEY, JSON.stringify(settings));
+}
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const uid = () =>
@@ -105,7 +111,7 @@ async function init() {
   try { sessionStorage.removeItem('timestamp:healed'); } catch { /* 없어도 된다 */ }
   if (settings.launchCamera) openLaunch();
 
-  faceReady();
+  charsReady();
   fontsReady();
   await loadRecords();
   renderAll();
@@ -123,18 +129,18 @@ async function init() {
   }
 }
 
-// 마스코트 스탬프에 쓸 얼굴
-let faceLoading = null;
-function faceReady() {
-  if (!faceLoading) {
-    faceLoading = new Promise((resolve) => {
+// 캐릭터 스탬프에 쓸 카메라 든 오둥이·퍼펭이
+let charsLoading = null;
+function charsReady() {
+  if (!charsLoading) {
+    charsLoading = Promise.all(Object.keys(ART).map((who) => new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => { state.face = img; resolve(img); };
-      img.onerror = () => resolve(null);
-      img.src = art.face;
-    });
+      img.onload = () => { state.chars[who] = img; resolve(); };
+      img.onerror = () => resolve();
+      img.src = ART[who].camera;
+    })));
   }
-  return faceLoading;
+  return charsLoading;
 }
 
 // 캔버스에 쓸 글꼴을 미리 받아 둔다
@@ -498,8 +504,10 @@ function requestClose(sheet) {
   else closeSheet(sheet);
 }
 
+// 잘 됐을 때는 그날의 캐릭터 얼굴과 함께
 function showMsg(slot, kind, text) {
-  slot.innerHTML = text ? `<p class="msg ${kind}"${kind === 'err' ? ' role="alert"' : ''}>${escapeHtml(text)}</p>` : '';
+  const face = kind === 'ok' ? `<img class="msg-face" src="${art.face}" alt="" aria-hidden="true">` : '';
+  slot.innerHTML = text ? `<p class="msg ${kind}"${kind === 'err' ? ' role="alert"' : ''}>${face}<span>${escapeHtml(text)}</span></p>` : '';
 }
 
 function openLaunch() {
@@ -732,7 +740,7 @@ function loadPhoto(file) {
 
 // 촬영 시각: EXIF → 파일 시각(1분 넘게 차이 날 때만) → 지금
 async function readPhoto(file) {
-  const [{ img, url }, exifDate] = await Promise.all([loadPhoto(file), readExifDate(file), fontsReady(), faceReady()]);
+  const [{ img, url }, exifDate] = await Promise.all([loadPhoto(file), readExifDate(file), fontsReady(), charsReady()]);
   let takenAt;
   let timeSource;
   if (exifDate) { takenAt = exifDate; timeSource = 'exif'; }
@@ -820,7 +828,7 @@ async function quickSave(file) {
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
     const meal = mealFor(photo.takenAt);
     const look = { style: settings.stampStyle, color: settings.stampColor };
-    const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, face: state.face }, look);
+    const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, chars: state.chars }, look);
     const rec = {
       id: uid(),
       takenAt: photo.takenAt.getTime(),
@@ -884,7 +892,7 @@ const TIME_NOTES = {
   now: '사진에 촬영 시각이 없어 지금 시각을 넣었어요.',
 };
 
-const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, face: state.face });
+const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: state.chars });
 const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
 async function startEdit(file) {
@@ -938,7 +946,9 @@ function buildStrip() {
   const dpr = Math.min(3, window.devicePixelRatio || 1);
   const px = Math.round(66 * dpr);
   E.strip.innerHTML = STYLES.map((s) =>
-    `<button class="style-btn" type="button" role="radio" data-style="${s.id}" aria-checked="${s.id === ed.style}"><canvas width="${px}" height="${px}" aria-hidden="true"></canvas>${s.label}</button>`).join('');
+    `<button class="style-btn${s.character ? ' is-char' : ''}" type="button" role="radio" data-style="${s.id}" aria-checked="${s.id === ed.style}">`
+    + `<canvas width="${px}" height="${px}" aria-hidden="true"></canvas>`
+    + `<span class="style-name">${s.character ? `<img src="${ART[s.id].face}" alt="" aria-hidden="true">` : ''}${s.label}</span></button>`).join('');
 }
 
 let thumbTimer = 0;
