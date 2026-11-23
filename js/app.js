@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, pad2, fmtDate, fmtClock, fmtLongDate, weekday, monthDay, dayKey, fromDayKey, fileStamp,
   weekLabel, relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=4';
-import { readExifDate } from './exif.js?v=4';
-import { drawStamp } from './stamp.js?v=4';
-import * as db from './db.js?v=4';
+} from './format.js?v=5';
+import { readExifDate } from './exif.js?v=5';
+import { drawStamp } from './stamp.js?v=5';
+import * as db from './db.js?v=5';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '4';
+const APP_VERSION = '5';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -37,11 +37,13 @@ const saveSettings = () => local.set(SETTINGS_KEY, JSON.stringify(settings));
 const ART = {
   odung: {
     summary: 'assets/mascots/odung-summary-v2.png',
+    camera: 'assets/mascots/odung-camera-v2.png',
     face: 'assets/mascots/odung-calendar-face-v7.png',
     trio: 'assets/mascots/odung-week-trio-v2.png',
   },
   perpeng: {
     summary: 'assets/mascots/perpeng-summary-v1.png',
+    camera: 'assets/mascots/perpeng-camera-v2.png',
     face: 'assets/mascots/perpeng-calendar-face-v4.png',
     trio: 'assets/mascots/perpeng-week-trio-v1.png',
   },

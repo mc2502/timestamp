@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=4"></script>
+<script type="module" src="js/app.js?v=5"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -57,7 +57,7 @@
             <h2 class="hero-title" id="hero-title">첫 식단 사진을<br>남겨 볼까요?</h2>
             <p class="hero-sub">찍는 순간의 날짜와 시간이<br>사진에 함께 남아요</p>
           </div>
-          <img class="hero-mascot" data-art="summary" alt="" aria-hidden="true" width="112" height="112">
+          <img class="hero-mascot" data-art="camera" alt="" aria-hidden="true" width="112" height="112">
         </div>
         <div class="sample">
           <div class="sample-photo" aria-hidden="true">
@@ -200,7 +200,7 @@
     <div class="sheet-b launch-b">
       <div class="pt-entry-hero">
         <div><b id="launch-t">식단 사진을<br>찍어 볼까요?</b><p>찍는 순간의 날짜와 시간이<br>사진에 함께 남아요</p></div>
-        <img data-art="summary" width="100" height="100" alt="" aria-hidden="true">
+        <img data-art="camera" width="100" height="100" alt="" aria-hidden="true">
       </div>
       <button class="shutter" type="button" id="launch-shoot" data-autofocus aria-label="사진 찍기"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg></span></button>
       <button class="pt-text-button launch-album" type="button" id="launch-album">사진 앨범에서 고르기</button>
