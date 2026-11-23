@@ -8,7 +8,7 @@
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 //  mascot  마스코트 왼쪽 아래 오둥이·퍼펭이 얼굴 + 시각 + 날짜
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=6';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=7';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 

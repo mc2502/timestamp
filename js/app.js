@@ -1,13 +1,13 @@
 import {
-  WEEKDAYS, MEALS, fmtClock, weekday, monthDay, dayKey, fromDayKey, fileStamp,
-  weekLabel, relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=6';
-import { readExifDate } from './exif.js?v=6';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=6';
-import * as db from './db.js?v=6';
+  WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
+  relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
+} from './format.js?v=7';
+import { readExifDate } from './exif.js?v=7';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=7';
+import * as db from './db.js?v=7';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '6';
+const APP_VERSION = '7';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -48,12 +48,10 @@ const ART = {
   odung: {
     camera: 'assets/mascots/odung-camera-v2.png',
     face: 'assets/mascots/odung-calendar-face-v7.png',
-    trio: 'assets/mascots/odung-week-trio-v2.png',
   },
   perpeng: {
     camera: 'assets/mascots/perpeng-camera-v2.png',
     face: 'assets/mascots/perpeng-calendar-face-v4.png',
-    trio: 'assets/mascots/perpeng-week-trio-v1.png',
   },
 };
 
@@ -583,7 +581,6 @@ function originalFile(blob, date) {
 
 function renderAll() {
   renderAlbum();
-  renderWeek();
   renderCalendar();
   renderDay();
 }
@@ -633,67 +630,38 @@ function renderAlbum() {
   state.fresh.clear();
 }
 
-const WEEK_LINES = ['', '좋은 출발이에요', '리듬이 생겼어요', '꾸준히 남기고 있어요', '절반을 넘었어요', '거의 다 왔어요', '하루만 더 남았어요', '하루도 안 빠졌어요'];
-
-function renderWeek() {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const start = new Date(today);
-  start.setDate(today.getDate() - today.getDay() - 7);
-  const stampedDays = new Set(state.records.map((r) => r.day));
-  const todayKey = dayKey(today);
-
-  let html = '<span aria-hidden="true"></span>';
-  html += WEEKDAYS.map((w) => `<span class="week-weekday" aria-hidden="true">${w}</span>`).join('');
-  let count = 0;
-  for (let row = 0; row < 2; row++) {
-    html += `<span class="week-row-label${row ? ' current' : ''}">${row ? '이번 주' : '지난주'}</span>`;
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + row * 7 + i);
-      const key = dayKey(d);
-      const stamped = stampedDays.has(key);
-      const future = key > todayKey;
-      if (row === 1 && stamped) count++;
-      const label = `${d.getMonth() + 1}월 ${d.getDate()}일${stamped ? ', 사진 남김' : ''}`;
-      html += `<div class="wk${stamped ? ' wk-stamped' : ''}" role="img" aria-label="${label}">`
-        + `<i class="wdot${key === todayKey ? ' today' : ''}${future ? ' off' : ''}" aria-hidden="true">${d.getDate()}</i>`
-        + (stamped ? `<img class="week-stamp" src="${art.face}" alt="" aria-hidden="true">` : '')
-        + '</div>';
-    }
-  }
-  $('#week').innerHTML = html;
-  $('#week-heading').innerHTML = count === 0
-    ? '이번 주 <span class="week-total">첫 기록</span>을 기다려요'
-    : `이번 주 <span class="week-total">${count}일</span>, ${WEEK_LINES[count]}`;
-  $('#week-label').textContent = weekLabel(now);
-}
-
+// 달력: 사진을 남긴 날에는 마스코트 얼굴 스탬프 (PT Note 주간 스탬프처럼)
 function renderCalendar() {
   const m = state.month;
   const y = m.getFullYear();
   const mo = m.getMonth();
   const now = new Date();
+  const prefix = `${y}-${String(mo + 1).padStart(2, '0')}`;
   $('#mon-t').textContent = y === now.getFullYear() ? `${mo + 1}월` : `${y}년 ${mo + 1}월`;
   $('#mon-next').disabled = y === now.getFullYear() && mo === now.getMonth();
 
   const counts = new Map();
   for (const r of state.records) counts.set(r.day, (counts.get(r.day) || 0) + 1);
+  const monthDays = [...counts.keys()].filter((k) => k.startsWith(prefix)).length;
+  $('#mon-sum').textContent = monthDays ? `${monthDays}일 남겼어요` : '아직 기록이 없어요';
+
   const todayKey = dayKey(now);
   const first = new Date(y, mo, 1).getDay();
   const last = new Date(y, mo + 1, 0).getDate();
 
-  let html = WEEKDAYS.map((w, i) => `<div class="hd${i === 0 ? ' sun' : i === 6 ? ' sat' : ''}">${w}</div>`).join('');
-  for (let i = 0; i < first; i++) html += '<div class="c" aria-hidden="true"></div>';
+  let html = WEEKDAYS.map((w, i) => `<div class="hd${i === 0 ? ' sun' : i === 6 ? ' sat' : ''}" aria-hidden="true">${w}</div>`).join('');
+  for (let i = 0; i < first; i++) html += '<div aria-hidden="true"></div>';
   for (let d = 1; d <= last; d++) {
     const key = dayKey(new Date(y, mo, d));
     const n = counts.get(key) || 0;
     const future = key > todayKey;
     const selected = key === state.selectedDay;
-    const cls = ['dot', n && 'has', key === todayKey && 'today', selected && 'selected', future && 'off'].filter(Boolean).join(' ');
+    const cls = ['num', key === todayKey && 'today', selected && 'selected', future && 'off', n && 'has'].filter(Boolean).join(' ');
     const label = `${mo + 1}월 ${d}일${n ? `, 사진 ${n}장` : ''}`;
-    html += `<div class="c"><button class="day" type="button" data-day="${key}" aria-pressed="${selected}" aria-label="${label}"${future ? ' disabled' : ''}>`
-      + `<span class="${cls}">${d}</span></button></div>`;
+    html += `<button class="day" type="button" data-day="${key}" aria-pressed="${selected}" aria-label="${label}"${future ? ' disabled' : ''}>`
+      + `<span class="${cls}">${d}</span>`
+      + (n ? `<img class="day-stamp" src="${art.face}" alt="" aria-hidden="true">` : '')
+      + '</button>';
   }
   $('#cal').innerHTML = html;
 }

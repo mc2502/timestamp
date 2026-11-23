@@ -143,53 +143,28 @@ img { display: block; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 13px; padding: 40px 0; text-align: center; color: var(--ink3); font-size: 14px; }
 .empty img { width: 72px; height: 72px; }
 
-/* ── 카드 (달력 화면) ── */
-.card { background: var(--glass-card); border: 1px solid rgba(255, 255, 255, .6); border-radius: var(--radius-card); margin: 0 12px 12px; padding: 18px 20px; }
-.sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.sec-s { font-size: 13px; color: var(--ink3); font-weight: 500; white-space: nowrap; }
-
-/* 이번 주 (PT Note WeekStrip) */
-.today-week { padding: 16px 18px; }
-.today-week .sec-h { min-height: 26px; gap: 10px; white-space: nowrap; }
-.week-heading { font-size: 14px; font-weight: 600; line-height: 26px; letter-spacing: -.035em; white-space: nowrap; }
-.week-total { font-size: 17px; font-weight: 700; letter-spacing: -.025em; }
-.today-week .sec-s { font-size: 12px; }
-.week { display: grid; grid-template-columns: 36px repeat(7, minmax(0, 1fr)); gap: 4px 2px; margin-top: 14px; align-items: center; }
-.week-weekday { height: 14px; font-size: 10px; line-height: 14px; font-weight: 500; color: var(--ink3); text-align: center; }
-.week-row-label { align-self: start; font-size: 10px; line-height: 18px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
-.week-row-label.current { font-weight: 600; color: var(--ink2); }
-.wk { min-width: 0; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
-.wk .wdot { width: 26px; height: 18px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 12px; font-weight: 550; color: var(--ink); }
-.wk-stamped .wdot { color: var(--blue-ink); font-weight: 650; }
-.wk .wdot.off { color: #adb5bd; }
-.wk .wdot.today { background: var(--today); color: var(--ink); }
-.week-stamp { width: 26px; height: 26px; object-fit: contain; flex: none; pointer-events: none; user-select: none; }
-.week-footer { display: flex; align-items: flex-end; min-height: 56px; margin-top: 4px; }
-.week-mascots { width: 168px; height: auto; object-fit: contain; object-position: left bottom; pointer-events: none; user-select: none; }
-
-/* 월 달력 (PT Note Calendar) */
-.mon-t { font-size: 24px; font-weight: 800; letter-spacing: -.03em; }
+/* ── 달력: 날짜 숫자 아래 마스코트 얼굴 스탬프 (PT Note WeekStrip 방식) ── */
 .mon-n { display: flex; gap: 6px; }
 .mon-n button { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(231, 238, 247, .62); box-shadow: var(--shadow-chip); }
 .mon-n button:disabled { opacity: .35; cursor: default; }
 .mon-n i { width: 9px; height: 9px; border-left: 2px solid var(--ink2); border-bottom: 2px solid var(--ink2); transform: rotate(45deg); margin-left: 4px; }
 .mon-n button:last-child i { transform: rotate(-135deg); margin-left: -4px; }
-.cal-card { padding: 14px 12px 10px; }
-.cal { display: grid; grid-template-columns: repeat(7, 1fr); }
-.cal .hd { font-size: 12px; font-weight: 600; color: var(--ink3); text-align: center; padding-bottom: 4px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; padding: 4px 8px 8px; }
+.cal .hd { padding: 2px 0 6px; font-size: 12px; font-weight: 600; color: var(--ink3); text-align: center; }
 .cal .hd.sun { color: var(--sun); }
 .cal .hd.sat { color: var(--sat); }
-.cal .c { display: flex; justify-content: center; }
-.day { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; }
+.day {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; height: 64px; padding-top: 6px;
+  border-radius: 14px; text-align: center; transition: background-color .2s;
+}
 .day:disabled { cursor: default; }
-.dot { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--ink2); }
-.dot.off { color: var(--ink-off); }
-.dot.has { background: var(--calendar-solo); color: var(--ink); }
-.dot.today { background: var(--today); color: var(--ink); }
-.dot.today.has { background: var(--calendar-solo); box-shadow: inset 0 0 0 2.5px var(--calendar-solo-ring); }
-.dot.selected { font-weight: 800; color: var(--ink); background: rgba(207, 218, 232, .7); }
-.dot.selected.has { background: var(--calendar-solo-strong); box-shadow: none; }
-.dot.today.selected.has { box-shadow: inset 0 0 0 2.5px var(--calendar-solo-ring); }
+.day:active:not(:disabled) { background: rgba(25, 31, 40, .05); }
+.num { display: flex; align-items: center; justify-content: center; width: 30px; height: 22px; border-radius: 11px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.num.has { color: var(--blue-ink); font-weight: 700; }
+.num.today { background: var(--today); }
+.num.off { color: #adb5bd; }
+.num.selected { background: var(--blue-ink); color: var(--on-ink); font-weight: 700; }
+.day-stamp { width: 30px; height: 30px; object-fit: contain; pointer-events: none; user-select: none; }
 
 /* ── 탭바 ── */
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; pointer-events: none; padding: 8px var(--gr) var(--nav-bottom) var(--gl); }

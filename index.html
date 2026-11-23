@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=7">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=6"></script>
+<script type="module" src="js/app.js?v=7"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -66,19 +66,12 @@
     <!-- 달력 -->
     <section class="view" id="view-calendar" aria-labelledby="mon-t" hidden>
       <header class="topbar">
-        <h2 class="mon-t" id="mon-t"></h2>
+        <p class="topbar-text"><b id="mon-t"></b><span id="mon-sum"></span></p>
         <div class="mon-n"><button type="button" id="mon-prev" aria-label="이전 달"><i></i></button><button type="button" id="mon-next" aria-label="다음 달"><i></i></button></div>
       </header>
 
-      <article class="card today-week">
-        <div class="sec-h"><h3 class="week-heading" id="week-heading"></h3><div class="sec-s" id="week-label"></div></div>
-        <div class="week" id="week" role="group" aria-label="지난주와 이번 주 기록"></div>
-        <div class="week-footer"><img class="week-mascots" data-art="trio" alt="" aria-hidden="true" width="720" height="240"></div>
-      </article>
-
-      <article class="card cal-card">
-        <div class="cal" id="cal"></div>
-      </article>
+      <!-- 사진을 남긴 날에는 마스코트 얼굴 스탬프가 찍힌다 -->
+      <div class="cal" id="cal"></div>
 
       <div class="day-head"><h3 id="day-title"></h3><span id="day-count"></span></div>
       <div class="grid" id="day-grid"></div>
