@@ -344,45 +344,56 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .ed-icon svg { width: 22px; height: 22px; }
 .ed-title { text-align: center; font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
 .ed-text { justify-self: end; min-height: 44px; padding: 0 8px; color: var(--blue-ink); font-size: 14px; font-weight: 600; }
-.ed-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 12px; }
+/* 한 화면에 다 들어오게: 위아래로 잘리지 않고, 사진이 남는 높이를 모두 쓴다 */
+.ed-body {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+}
+.ed-body::-webkit-scrollbar { display: none; }
+.ed-stage { flex: 1 1 0; min-height: 236px; display: grid; place-items: center; padding: 2px 0 4px; container-type: size; }
 
-/* 사진: 카드처럼 떠 있게 */
+/* 사진: 카드처럼 떠 있게. 폭과 남은 높이 중 작은 쪽에 맞춘 정사각형 */
 .ed-photo {
-  position: relative; margin: 0 12px; aspect-ratio: 1; overflow: hidden; border-radius: 24px;
+  position: relative; width: calc(100% - 24px); width: min(calc(100cqw - 24px), 100cqh); aspect-ratio: 1; overflow: hidden; border-radius: 24px;
   background: var(--skeleton); box-shadow: 0 10px 30px rgba(29, 54, 86, .14), 0 0 0 1px rgba(255, 255, 255, .7);
   touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
 }
 .ed-photo.grabbing { cursor: grabbing; }
 .ed-photo canvas { display: block; width: 100%; height: 100%; }
-.preview-skel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-size: 13px; color: var(--ink3); font-weight: 600; }
+.preview-skel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 0 24px; font-size: 13px; color: var(--ink3); font-weight: 600; text-align: center; }
 .skel-face { width: 56px; height: 56px; transform-origin: 50% 92%; animation: refresh-face-waddle .7s ease-in-out infinite; }
+.preview-skel.is-err .skel-face { animation: none; }
 .ed-hint {
-  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 12px; border-radius: 14px;
+  position: absolute; left: 12px; top: 12px; padding: 6px 12px; border-radius: 14px;
   background: rgba(25, 31, 40, .55); color: #ffffff; font-size: 12px; font-weight: 600; white-space: nowrap; pointer-events: none; transition: opacity .5s;
 }
 .ed-hint.gone { opacity: 0; }
 
-/* 스탬프 고르기: 캐릭터 두 개가 앞에 */
-.ed-label { padding: 18px var(--gl) 8px; font-size: 13px; font-weight: 600; color: var(--ink3); }
-.styles { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 2px var(--gl) 6px; scroll-padding-inline: var(--gl); }
+/* 스탬프 고르기: 캐릭터 두 개가 앞에. 고른 캐릭터를 한 번 더 누르면 다른 포즈 */
+.styles { flex: none; display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 8px var(--gl) 2px; scroll-padding-inline: var(--gl); }
 .styles::-webkit-scrollbar { display: none; }
-.style-btn { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--ink2); font-size: 12px; font-weight: 600; border-radius: 16px; transition: transform .2s; }
+.style-btn { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; color: var(--ink2); font-size: 12px; line-height: 16px; font-weight: 600; border-radius: 16px; transition: transform .2s; }
 .style-btn:active { transform: scale(.95); }
-.style-btn canvas { display: block; width: 72px; height: 72px; border-radius: 16px; background: var(--skeleton); box-shadow: 0 0 0 1px rgba(109, 134, 164, .14); }
-.style-btn.is-char canvas { width: 84px; height: 84px; border-radius: 18px; }
+.style-thumb { position: relative; display: block; }
+.style-btn canvas { display: block; width: 56px; height: 56px; border-radius: 14px; background: var(--skeleton); box-shadow: 0 0 0 1px rgba(109, 134, 164, .14); }
+.style-btn.is-char canvas { width: 64px; height: 64px; border-radius: 16px; }
 .style-btn[aria-checked="true"] { color: var(--blue-ink); }
 .style-btn[aria-checked="true"] canvas { box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--blue); }
-.style-name { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.style-name img { width: 18px; height: 18px; }
-.style-btn.is-char .style-name { font-size: 13px; font-weight: 700; }
+.style-name { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.style-name img { width: 16px; height: 16px; }
+.style-btn.is-char .style-name { font-weight: 700; }
+.pose-badge {
+  position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--blue); color: #ffffff; box-shadow: 0 0 0 2px #ffffff, 0 2px 6px rgba(29, 54, 86, .22);
+  opacity: 0; transform: scale(.5); transition: opacity .18s, transform .28s cubic-bezier(.34, 1.56, .64, 1);
+}
+.pose-badge svg { width: 14px; height: 14px; }
+.style-btn[aria-checked="true"] .pose-badge { opacity: 1; transform: none; }
 
-/* 글자색 · 시각 · 식사: 유리 카드 하나 */
-.ed-card { margin: 12px 12px 0; padding: 2px 16px 14px; border-radius: var(--radius-card); background: var(--glass-card); border: 1px solid rgba(255, 255, 255, .6); }
-.ed-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; border-top: 1px solid var(--line); }
-.ed-line:first-child { border-top: 0; }
-.ed-line-col { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 12px; min-height: 0; }
-.ed-line-l { font-size: 13px; font-weight: 500; color: var(--ink3); }
-.swatches { display: flex; gap: 2px; transition: opacity .2s; }
+/* 글자색 · 촬영 시각 한 줄, 식사 한 줄: 유리 카드 하나 */
+.ed-card { flex: none; margin: 8px 12px 4px; padding: 4px 8px 8px; border-radius: var(--radius-card); background: var(--glass-card); border: 1px solid rgba(255, 255, 255, .6); }
+.ed-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; }
+.swatches { display: flex; transition: opacity .2s; }
 .swatches button { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; }
 .swatches i { width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .14); }
 .swatches [data-color="white"] i { background: #ffffff; }
@@ -391,18 +402,19 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .swatches [aria-checked="true"] i { box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--blue); }
 .swatches.is-off { opacity: .3; pointer-events: none; }
 .ed-time {
-  position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px 0 14px; border-radius: var(--radius-control);
-  background: #f3f6fa; box-shadow: inset 0 0 0 1px #e8edf3; font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap;
+  position: relative; display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: var(--radius-control);
+  background: #f3f6fa; box-shadow: inset 0 0 0 1px #e8edf3; font-size: 15px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); white-space: nowrap;
 }
+.ed-time-ic { width: 17px; height: 17px; flex: none; color: var(--ink3); }
 .ed-time small { font-size: 13px; font-weight: 500; color: var(--ink2); }
 .ed-time input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
 .ed-time:focus-within { box-shadow: inset 0 0 0 2px var(--blue-ink); }
+.ed-time.is-guess { background: #eef4ff; box-shadow: inset 0 0 0 1.5px rgba(49, 130, 246, .55); }
+.ed-time.is-guess .ed-time-ic { color: var(--blue-ink); }
 .chev-d { width: 7px; height: 7px; border-right: 1.8px solid var(--ink3); border-bottom: 1.8px solid var(--ink3); transform: rotate(45deg); margin: -3px 0 0 2px; }
-.ed-note { margin: -4px 0 8px; font-size: 12px; line-height: 1.5; color: var(--blue-ink); font-weight: 600; text-align: right; }
 .ed-meal { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; padding: 4px; border-radius: var(--radius-segment); background: var(--control-fill); }
 .ed-meal button { min-height: 40px; border-radius: 11px; font-size: 14px; color: var(--ink2); text-align: center; }
 .ed-meal [aria-pressed="true"] { background: var(--bg); color: var(--ink); font-weight: 650; box-shadow: var(--shadow-segment-on); }
-.editor .msg { margin: 12px 12px 0; }
 .ed-foot {
   display: flex; gap: 8px; padding: 10px 12px calc(10px + var(--sb)); flex: none;
   background: linear-gradient(180deg, rgba(238, 243, 249, 0), rgba(238, 243, 249, .92) 30%);
@@ -418,7 +430,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 }
 .toast-face { width: 28px; height: 28px; border-radius: 50%; flex: none; }
 .toast.pop .toast-face { animation: face-pop .36s cubic-bezier(.34, 1.56, .64, 1); }
-.toast-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
+.toast-text { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; padding-right: 6px; }
 .toast-btn { position: relative; flex: none; min-height: 32px; padding: 0 12px; border-radius: 16px; background: var(--blue-ink); color: var(--on-ink); font-size: 13px; font-weight: 700; }
 .toast-btn::before { content: ''; position: absolute; inset: -6px; }
 @keyframes toast-in { from { transform: translateY(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -482,12 +494,3 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 /* ── 탭바: 이름 없이 아이콘만 ── */
 .tab .nav-glyph { width: 25px; height: 25px; }
 
-/* ── 스탬프 화면: ‘다른 포즈’ ── */
-.ed-label-row { display: flex; align-items: center; justify-content: space-between; padding-right: 10px; }
-.ed-label-row .ed-label { padding-right: 0; }
-.pose-btn {
-  display: inline-flex; align-items: center; gap: 5px; min-height: 44px; margin-top: 8px; padding: 0 12px;
-  border-radius: 22px; color: var(--blue-ink); font-size: 13px; font-weight: 700; transition: transform .2s;
-}
-.pose-btn svg { width: 17px; height: 17px; }
-.pose-btn:active { transform: scale(.95); }

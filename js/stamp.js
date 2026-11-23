@@ -1,15 +1,15 @@
 // 정사각형 사진에 찍는 스탬프 7종. 로고는 넣지 않는다. 캐릭터 스탬프가 기본이다.
 // 모든 값은 1080px 정사각형 기준 단위(u)이고, 실제 크기에 비율로 맞춘다.
 //
-//  odung   오둥이   여러 모습의 오둥이 + 옆에 둥근 도장(날짜 · 시각 · 끼니)
-//  perpeng 퍼펭이   여러 모습의 퍼펭이 + 옆에 둥근 도장(날짜 · 시각 · 끼니)
+//  odung   오둥이   왼쪽 아래 둥근 도장(날짜 · 시각 · 끼니) + 오른쪽 위 여러 모습의 오둥이
+//  perpeng 퍼펭이   왼쪽 아래 둥근 도장(날짜 · 시각 · 끼니) + 오른쪽 위 여러 모습의 퍼펭이
 //  basic   기본     왼쪽 아래 두 줄: 2026년 11월 23일 (월) / 오전 7:46
 //  big     크게     가운데 큰 시각, 아래 한 줄 날짜
 //  film    필름     오른쪽 아래 주황 디지털 숫자 '26 11 23  7:46
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=11';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=12';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -99,7 +99,7 @@ function anchor(style, side, u) {
     case 'film': return [side - 220 * u, side - 110 * u];
     case 'meal': return [58 * u, 150 * u];
     case 'odung':
-    case 'perpeng': return [200 * u, side - 200 * u];
+    case 'perpeng': return [SEAL_AT * u + 158 * u, side - SEAL_AT * u - 158 * u];
     default: return [60 * u, side - 140 * u];
   }
 }
@@ -211,6 +211,7 @@ const DRAW = {
    옆에 살짝 기울어진 둥근 도장에 날짜 · 시각 · 끼니가 찍힌다.
    글씨는 캐릭터 위에 얹지 않고 도장 안에만 쓴다 (PT Note: 마스코트 위에 글씨 금지). */
 
+const SEAL_AT = 40; // 도장이 사진 모서리에서 떨어진 거리(u)
 const SEAL = {
   white: { disc: 'rgba(255, 255, 255, 0.96)', ink: '#1b64da', sub: '#4e5968', tag: '#1b64da', tagInk: '#ffffff' },
   black: { disc: 'rgba(25, 31, 40, 0.92)', ink: '#ffffff', sub: '#c9d0d9', tag: '#ffd84a', tagInk: '#191f28' },
@@ -220,12 +221,13 @@ const SEAL = {
 function drawCharacter(ctx, side, u, { date, meal, chars }, c, who) {
   const img = chars?.[who];
   const scheme = SEAL[Object.keys(COLORS).find((k) => COLORS[k] === c) || 'white'];
-  const size = 290 * u; // 캐릭터
-  const left = 18 * u;
-  const top = side - 22 * u - size;
+  // 도장은 왼쪽 아래, 캐릭터는 오른쪽 위 — 가운데(음식)는 비워 둔다
   const R = 158 * u; // 도장 반지름
-  const cx = img ? left + size * 0.92 + R * 0.95 : 56 * u + R; // 캐릭터와 살짝만 겹치게
-  const cy = side - 44 * u - R;
+  const cx = SEAL_AT * u + R;
+  const cy = side - SEAL_AT * u - R;
+  const size = 270 * u; // 캐릭터
+  const left = side - 22 * u - size;
+  const top = 22 * u;
 
   // 도장: 살짝 기울여 찍은 느낌
   ctx.save();
@@ -287,7 +289,7 @@ function drawCharacter(ctx, side, u, { date, meal, chars }, c, who) {
   }
   ctx.restore();
 
-  // 캐릭터는 도장 앞에
+  // 캐릭터: 오른쪽 위 모서리
   if (img) {
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
