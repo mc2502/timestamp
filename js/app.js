@@ -1,19 +1,20 @@
 import {
-  WEEKDAYS, MEALS, pad2, fmtDate, fmtClock, fmtLongDate, weekday, monthDay, dayKey, fromDayKey, fileStamp,
+  WEEKDAYS, MEALS, fmtClock, weekday, monthDay, dayKey, fromDayKey, fileStamp,
   weekLabel, relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=5';
-import { readExifDate } from './exif.js?v=5';
-import { drawStamp } from './stamp.js?v=5';
-import * as db from './db.js?v=5';
+} from './format.js?v=6';
+import { readExifDate } from './exif.js?v=6';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=6';
+import * as db from './db.js?v=6';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '5';
+const APP_VERSION = '6';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 저장본: 정사각형, 한 변 1080~2160px. 크게 확대해도 1080px 아래로는 줄지 않는다.
+// 저장본: 정사각형, 한 변 1080~2160px
 const OUT_MIN = 1080;
 const OUT_MAX = 2160;
 const MAX_ZOOM = 3;
@@ -28,21 +29,28 @@ const local = {
 };
 
 const SETTINGS_KEY = 'timestamp:settings';
-const settings = { launchCamera: false, instantSave: false, saveOriginal: false, effects: true };
+const settings = {
+  launchCamera: false,
+  instantSave: false,
+  saveOriginal: false,
+  effects: true,
+  stampStyle: 'basic', // 마지막에 쓴 스탬프 (즉시 저장도 이걸로)
+  stampColor: 'white',
+};
 try { Object.assign(settings, JSON.parse(local.get(SETTINGS_KEY) || '{}')); } catch { /* 기본값 사용 */ }
+if (!STYLES.some((s) => s.id === settings.stampStyle)) settings.stampStyle = 'basic';
+if (!COLORS[settings.stampColor]) settings.stampColor = 'white';
 const saveSettings = () => local.set(SETTINGS_KEY, JSON.stringify(settings));
 
 /* ── 마스코트: 앱을 열 때마다 지난번과 다른 친구가 나온다 ── */
 
 const ART = {
   odung: {
-    summary: 'assets/mascots/odung-summary-v2.png',
     camera: 'assets/mascots/odung-camera-v2.png',
     face: 'assets/mascots/odung-calendar-face-v7.png',
     trio: 'assets/mascots/odung-week-trio-v2.png',
   },
   perpeng: {
-    summary: 'assets/mascots/perpeng-summary-v1.png',
     camera: 'assets/mascots/perpeng-camera-v2.png',
     face: 'assets/mascots/perpeng-calendar-face-v4.png',
     trio: 'assets/mascots/perpeng-week-trio-v1.png',
@@ -55,14 +63,17 @@ function chooseFamily() {
   return next;
 }
 
+const FILTERS = [['all', '전체'], ...MEALS];
+
 const state = {
   family: chooseFamily(),
+  face: null,
   records: [],
   thumbUrls: new Map(),
   fresh: new Set(),
   dbOk: true,
   view: 'album',
-  mode: local.get('timestamp:mode') === 'calendar' ? 'calendar' : 'photos',
+  filter: FILTERS.some(([id]) => id === local.get('timestamp:filter')) ? local.get('timestamp:filter') : 'all',
   month: null,
   selectedDay: null,
   todayKey: dayKey(new Date()),
@@ -71,10 +82,8 @@ const state = {
 const art = ART[state.family];
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
 const uid = () =>
   (crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
-
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /* ── 시작 ── */
@@ -88,15 +97,17 @@ async function init() {
 
   bindEvents();
   bindPull();
+  bindEditor();
+  bindViewer();
   fillSettings();
-  setMode(state.mode);
   renderAll();
   $('#app-version').textContent = `TimeStamp 버전 ${APP_VERSION}. 화면을 아래로 당기면 새로고침하면서 새 버전도 받아요.`;
   window.__tsBooted = true;
   try { sessionStorage.removeItem('timestamp:healed'); } catch { /* 없어도 된다 */ }
-  fontsReady();
   if (settings.launchCamera) openLaunch();
 
+  faceReady();
+  fontsReady();
   await loadRecords();
   renderAll();
 
@@ -113,19 +124,30 @@ async function init() {
   }
 }
 
+// 마스코트 스탬프에 쓸 얼굴
+let faceLoading = null;
+function faceReady() {
+  if (!faceLoading) {
+    faceLoading = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { state.face = img; resolve(img); };
+      img.onerror = () => resolve(null);
+      img.src = art.face;
+    });
+  }
+  return faceLoading;
+}
+
 // 캔버스에 쓸 글꼴을 미리 받아 둔다
 let fontsLoading = null;
 function fontsReady() {
   if (!document.fonts?.load) return Promise.resolve();
   if (!fontsLoading) {
-    const sample = '0123456789:() 년월일화수목금토오전후TimeStamp';
+    const sample = '0123456789:() ·년월일화수목금토오전후아침점심저녁간식사';
     const family = '"Pretendard Variable"';
     fontsLoading = Promise.race([
-      Promise.all([
-        document.fonts.load(`600 44px ${family}`, sample),
-        document.fonts.load(`700 30px ${family}`, sample),
-      ]),
-      new Promise((resolve) => setTimeout(resolve, 2500)),
+      Promise.all([600, 700, 800].map((w) => document.fonts.load(`${w} 44px ${family}`, sample))),
+      wait(2500),
     ]).catch(() => {});
   }
   return fontsLoading;
@@ -147,8 +169,6 @@ function tick() {
     if (state.selectedDay === state.todayKey) state.selectedDay = key;
     state.todayKey = key;
     renderAll();
-  } else {
-    renderHeader();
   }
 }
 
@@ -206,16 +226,22 @@ const easeOutBack = (p) => {
 };
 
 /* ── 당겨서 새로고침 (PT Note) ──
-   맨 위에서 아래로 당기면 다음에 올 마스코트 얼굴이 굴러 들어오고, 놓으면 앱을 새로 불러온다.
-   앱은 열 때마다 마스코트가 바뀌므로 ‘놓으면 퍼펭이가 와요’가 그대로 이루어진다. */
+   맨 위에서 당기면 화면 전체가 고무줄처럼 무겁게 따라 내려오고, 다음 마스코트 얼굴이 굴러 들어온다.
+   덜 당기고 놓으면 튕기듯 제자리로, 충분히 당기고 놓으면 조금 내려온 채로 새로고침한다. */
 
-const PULL_DISTANCE = 140; // 이만큼 당기면 놓을 준비가 된다
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const PULL_READY = 72; // 화면이 이만큼 내려오면 놓을 준비가 된다
+const PULL_HOLD = 56; // 새로고침하는 동안 내려와 있는 높이
 let refreshing = false;
 
 function setRefreshState(s) {
   if (s) document.documentElement.dataset.refreshState = s;
   else delete document.documentElement.dataset.refreshState;
+}
+
+function setPullOffset(y, animate) {
+  const main = $('#main');
+  main.style.transition = animate && !reducedMotion() ? 'transform .55s cubic-bezier(.2, 1.3, .35, 1)' : 'none';
+  main.style.transform = y ? `translate3d(0, ${y.toFixed(1)}px, 0)` : '';
 }
 
 function bindPull() {
@@ -231,14 +257,22 @@ function bindPull() {
   let pulling = false;
   let ready = false;
 
-  const reset = () => {
+  // 아이폰의 고무줄 공식: 당길수록 덜 따라온다
+  const rubber = (dy) => {
+    const d = window.innerHeight || 800;
+    return (1 - 1 / ((dy * 0.55) / d + 1)) * d;
+  };
+
+  const release = () => {
     startY = null;
     pulling = false;
     ready = false;
     if (refreshing) return;
+    setPullOffset(0, true);
     setRefreshState(null);
-    pill.hidden = true;
-    pill.style.removeProperty('opacity');
+    pill.style.opacity = '0';
+    pill.style.transition = 'opacity .25s';
+    setTimeout(() => { if (!refreshing && !pulling) { pill.hidden = true; pill.style.removeProperty('opacity'); pill.style.removeProperty('transition'); } }, 260);
   };
 
   document.addEventListener('touchstart', (e) => {
@@ -248,15 +282,18 @@ function bindPull() {
 
   document.addEventListener('touchmove', (e) => {
     if (startY === null || refreshing) return;
-    if (e.touches.length !== 1) { reset(); return; }
+    if (e.touches.length !== 1) { if (pulling) release(); return; }
     const dy = e.touches[0].clientY - startY;
-    if (dy <= 0 || window.scrollY > 0) { if (pulling) reset(); return; }
+    if (dy <= 0 || window.scrollY > 0) { if (pulling) release(); return; }
     pulling = true;
-    const pull = Math.min(1, dy / PULL_DISTANCE);
-    pill.style.setProperty('--pull', pull.toFixed(3));
-    pill.style.opacity = String(Math.min(1, dy / 36));
+    const offset = rubber(dy);
+    setPullOffset(offset, false);
+    const p = Math.min(1, offset / PULL_READY);
+    pill.style.setProperty('--pull', p.toFixed(3));
+    pill.style.removeProperty('transition');
+    pill.style.opacity = String(Math.min(1, offset / 28));
     pill.hidden = false;
-    const nowReady = pull >= 1;
+    const nowReady = offset >= PULL_READY;
     if (nowReady !== ready || !document.documentElement.dataset.refreshState) {
       ready = nowReady;
       setRefreshState(ready ? 'ready' : 'pulling');
@@ -266,12 +303,12 @@ function bindPull() {
 
   const end = () => {
     if (!pulling) { startY = null; return; }
-    if (ready) { startY = null; pulling = false; refreshApp(); } else reset();
+    if (ready) { startY = null; pulling = false; refreshApp(); } else release();
   };
   document.addEventListener('touchend', end, { passive: true });
-  document.addEventListener('touchcancel', reset, { passive: true });
+  document.addEventListener('touchcancel', release, { passive: true });
 
-  $('#refresh-now').addEventListener('click', refreshApp);
+  $('#refresh-now').addEventListener('click', () => { closeSheet($('#settings')); refreshApp(); });
 }
 
 async function refreshApp() {
@@ -280,7 +317,10 @@ async function refreshApp() {
   const pill = $('#pull');
   const label = $('#pull-label');
   pill.style.removeProperty('opacity');
+  pill.style.removeProperty('transition');
+  pill.style.setProperty('--pull', '1');
   pill.hidden = false;
+  setPullOffset(PULL_HOLD, true);
 
   if (navigator.onLine === false) {
     setRefreshState('error');
@@ -288,6 +328,7 @@ async function refreshApp() {
     await wait(1600);
     refreshing = false;
     setRefreshState(null);
+    setPullOffset(0, true);
     pill.hidden = true;
     return;
   }
@@ -311,8 +352,8 @@ function bindEvents() {
   document.addEventListener('click', (e) => {
     const tab = e.target.closest('[data-view]');
     if (tab) { showView(tab.dataset.view); return; }
-    const mode = e.target.closest('[data-mode]');
-    if (mode) { setMode(mode.dataset.mode); return; }
+    const filter = e.target.closest('[data-filter]');
+    if (filter) { setFilter(filter.dataset.filter); return; }
     const photo = e.target.closest('[data-id]');
     if (photo) { openViewer(photo.dataset.id); return; }
     const day = e.target.closest('[data-day]');
@@ -329,6 +370,8 @@ function bindEvents() {
 
   $('#launch-shoot').addEventListener('click', () => { closeSheet($('#launch')); openInput('#input-camera'); });
   $('#launch-album').addEventListener('click', () => { closeSheet($('#launch')); openInput('#input-photo'); });
+
+  $('#open-settings').addEventListener('click', () => { renderStorageNote(); openSheet($('#settings')); });
 
   $('#mon-prev').addEventListener('click', () => shiftMonth(-1));
   $('#mon-next').addEventListener('click', () => shiftMonth(1));
@@ -351,9 +394,6 @@ function bindEvents() {
       if (e.key === 'Escape') { e.preventDefault(); requestClose(sheet); }
     });
   }
-
-  bindEditor();
-  bindViewer();
 }
 
 // #input-photo: 아이폰이 ‘사진 보관함 · 사진 찍기 · 파일 선택’ 메뉴를 띄운다
@@ -373,22 +413,19 @@ function handleFile(file) {
 function showView(view) {
   state.view = view;
   $('#view-album').hidden = view !== 'album';
-  $('#view-settings').hidden = view !== 'settings';
+  $('#view-calendar').hidden = view !== 'calendar';
   for (const tab of $$('.tab')) {
     const on = tab.dataset.view === view;
     tab.classList.toggle('on', on);
     if (on) tab.setAttribute('aria-current', 'page'); else tab.removeAttribute('aria-current');
   }
-  if (view === 'settings') renderStorageNote();
   window.scrollTo({ top: 0 });
 }
 
-function setMode(mode) {
-  state.mode = mode;
-  local.set('timestamp:mode', mode);
-  $('#album-photos').hidden = mode !== 'photos';
-  $('#album-calendar').hidden = mode !== 'calendar';
-  for (const b of $$('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+function setFilter(id) {
+  state.filter = id;
+  local.set('timestamp:filter', id);
+  renderAlbum();
 }
 
 function shiftMonth(delta) {
@@ -444,7 +481,7 @@ function showMsg(slot, kind, text) {
 function openLaunch() {
   const now = new Date();
   $('#launch-t').innerHTML = `${mealLabel(mealFor(now))} 사진을<br>찍어 볼까요?`;
-  $('#launch-date').textContent = `${fmtLongDate(now)} ${fmtClock(now)}`;
+  $('#launch-date').textContent = `${monthDay(now)} ${fmtClock(now)}`;
   openSheet($('#launch'));
 }
 
@@ -493,7 +530,7 @@ async function toastSend() {
 
 /* ── 기록 데이터 ── */
 
-const recordsOn = (key) => state.records.filter((r) => r.day === key).sort((a, b) => a.takenAt - b.takenAt);
+const recordsOn = (key) => state.records.filter((r) => r.day === key).sort((a, b) => b.takenAt - a.takenAt);
 
 function thumbUrl(rec) {
   let url = state.thumbUrls.get(rec.id);
@@ -545,19 +582,55 @@ function originalFile(blob, date) {
 /* ── 화면 그리기 ── */
 
 function renderAll() {
-  renderHeader();
+  renderAlbum();
   renderWeek();
-  renderPhotos();
-  renderLog();
-  if (state.view === 'settings') renderStorageNote();
+  renderCalendar();
+  renderDay();
 }
 
-function renderHeader() {
+function tileHtml(r, animate) {
+  const t = new Date(r.takenAt);
+  const label = `${monthDay(t)} ${mealLabel(r.meal) || ''} ${fmtClock(t)} 사진 보기`.replace(/\s+/g, ' ');
+  const fresh = animate && state.fresh.has(r.id) ? ' is-new' : '';
+  return `<button class="tile${fresh}" type="button" data-id="${r.id}" aria-label="${label}"><img src="${thumbUrl(r)}" alt="" loading="lazy"></button>`;
+}
+
+// 앨범: 윗줄(오늘 날짜·오늘 몇 장), 끼니 칩, 날짜별 3열 사진
+function renderAlbum() {
   const now = new Date();
-  $('#today-date').textContent = `${fmtDate(now)} (${weekday(now)})`;
-  $('#album-intro').hidden = state.records.length > 0;
-  $('#sample-date').textContent = fmtLongDate(now);
-  $('#sample-time').textContent = fmtClock(now);
+  const todayCount = recordsOn(dayKey(now)).length;
+  $('#today-date').textContent = monthDay(now);
+  $('#today-count').textContent = todayCount ? `오늘 ${todayCount}장` : '오늘 아직 없어요';
+
+  const has = state.records.length > 0;
+  $('#album-intro').hidden = has;
+  $('#filters').hidden = !has;
+
+  const counts = { all: state.records.length };
+  for (const r of state.records) if (r.meal) counts[r.meal] = (counts[r.meal] || 0) + 1;
+  $('#filters').innerHTML = FILTERS.map(([id, label]) =>
+    `<button class="chip" type="button" data-filter="${id}" aria-pressed="${state.filter === id}" aria-label="${label} ${counts[id] || 0}장">${label}<small>${counts[id] || 0}</small></button>`).join('');
+
+  const list = state.records.filter((r) => state.filter === 'all' || r.meal === state.filter);
+  const byDay = new Map();
+  for (const r of list) {
+    if (!byDay.has(r.day)) byDay.set(r.day, []);
+    byDay.get(r.day).push(r);
+  }
+  const animate = settings.effects && !reducedMotion();
+  $('#album-grid').innerHTML = [...byDay.keys()].sort().reverse().map((key) => {
+    const items = byDay.get(key).sort((a, b) => b.takenAt - a.takenAt);
+    const d = fromDayKey(key);
+    const rel = relDay(d);
+    const badge = rel === '오늘' || rel === '어제' ? `<em>${rel}</em>` : '';
+    return `<section aria-label="${monthDay(d)}"><div class="grid-day"><h2>${monthDay(d)}${badge}</h2><span>${items.length}장</span></div>`
+      + `<div class="grid">${items.map((r) => tileHtml(r, animate)).join('')}</div></section>`;
+  }).join('');
+
+  const emptyFilter = has && list.length === 0;
+  $('#filter-empty').hidden = !emptyFilter;
+  if (emptyFilter) $('#filter-empty-text').textContent = `아직 ${mealLabel(state.filter)} 사진이 없어요.`;
+  state.fresh.clear();
 }
 
 const WEEK_LINES = ['', '좋은 출발이에요', '리듬이 생겼어요', '꾸준히 남기고 있어요', '절반을 넘었어요', '거의 다 왔어요', '하루만 더 남았어요', '하루도 안 빠졌어요'];
@@ -596,47 +669,6 @@ function renderWeek() {
   $('#week-label').textContent = weekLabel(now);
 }
 
-// 내 앨범 · 사진: 최근 날짜부터, 하루에 카드 하나, 정사각형 3열
-function renderPhotos() {
-  const byDay = new Map();
-  for (const r of state.records) {
-    if (!byDay.has(r.day)) byDay.set(r.day, []);
-    byDay.get(r.day).push(r);
-  }
-  const days = [...byDay.keys()].sort().reverse();
-  const animate = settings.effects && !reducedMotion();
-  $('#album-photos').innerHTML = days.map((key) => {
-    const list = byDay.get(key).sort((a, b) => b.takenAt - a.takenAt);
-    const d = fromDayKey(key);
-    const rel = relDay(d);
-    const tiles = list.map((r) => {
-      const t = new Date(r.takenAt);
-      const label = `${monthDay(t)} ${mealLabel(r.meal) || ''} ${fmtClock(t)} 사진 보기`.replace(/\s+/g, ' ');
-      const fresh = animate && state.fresh.has(r.id) ? ' is-new' : '';
-      return `<button class="tile${fresh}" type="button" data-id="${r.id}" aria-label="${label}"><img src="${thumbUrl(r)}" alt="" loading="lazy"></button>`;
-    }).join('');
-    return `<article class="card day-card"><div class="day-h"><h2 class="day-t">${monthDay(d)}</h2>`
-      + `<span class="sec-s">${[rel, `${list.length}장`].filter(Boolean).join(' · ')}</span></div>`
-      + `<div class="grid">${tiles}</div></article>`;
-  }).join('');
-  state.fresh.clear();
-}
-
-function renderLog() {
-  const days = new Set(state.records.map((r) => r.day));
-  const now = new Date();
-  const thisMonth = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
-  const monthDays = [...days].filter((k) => k.startsWith(thisMonth)).length;
-  $('#sum-title').textContent = days.size ? `누적 ${days.size}일 기록` : '첫 기록을 기다려요';
-  $('#sum-lead').innerHTML = `<span>이번 달 <b>${monthDays}일</b></span><span>사진 <b>${state.records.length}장</b></span>`;
-  $('#sum-tot').innerHTML = MEALS.map(([id, label]) => {
-    const n = state.records.filter((r) => r.meal === id).length;
-    return `<div><span>${label}</span><b>${n}<small>장</small></b></div>`;
-  }).join('');
-  renderCalendar();
-  renderDay();
-}
-
 function renderCalendar() {
   const m = state.month;
   const y = m.getFullYear();
@@ -670,18 +702,10 @@ function renderDay() {
   const d = fromDayKey(state.selectedDay);
   const list = recordsOn(state.selectedDay);
   const rel = relDay(d);
-  $('#day-title').textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 (${weekday(d)})`;
+  $('#day-title').textContent = monthDay(d);
   $('#day-count').textContent = [rel, list.length ? `${list.length}장` : ''].filter(Boolean).join(' · ');
   $('#day-empty').hidden = list.length > 0;
-  $('#day-rows').innerHTML = list.map((r) => {
-    const t = new Date(r.takenAt);
-    const label = mealLabel(r.meal) || '사진';
-    const status = statusText(r);
-    return `<button class="row" type="button" data-id="${r.id}">`
-      + `<span class="row-thumb"><img src="${thumbUrl(r)}" alt=""></span>`
-      + `<span class="row-m"><span class="row-t">${label}</span><span class="row-s">${fmtClock(t)}${status ? ` · ${status}` : ''}</span></span>`
-      + '<i class="chev" aria-hidden="true"></i></button>';
-  }).join('');
+  $('#day-grid').innerHTML = list.map((r) => tileHtml(r, false)).join('');
 }
 
 async function renderStorageNote() {
@@ -693,10 +717,10 @@ async function renderStorageNote() {
     if (est?.usage) size = ` · 약 ${Math.max(1, Math.round(est.usage / 1048576))}MB`;
   } catch { /* 크기는 못 보여 줘도 된다 */ }
   const base = n ? `사진 ${n}장${originals ? `(원본 ${originals}장 포함)` : ''}${size}` : '아직 남긴 사진이 없어요';
-  $('#storage-note').textContent = `${base}. 이 아이폰에만 저장돼서 다른 기기에서는 보이지 않아요. 홈 화면에 추가한 앱으로 쓰면 오래 남아요.`;
+  $('#storage-note').textContent = `${base}. 이 아이폰에만 저장돼서 다른 기기에서는 보이지 않아요.`;
 }
 
-/* ── 사진 읽기 · 스탬프 찍기 (확인 화면과 즉시 저장이 함께 쓴다) ── */
+/* ── 사진 읽기 · 스탬프 찍기 (스탬프 화면과 즉시 저장이 함께 쓴다) ── */
 
 function loadPhoto(file) {
   return new Promise((resolve, reject) => {
@@ -710,7 +734,7 @@ function loadPhoto(file) {
 
 // 촬영 시각: EXIF → 파일 시각(1분 넘게 차이 날 때만) → 지금
 async function readPhoto(file) {
-  const [{ img, url }, exifDate] = await Promise.all([loadPhoto(file), readExifDate(file), fontsReady()]);
+  const [{ img, url }, exifDate] = await Promise.all([loadPhoto(file), readExifDate(file), fontsReady(), faceReady()]);
   let takenAt;
   let timeSource;
   if (exifDate) { takenAt = exifDate; timeSource = 'exif'; }
@@ -725,7 +749,7 @@ function canvasBlob(canvas, type, quality) {
   });
 }
 
-async function renderStamped(img, rect, date) {
+async function renderStamped(img, rect, info, look) {
   const S = clamp(Math.round(rect.side), OUT_MIN, OUT_MAX);
   const c = document.createElement('canvas');
   c.width = S;
@@ -733,7 +757,7 @@ async function renderStamped(img, rect, date) {
   const ctx = c.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, rect.x, rect.y, rect.side, rect.side, 0, 0, S, S);
-  drawStamp(ctx, S, date);
+  drawStamp(ctx, S, info, look);
   const blob = await canvasBlob(c, 'image/jpeg', JPEG_QUALITY);
 
   const t = document.createElement('canvas');
@@ -745,7 +769,7 @@ async function renderStamped(img, rect, date) {
   const thumb = await canvasBlob(t, 'image/jpeg', 0.8);
   c.width = c.height = 1;
   t.width = t.height = 1;
-  return { file: new File([blob], stampedName(date), { type: 'image/jpeg', lastModified: date.getTime() }), thumb, size: S };
+  return { file: new File([blob], stampedName(info.date), { type: 'image/jpeg', lastModified: info.date.getTime() }), thumb, size: S };
 }
 
 // 공유 화면을 연다. 공유를 못 쓰는 브라우저에서는 파일로 내려받는다.
@@ -787,7 +811,7 @@ function resultText(kind, result, count) {
   return count > 1 ? '스탬프 사진과 원본을 저장했어요.' : '저장했어요.';
 }
 
-/* ── 즉시 저장: 확인 화면 없이 가운데를 정사각형으로 ── */
+/* ── 즉시 저장: 스탬프 화면 없이, 가운데를 정사각형으로, 마지막에 쓴 스탬프로 ── */
 
 async function quickSave(file) {
   showToast('사진을 남기고 있어요', { stay: true });
@@ -796,12 +820,15 @@ async function quickSave(file) {
     photo = await readPhoto(file);
     const side = Math.min(photo.W0, photo.H0);
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
-    const out = await renderStamped(photo.img, rect, photo.takenAt);
+    const meal = mealFor(photo.takenAt);
+    const look = { style: settings.stampStyle, color: settings.stampColor };
+    const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, face: state.face }, look);
     const rec = {
       id: uid(),
       takenAt: photo.takenAt.getTime(),
       day: dayKey(photo.takenAt),
-      meal: mealFor(photo.takenAt),
+      meal,
+      style: look.style,
       width: out.size,
       height: out.size,
       blob: out.file,
@@ -819,7 +846,7 @@ async function quickSave(file) {
       upsertRecord(rec);
       state.fresh.add(rec.id);
       if (state.view !== 'album') showView('album');
-      setMode('photos');
+      if (state.filter !== 'all' && state.filter !== meal) state.filter = 'all';
       renderAll();
       window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
     }
@@ -832,7 +859,7 @@ async function quickSave(file) {
   }
 }
 
-/* ── 스탬프 확인: 정사각형으로 맞추고 스탬프를 찍는다 ── */
+/* ── 스탬프 화면 ── */
 
 let ed = null;
 const E = {
@@ -840,7 +867,10 @@ const E = {
   preview: $('#preview'),
   skel: $('#preview-skel'),
   canvas: $('#preview-canvas'),
+  hint: $('#ed-hint'),
   reset: $('#crop-reset'),
+  strip: $('#style-strip'),
+  swatches: $('#swatches'),
   time: $('#ed-time'),
   timeText: $('#ed-time-text'),
   timeNote: $('#ed-time-note'),
@@ -850,18 +880,21 @@ const E = {
   send: $('#ed-send'),
 };
 
+// 시각을 지어내지 않는다: 사진에 시각이 없을 때만 알려 준다
 const TIME_NOTES = {
-  exif: ['사진에 저장된 촬영 시각이에요.', ''],
-  file: ['파일에 남은 시각이에요. 맞는지 확인해 주세요.', 'warn'],
-  now: ['사진에 촬영 시각이 없어서 지금 시각을 넣었어요. 예전 사진이면 바꿔 주세요.', ''],
-  edited: ['직접 고친 시각이에요.', ''],
+  file: '파일에 남은 시각이에요. 맞는지 확인해 주세요.',
+  now: '사진에 촬영 시각이 없어 지금 시각을 넣었어요.',
 };
+
+const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, face: state.face });
+const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
 async function startEdit(file) {
   const mine = {
     id: uid(), createdAt: Date.now(), version: 0, job: null, timer: 0, source: file,
     file: null, thumb: null, savedAt: null, sentAt: null, persistedVersion: null,
     meal: null, mealAuto: true, ready: false, crop: null, cropMoved: false,
+    style: settings.stampStyle, color: settings.stampColor,
   };
   ed = mine;
   E.canvas.hidden = true;
@@ -870,8 +903,10 @@ async function startEdit(file) {
   E.save.disabled = true;
   E.send.disabled = true;
   E.timeText.textContent = '';
-  E.timeNote.textContent = '';
+  E.timeNote.hidden = true;
+  E.hint.classList.remove('gone');
   showMsg(E.msg, '', '');
+  buildStrip();
   openSheet(E.sheet);
 
   try {
@@ -890,12 +925,65 @@ async function startEdit(file) {
     E.send.disabled = false;
     fillFields();
     stampIn();
+    drawThumbs();
     markDirty();
+    setTimeout(() => { if (ed === mine) E.hint.classList.add('gone'); }, 2600);
   } catch {
     if (ed !== mine) return;
     E.skel.hidden = true;
     showMsg(E.msg, 'err', '사진을 열지 못했어요. 다른 사진으로 다시 시도해 주세요.');
   }
+}
+
+// 스탬프 모양 고르기: 내 사진으로 그린 작은 미리보기 6개
+function buildStrip() {
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const px = Math.round(66 * dpr);
+  E.strip.innerHTML = STYLES.map((s) =>
+    `<button class="style-btn" type="button" role="radio" data-style="${s.id}" aria-checked="${s.id === ed.style}"><canvas width="${px}" height="${px}" aria-hidden="true"></canvas>${s.label}</button>`).join('');
+}
+
+let thumbTimer = 0;
+function drawThumbs() {
+  clearTimeout(thumbTimer);
+  thumbTimer = setTimeout(() => {
+    if (!ed?.base) return;
+    const r = cropRect(ed);
+    const k = ed.baseK;
+    for (const btn of $$('.style-btn', E.strip)) {
+      const c = btn.querySelector('canvas');
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(ed.base, r.x * k, r.y * k, r.side * k, r.side * k, 0, 0, c.width, c.height);
+      drawStamp(ctx, c.width, infoOf(ed), { style: btn.dataset.style, color: ed.color });
+    }
+  }, 60);
+}
+
+function fillLook() {
+  for (const b of $$('.style-btn', E.strip)) {
+    const on = b.dataset.style === ed.style;
+    b.setAttribute('aria-checked', String(on));
+    if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+  for (const b of $$('[data-color]', E.swatches)) b.setAttribute('aria-checked', String(b.dataset.color === ed.color));
+  E.swatches.classList.toggle('is-off', !styleUsesColor(ed.style));
+}
+
+function fillFields() {
+  const d = ed.takenAt;
+  const [ampm, hm] = fmtClock(d).split(' ');
+  E.timeText.innerHTML = `${monthDay(d)} <small>${ampm}</small> ${hm}`;
+  E.time.value = toLocalInput(d);
+  E.time.max = toLocalInput(new Date(Date.now() + 60000));
+  const note = TIME_NOTES[ed.timeSource];
+  E.timeNote.hidden = !note;
+  E.timeNote.textContent = note || '';
+  for (const b of $$('button', E.seg)) {
+    const id = b.dataset.meal === 'none' ? null : b.dataset.meal;
+    b.setAttribute('aria-pressed', String(id === ed.meal));
+  }
+  fillLook();
 }
 
 // 스탬프 효과: 글씨가 크게 내려앉았다가 제자리에 멈춘다
@@ -905,14 +993,14 @@ function stampIn() {
   const mine = ed;
   const start = performance.now();
   const dur = 380;
-  drawPreview({ scale: 1.45, alpha: 0 }); // 사진은 바로 보이고, 글씨만 이어서 내려앉는다
+  drawPreview({ scale: 1.45, alpha: 0 });
   // 화면이 잠시 가려져 애니메이션이 멈춰도 스탬프는 반드시 제자리에 그려 둔다
   setTimeout(() => { if (ed === mine) drawPreview(); }, dur + 120);
   const step = (now) => {
     if (ed !== mine || mine.gesturing) { drawPreview(); return; }
     const p = Math.min(1, (now - start) / dur);
     if (p >= 1) { drawPreview(); return; }
-    drawPreview({ scale: 1.45 - 0.45 * easeOutBack(p), alpha: Math.min(1, p * 3) });
+    drawPreview({ scale: 1.45 - 0.45 * easeOutBack(Math.max(0, p)), alpha: clamp(p * 3, 0, 1) });
     requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -921,7 +1009,7 @@ function stampIn() {
 // 확대해도 흐려지지 않을 만큼만 줄인 미리보기용 사본
 function buildPreview(e) {
   const dpr = Math.min(3, window.devicePixelRatio || 1);
-  const css = Math.max(200, E.preview.clientWidth || 354);
+  const css = Math.max(200, E.preview.clientWidth || 402);
   const P = Math.round(css * dpr);
   E.canvas.width = P;
   E.canvas.height = P;
@@ -946,20 +1034,6 @@ function cropRect(e) {
   return { x: e.crop.cx - side / 2, y: e.crop.cy - side / 2, side };
 }
 
-function fillFields() {
-  const d = ed.takenAt;
-  E.timeText.innerHTML = `${d.getMonth() + 1}월 ${d.getDate()}일 <small>(${weekday(d)})</small> ${fmtClock(d)}`;
-  E.time.value = toLocalInput(d);
-  E.time.max = toLocalInput(new Date(Date.now() + 60000));
-  const [note, tone] = TIME_NOTES[ed.timeSource] || ['', ''];
-  E.timeNote.textContent = note;
-  E.timeNote.className = `time-note${tone ? ` ${tone}` : ''}`;
-  for (const b of $$('button', E.seg)) {
-    const id = b.dataset.meal === 'none' ? null : b.dataset.meal;
-    b.setAttribute('aria-pressed', String(id === ed.meal));
-  }
-}
-
 let frame = 0;
 function schedulePreview() {
   if (frame) return;
@@ -974,8 +1048,15 @@ function drawPreview(pop = null) {
   const k = ed.baseK;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(ed.base, r.x * k, r.y * k, r.side * k, r.side * k, 0, 0, c.width, c.height);
-  drawStamp(ctx, c.width, ed.takenAt, { pop });
+  drawStamp(ctx, c.width, infoOf(ed), lookOf(ed, pop));
   E.reset.hidden = !ed.cropMoved;
+}
+
+// 스탬프·시각·식사·위치가 바뀌면 저장본을 다시 만든다
+function changed({ thumbs = true } = {}) {
+  drawPreview();
+  if (thumbs) drawThumbs();
+  markDirty();
 }
 
 function markDirty() {
@@ -989,7 +1070,7 @@ function markDirty() {
 
 function exportFor(e, v) {
   if (e.job && e.job.v === v) return e.job.p;
-  const p = renderStamped(e.img, cropRect(e), e.takenAt).then((out) => {
+  const p = renderStamped(e.img, cropRect(e), infoOf(e), lookOf(e)).then((out) => {
     if (e.version !== v) return null;
     e.file = out.file;
     e.thumb = out.thumb;
@@ -1026,7 +1107,7 @@ async function editorShare(kind) {
   if (kind === 'save') mine.savedAt = Date.now(); else mine.sentAt = Date.now();
   const kept = await persistEdit(mine);
   if (ed !== mine) return;
-  showMsg(E.msg, kept ? 'ok' : 'warn', `${resultText(kind, result, files.length)} ${kept ? '내 앨범에도 남겼어요.' : '이 기기에는 기록을 남기지 못했어요.'}`);
+  showMsg(E.msg, kept ? 'ok' : 'warn', `${resultText(kind, result, files.length)} ${kept ? '앨범 탭에도 남겼어요.' : '이 기기에는 기록을 남기지 못했어요.'}`);
 }
 
 async function persistEdit(e) {
@@ -1037,6 +1118,7 @@ async function persistEdit(e) {
     takenAt: e.takenAt.getTime(),
     day: dayKey(e.takenAt),
     meal: e.meal,
+    style: e.style,
     width: e.outSize,
     height: e.outSize,
     blob: e.file,
@@ -1063,7 +1145,7 @@ function closeEditor() {
     if (ed.persistedVersion === null) {
       if (!window.confirm('이 사진은 아직 저장하지 않았어요. 닫을까요?')) return;
     } else if (ed.persistedVersion !== ed.version) {
-      if (!window.confirm('저장한 뒤에 바꾼 내용은 내 앨범에 남지 않아요. 닫을까요?')) return;
+      if (!window.confirm('저장한 뒤에 바꾼 내용은 앨범에 남지 않아요. 닫을까요?')) return;
     }
   }
   if (ed) {
@@ -1081,12 +1163,34 @@ function bindEditor() {
   E.save.addEventListener('click', () => editorShare('save'));
   E.send.addEventListener('click', () => editorShare('send'));
 
+  E.strip.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-style]');
+    if (!b || !ed?.ready || b.dataset.style === ed.style) return;
+    ed.style = b.dataset.style;
+    settings.stampStyle = ed.style;
+    saveSettings();
+    fillLook();
+    stampIn();
+    markDirty();
+  });
+
+  E.swatches.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-color]');
+    if (!b || !ed?.ready || b.dataset.color === ed.color) return;
+    ed.color = b.dataset.color;
+    settings.stampColor = ed.color;
+    saveSettings();
+    fillLook();
+    changed();
+  });
+
   E.seg.addEventListener('click', (e) => {
     const b = e.target.closest('[data-meal]');
     if (!b || !ed?.ready) return;
     ed.meal = b.dataset.meal === 'none' ? null : b.dataset.meal;
     ed.mealAuto = false;
     fillFields();
+    changed(); // 식단 스탬프에는 끼니가 찍힌다
   });
 
   E.time.addEventListener('change', () => {
@@ -1097,16 +1201,14 @@ function bindEditor() {
     ed.timeSource = 'edited';
     if (ed.mealAuto) ed.meal = mealFor(d);
     fillFields();
-    drawPreview();
-    markDirty();
+    changed();
   });
 
   E.reset.addEventListener('click', () => {
     if (!ed?.ready) return;
     ed.crop = { cx: ed.W0 / 2, cy: ed.H0 / 2, z: 1 };
     ed.cropMoved = false;
-    drawPreview();
-    markDirty();
+    changed();
   });
 
   // 한 손가락: 옮기기, 두 손가락: 확대
@@ -1129,6 +1231,7 @@ function bindEditor() {
     E.preview.setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     E.preview.classList.add('grabbing');
+    E.hint.classList.add('gone');
     ed.gesturing = true;
     beginGesture();
   });
@@ -1159,8 +1262,7 @@ function bindEditor() {
     ed.gesturing = false;
     if (moved) {
       ed.cropMoved = true;
-      drawPreview();
-      markDirty();
+      changed();
     }
   };
   E.preview.addEventListener('pointerup', endPointer);
@@ -1173,11 +1275,12 @@ function bindEditor() {
     ed.crop.z = clamp(ed.crop.z * Math.exp(-e.deltaY * 0.0015), 1, MAX_ZOOM);
     ed.cropMoved = true;
     schedulePreview();
+    drawThumbs();
     markDirty();
   }, { passive: false });
 }
 
-/* ── 내 앨범 사진 보기 ── */
+/* ── 사진 보기 ── */
 
 let vw = null;
 const V = {
@@ -1236,7 +1339,7 @@ async function viewerShare(kind) {
 
 async function viewerDelete() {
   if (!vw) return;
-  if (!window.confirm('이 사진을 내 앨범에서 지울까요? 아이폰 앨범에 저장한 사진은 그대로 남아요.')) return;
+  if (!window.confirm('이 사진을 앱에서 지울까요? 아이폰 앨범에 저장한 사진은 그대로 남아요.')) return;
   const { id } = vw.rec;
   try {
     await db.remove(id);
