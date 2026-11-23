@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=7';
-import { readExifDate } from './exif.js?v=7';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=7';
-import * as db from './db.js?v=7';
+} from './format.js?v=8';
+import { readExifDate } from './exif.js?v=8';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=8';
+import * as db from './db.js?v=8';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '7';
+const APP_VERSION = '8';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -95,6 +95,7 @@ async function init() {
 
   bindEvents();
   bindPull();
+  bindScrollState();
   bindEditor();
   bindViewer();
   fillSettings();
@@ -228,18 +229,46 @@ const easeOutBack = (p) => {
    덜 당기고 놓으면 튕기듯 제자리로, 충분히 당기고 놓으면 조금 내려온 채로 새로고침한다. */
 
 const PULL_READY = 72; // 화면이 이만큼 내려오면 놓을 준비가 된다
-const PULL_HOLD = 56; // 새로고침하는 동안 내려와 있는 높이
+const PULL_HOLD = 60; // 새로고침하는 동안 내려와 있는 높이 (알약이 딱 제자리에 오는 높이)
+const SPRING = 'transform .42s cubic-bezier(.22, .8, .25, 1)'; // PT Note 탭 렌즈 곡선, 넘치지 않는다
 let refreshing = false;
+let pillTimer = 0;
 
 function setRefreshState(s) {
   if (s) document.documentElement.dataset.refreshState = s;
   else delete document.documentElement.dataset.refreshState;
 }
 
+// 헤더까지 포함한 화면 전체가 내려온다. 맨 위에서는 헤더가 투명해서 배경과 끊기지 않는다.
+// 알약은 드러난 틈 안에서 칩보다 16px 위를 따라 내려오다가 잡는 높이에서 제자리에 멈춘다.
 function setPullOffset(y, animate) {
   const main = $('#main');
-  main.style.transition = animate && !reducedMotion() ? 'transform .55s cubic-bezier(.2, 1.3, .35, 1)' : 'none';
-  main.style.transform = y ? `translate3d(0, ${y.toFixed(1)}px, 0)` : '';
+  const pill = $('#pull');
+  const spring = animate && !reducedMotion();
+  main.style.transition = spring ? SPRING : 'none';
+  main.style.transform = y > 0 ? `translate3d(0, ${y.toFixed(1)}px, 0)` : '';
+  pill.style.transition = spring ? `${SPRING}, opacity .3s ease` : 'none';
+  pill.style.transform = `translate3d(0, ${Math.min(0, y - PULL_HOLD).toFixed(1)}px, 0)`;
+  pill.style.opacity = clamp((y - 12) / 36, 0, 1).toFixed(3);
+}
+
+function hidePillSoon() {
+  clearTimeout(pillTimer);
+  pillTimer = setTimeout(() => {
+    if (refreshing || document.documentElement.dataset.refreshState) return;
+    const pill = $('#pull');
+    pill.hidden = true;
+    for (const p of ['transform', 'opacity', 'transition']) pill.style.removeProperty(p);
+  }, 450);
+}
+
+// 맨 위에서는 헤더가 투명, 사진이 밑으로 지나가면 유리 + 가는 선
+function bindScrollState() {
+  const root = document.documentElement;
+  let queued = false;
+  const update = () => { queued = false; root.classList.toggle('is-scrolled', window.scrollY > 2); };
+  window.addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(update); } }, { passive: true });
+  update();
 }
 
 function bindPull() {
@@ -266,11 +295,9 @@ function bindPull() {
     pulling = false;
     ready = false;
     if (refreshing) return;
-    setPullOffset(0, true);
     setRefreshState(null);
-    pill.style.opacity = '0';
-    pill.style.transition = 'opacity .25s';
-    setTimeout(() => { if (!refreshing && !pulling) { pill.hidden = true; pill.style.removeProperty('opacity'); pill.style.removeProperty('transition'); } }, 260);
+    setPullOffset(0, true);
+    hidePillSoon();
   };
 
   document.addEventListener('touchstart', (e) => {
@@ -284,12 +311,10 @@ function bindPull() {
     const dy = e.touches[0].clientY - startY;
     if (dy <= 0 || window.scrollY > 0) { if (pulling) release(); return; }
     pulling = true;
+    clearTimeout(pillTimer);
     const offset = rubber(dy);
     setPullOffset(offset, false);
-    const p = Math.min(1, offset / PULL_READY);
-    pill.style.setProperty('--pull', p.toFixed(3));
-    pill.style.removeProperty('transition');
-    pill.style.opacity = String(Math.min(1, offset / 28));
+    pill.style.setProperty('--pull', Math.min(1, offset / PULL_READY).toFixed(3));
     pill.hidden = false;
     const nowReady = offset >= PULL_READY;
     if (nowReady !== ready || !document.documentElement.dataset.refreshState) {
@@ -314,10 +339,10 @@ async function refreshApp() {
   refreshing = true;
   const pill = $('#pull');
   const label = $('#pull-label');
-  pill.style.removeProperty('opacity');
-  pill.style.removeProperty('transition');
+  clearTimeout(pillTimer);
   pill.style.setProperty('--pull', '1');
-  pill.hidden = false;
+  // 설정 › 새로고침으로 왔을 때: 화면과 함께 위에서 미끄러져 들어온다
+  if (pill.hidden) { setPullOffset(0, false); pill.hidden = false; void pill.offsetWidth; }
   setPullOffset(PULL_HOLD, true);
 
   if (navigator.onLine === false) {
@@ -327,7 +352,7 @@ async function refreshApp() {
     refreshing = false;
     setRefreshState(null);
     setPullOffset(0, true);
-    pill.hidden = true;
+    hidePillSoon();
     return;
   }
 
@@ -352,6 +377,7 @@ function bindEvents() {
     if (tab) { showView(tab.dataset.view); return; }
     const filter = e.target.closest('[data-filter]');
     if (filter) { setFilter(filter.dataset.filter); return; }
+    if (e.target.closest('[data-add]')) { openInput('#input-photo'); return; }
     const photo = e.target.closest('[data-id]');
     if (photo) { openViewer(photo.dataset.id); return; }
     const day = e.target.closest('[data-day]');
@@ -592,13 +618,10 @@ function tileHtml(r, animate) {
   return `<button class="tile${fresh}" type="button" data-id="${r.id}" aria-label="${label}"><img src="${thumbUrl(r)}" alt="" loading="lazy"></button>`;
 }
 
-// 앨범: 윗줄(오늘 날짜·오늘 몇 장), 끼니 칩, 날짜별 3열 사진
-function renderAlbum() {
-  const now = new Date();
-  const todayCount = recordsOn(dayKey(now)).length;
-  $('#today-date').textContent = monthDay(now);
-  $('#today-count').textContent = todayCount ? `오늘 ${todayCount}장` : '오늘 아직 없어요';
+const CAMERA_SVG = $('#add svg').outerHTML;
 
+// 앨범: 윗줄엔 끼니 칩과 설정만. 오늘 날짜는 첫 묶음 머리글로 한 번만 (크게, 이게 화면의 제목)
+function renderAlbum() {
   const has = state.records.length > 0;
   $('#album-intro').hidden = has;
   $('#filters').hidden = !has;
@@ -614,14 +637,21 @@ function renderAlbum() {
     if (!byDay.has(r.day)) byDay.set(r.day, []);
     byDay.get(r.day).push(r);
   }
+  const todayKey = dayKey(new Date());
+  const keys = [...byDay.keys()].sort().reverse();
+  // 오늘 아직 없으면 오늘 묶음에 ‘찍기’ 칸 하나
+  if (has && state.filter === 'all' && !byDay.has(todayKey)) keys.unshift(todayKey);
   const animate = settings.effects && !reducedMotion();
-  $('#album-grid').innerHTML = [...byDay.keys()].sort().reverse().map((key) => {
-    const items = byDay.get(key).sort((a, b) => b.takenAt - a.takenAt);
+  $('#album-grid').innerHTML = keys.map((key) => {
+    const items = (byDay.get(key) || []).sort((a, b) => b.takenAt - a.takenAt);
     const d = fromDayKey(key);
     const rel = relDay(d);
     const badge = rel === '오늘' || rel === '어제' ? `<em>${rel}</em>` : '';
-    return `<section aria-label="${monthDay(d)}"><div class="grid-day"><h2>${monthDay(d)}${badge}</h2><span>${items.length}장</span></div>`
-      + `<div class="grid">${items.map((r) => tileHtml(r, animate)).join('')}</div></section>`;
+    const count = items.length ? `<b>${items.length}</b>장` : '아직 없어요';
+    const tiles = items.length ? items.map((r) => tileHtml(r, animate)).join('')
+      : `<button class="tile tile-add" type="button" data-add aria-label="오늘 사진 찍거나 고르기">${CAMERA_SVG}</button>`;
+    return `<section aria-label="${monthDay(d)}"><div class="grid-day${key === todayKey ? ' is-today' : ''}"><h2>${monthDay(d)}${badge}</h2><span>${count}</span></div>`
+      + `<div class="grid">${tiles}</div></section>`;
   }).join('');
 
   const emptyFilter = has && list.length === 0;
@@ -643,7 +673,7 @@ function renderCalendar() {
   const counts = new Map();
   for (const r of state.records) counts.set(r.day, (counts.get(r.day) || 0) + 1);
   const monthDays = [...counts.keys()].filter((k) => k.startsWith(prefix)).length;
-  $('#mon-sum').textContent = monthDays ? `${monthDays}일 남겼어요` : '아직 기록이 없어요';
+  $('#mon-sum').innerHTML = monthDays ? `<b>${monthDays}</b>일 남겼어요` : '아직 기록이 없어요';
 
   const todayKey = dayKey(now);
   const first = new Date(y, mo, 1).getDay();
@@ -670,8 +700,8 @@ function renderDay() {
   const d = fromDayKey(state.selectedDay);
   const list = recordsOn(state.selectedDay);
   const rel = relDay(d);
-  $('#day-title').textContent = monthDay(d);
-  $('#day-count').textContent = [rel, list.length ? `${list.length}장` : ''].filter(Boolean).join(' · ');
+  $('#day-title').innerHTML = `${monthDay(d)}${rel === '오늘' || rel === '어제' ? `<em>${rel}</em>` : ''}`;
+  $('#day-count').innerHTML = list.length ? `<b>${list.length}</b>장` : '';
   $('#day-empty').hidden = list.length > 0;
   $('#day-grid').innerHTML = list.map((r) => tileHtml(r, false)).join('');
 }

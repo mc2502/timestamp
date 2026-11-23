@@ -94,16 +94,28 @@ img { display: block; }
 .app { max-width: 430px; margin: 0 auto; padding-bottom: var(--nav-clearance); }
 #main { transform-origin: 50% 0; }
 
-/* ── 윗줄: 오늘 날짜와 오늘 몇 장, 오른쪽에 설정 ── */
+/* ── 윗줄: 평소엔 투명해서 배경 빛이 끊기지 않고, 사진이 밑으로 지나가면 탭바와 같은 유리 + 가는 선 ── */
 .topbar {
   position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  min-height: calc(var(--st) + 60px); padding: calc(var(--st) + 8px) 12px 8px 20px;
-  background: rgba(238, 243, 249, .84); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
+  display: flex; align-items: center; gap: 4px;
+  min-height: calc(var(--st) + 56px);
+  padding: calc(var(--st) + 6px) 12px 6px var(--gl);
 }
+.topbar-tools { padding-left: 0; }
+.topbar > :last-child { margin-left: auto; }
+.topbar::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: rgba(255, 255, 255, .74);
+  -webkit-backdrop-filter: var(--backdrop-nav); backdrop-filter: var(--backdrop-nav);
+  box-shadow: 0 1px 0 var(--line);
+  opacity: 0; transition: opacity .2s ease;
+}
+html.is-scrolled .topbar::before { opacity: 1; }
+html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .topbar-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
-.topbar-text b { font-size: 22px; font-weight: 800; letter-spacing: -.03em; }
-.topbar-text span { font-size: 14px; font-weight: 600; color: var(--ink3); }
+.topbar-text > b { font-size: 24px; line-height: 32px; font-weight: 800; letter-spacing: -.03em; }
+.topbar-text > span { font-size: 13px; line-height: 20px; font-weight: 500; color: var(--ink3); }
+.topbar-text > span b { font-size: 15px; font-weight: 700; color: var(--ink2); margin-right: 1px; }
 .icon-btn {
   flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--ink2);
   background: rgba(231, 238, 247, .62); box-shadow: var(--shadow-chip); transition: transform .2s;
@@ -112,26 +124,42 @@ img { display: block; }
 .icon-btn:active { transform: scale(.94); }
 
 /* ── 끼니 거르기 (PT Note Chip) ── */
-.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 16px 12px; }
+.chips {
+  flex: 1; min-width: 0; display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none;
+  padding: 0 20px 0 var(--gl); scroll-padding-inline: var(--gl);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+          mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+}
 .chips::-webkit-scrollbar { display: none; }
 .chip {
-  flex: none; display: inline-flex; align-items: baseline; gap: 4px; min-height: 40px; padding: 9px 14px; border-radius: 20px;
-  background: rgba(231, 238, 247, .62); box-shadow: var(--shadow-chip); font-size: 14px; font-weight: 700; color: var(--ink2); white-space: nowrap;
+  flex: none; display: inline-flex; align-items: baseline; gap: 3px;
+  min-height: 44px; padding: 12px; border-radius: 22px;
+  background: rgba(231, 238, 247, .62); box-shadow: var(--shadow-chip);
+  font-size: 13px; line-height: 20px; font-weight: 700; color: var(--ink2); white-space: nowrap;
 }
 .chip small { font-size: 12px; font-weight: 600; color: var(--ink3); }
 .chip[aria-pressed="true"] { background: linear-gradient(145deg, rgba(234, 245, 255, .9), rgba(190, 220, 255, .58)); box-shadow: var(--shadow-chip-on); color: var(--blue-ink); }
 .chip[aria-pressed="true"] small { color: var(--blue-ink); }
 
-/* ── 사진: 화면 끝까지 3열, 날짜는 작은 줄로 ── */
-.grid-day, .day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px 8px; }
-.grid-day h2, .day-head h3 { display: flex; align-items: baseline; gap: 6px; font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
-.grid-day h2 em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--blue-ink); }
-.grid-day span, .day-head span { font-size: 13px; font-weight: 500; color: var(--ink3); }
-.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; }
-.tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--skeleton); }
-.tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .2s, filter .2s; }
-.tile:active img { transform: scale(.95); filter: brightness(.92); }
-.tile:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+/* ── 사진: 날짜 머리글(오늘은 크게, 이게 화면의 제목) + 3열, 카드 여백 12px · 모서리 12px ── */
+.grid-day, .day-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 24px var(--gr) 10px var(--gl);
+}
+#album-grid > section:first-child .grid-day { padding-top: 8px; }
+.grid-day h2, .day-head h3 { display: flex; align-items: baseline; gap: 6px; font-size: 16px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; }
+.grid-day.is-today h2 { font-size: 20px; line-height: 28px; font-weight: 800; letter-spacing: -.03em; }
+.grid-day h2 em, .day-head h3 em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--blue-ink); }
+.grid-day > span, .day-head > span { font-size: 12px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
+.grid-day > span b, .day-head > span b { font-size: 14px; font-weight: 650; color: var(--ink2); margin-right: 1px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 12px; }
+.tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); transition: transform .2s; }
+.tile img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; transition: filter .2s; }
+.tile:active { transform: scale(.96); }
+.tile:active img { filter: brightness(.92); }
+.tile:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.tile-add { display: grid; place-items: center; background: rgba(255, 255, 255, .5); border: 1.5px dashed rgba(49, 130, 246, .4); color: var(--blue-ink); }
+.tile-add svg { width: 28px; height: 28px; }
 .tile.is-new img { animation: tile-in .5s cubic-bezier(.34, 1.56, .64, 1); }
 @keyframes tile-in { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
 
@@ -149,12 +177,12 @@ img { display: block; }
 .mon-n button:disabled { opacity: .35; cursor: default; }
 .mon-n i { width: 9px; height: 9px; border-left: 2px solid var(--ink2); border-bottom: 2px solid var(--ink2); transform: rotate(45deg); margin-left: 4px; }
 .mon-n button:last-child i { transform: rotate(-135deg); margin-left: -4px; }
-.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; padding: 4px 8px 8px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 4px; padding: 2px 12px 4px; }
 .cal .hd { padding: 2px 0 6px; font-size: 12px; font-weight: 600; color: var(--ink3); text-align: center; }
 .cal .hd.sun { color: var(--sun); }
 .cal .hd.sat { color: var(--sat); }
 .day {
-  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; height: 64px; padding-top: 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; height: 60px; padding-top: 4px;
   border-radius: 14px; text-align: center; transition: background-color .2s;
 }
 .day:disabled { cursor: default; }
@@ -163,7 +191,9 @@ img { display: block; }
 .num.has { color: var(--blue-ink); font-weight: 700; }
 .num.today { background: var(--today); }
 .num.off { color: #adb5bd; }
-.num.selected { background: var(--blue-ink); color: var(--on-ink); font-weight: 700; }
+/* PT Note 달력 규칙: 고른 날은 진한 채움 + 800 숫자, 오늘이면 테두리 (파란 버튼과 겹치지 않게) */
+.num.selected { background: var(--calendar-solo-strong); color: var(--ink); font-weight: 800; }
+.num.today.selected { box-shadow: inset 0 0 0 2px var(--calendar-solo-ring); }
 .day-stamp { width: 30px; height: 30px; object-fit: contain; pointer-events: none; user-select: none; }
 
 /* ── 탭바 ── */
@@ -176,12 +206,20 @@ img { display: block; }
   -webkit-backdrop-filter: var(--backdrop-nav); backdrop-filter: var(--backdrop-nav); pointer-events: auto;
 }
 .tab {
-  position: relative; height: 50px; border-radius: 26px;
+  position: relative; z-index: 1; height: 50px; border-radius: 26px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  font-size: 11px; font-weight: 600; color: var(--ink2); transition: color .2s, transform .2s, background-color .34s cubic-bezier(.22, .8, .25, 1);
+  font-size: 11px; font-weight: 600; color: var(--ink2); transition: color .2s, transform .2s;
 }
 .tab .nav-glyph { width: 22px; height: 22px; }
-.tab.on { color: var(--ink); background: rgba(25, 31, 40, .05); }
+.tab.on { color: var(--ink); }
+/* PT Note 탭바: 고른 탭 밑으로 렌즈 하나가 미끄러진다 */
+.tabs-in::before {
+  content: ''; position: absolute; left: 5px; top: 5px; bottom: 5px;
+  width: calc((100% - 82px) / 2); border-radius: 26px;
+  background: rgba(25, 31, 40, .05); pointer-events: none;
+  transition: transform .34s cubic-bezier(.22, .8, .25, 1);
+}
+.tabs-in:has([data-view="calendar"].on)::before { transform: translateX(calc(100% + 72px)); }
 .add {
   position: relative; width: 50px; height: 50px; border-radius: 50%; justify-self: center;
   background: var(--blue-ink); color: var(--on-ink); box-shadow: 0 4px 12px rgba(27, 100, 218, .28);
@@ -357,7 +395,7 @@ img { display: block; }
 
 /* ── 당겨서 새로고침 (PT Note PullRefresh) ── */
 .pull-refresh {
-  position: fixed; z-index: 15; top: calc(var(--st) + 14px); left: 0; right: 0; width: max-content; min-width: 152px;
+  position: fixed; z-index: 15; top: calc(var(--st) + 10px); left: 0; right: 0; width: max-content; min-width: 152px; will-change: transform, opacity;
   max-width: calc(100% - 32px); margin-inline: auto; display: flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 40px; padding: 10px 14px; border-radius: 22px; color: var(--ink2); font-size: 13px; line-height: 20px;
   font-weight: 600; white-space: nowrap; pointer-events: none; --mascot-tone: var(--blue-ink);
@@ -395,7 +433,8 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .card { background: var(--bg); border-color: var(--hc-border); }
-  .topbar { background: var(--canvas); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  body::before { background: var(--canvas); }
+  .topbar::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 1px 0 var(--hc-border); }
   .tabs-in, .toast { background: var(--bg); border-color: var(--hc-border); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sheet { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }

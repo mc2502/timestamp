@@ -8,7 +8,7 @@
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 //  mascot  마스코트 왼쪽 아래 오둥이·퍼펭이 얼굴 + 시각 + 날짜
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=7';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=8';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -33,8 +33,38 @@ export const styleUsesColor = (style) => style !== 'film';
 
 const font = (weight, px) => `${weight} ${px}px ${FONT}`;
 
-function setSpacing(ctx, px) {
-  if ('letterSpacing' in ctx) ctx.letterSpacing = `${px}px`;
+/* ── 자간: 글자를 한 자씩 직접 놓는다 ──
+   아이폰 Safari 캔버스는 letterSpacing을 무시할 수 있어서, 그대로 두면 글자와 띄어쓰기가 벌어져 보인다.
+   em: 글자 크기 대비 자간(음수면 좁힘), space: 띄어쓰기 폭 비율 */
+const TRACK = {
+  text: { em: -0.04, space: 1.15 }, // 날짜 · 시각
+  big: { em: -0.065, space: 1 }, // 큰 숫자
+  label: { em: -0.02, space: 1 }, // 식사 라벨
+};
+
+function advance(ctx, ch, space) {
+  const w = ctx.measureText(ch).width;
+  return ch === ' ' ? w * space : w;
+}
+
+function trackedWidth(ctx, text, px, { em, space }) {
+  const chars = [...text];
+  return chars.reduce((s, ch) => s + advance(ctx, ch, space), 0) + em * px * (chars.length - 1);
+}
+
+// align: 'left' | 'center' — 그린 폭을 돌려준다
+function fillTracked(ctx, text, x, y, px, track = TRACK.text, align = 'left') {
+  const total = trackedWidth(ctx, text, px, track);
+  let cx = align === 'center' ? x - total / 2 : x;
+  const saved = ctx.textAlign;
+  ctx.textAlign = 'left';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  for (const ch of text) {
+    if (ch !== ' ') ctx.fillText(ch, cx, y);
+    cx += advance(ctx, ch, track.space) + track.em * px;
+  }
+  ctx.textAlign = saved;
+  return total;
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -93,26 +123,25 @@ export function drawStamp(ctx, side, info, { style = 'basic', color = 'white', p
 
 const DRAW = {
   basic(ctx, side, u, { date }, c) {
+    const px = 52 * u;
     textShadow(ctx, c, u);
     ctx.fillStyle = c.fill;
-    ctx.font = font(600, 50 * u);
-    setSpacing(ctx, -0.5 * u);
-    ctx.fillText(fmtLongDate(date), 58 * u, 862 * u);
-    ctx.fillText(fmtClock(date), 58 * u, 928 * u);
+    ctx.font = font(650, px);
+    fillTracked(ctx, fmtLongDate(date), 58 * u, 862 * u, px);
+    fillTracked(ctx, fmtClock(date), 58 * u, 928 * u, px);
   },
 
   big(ctx, side, u, { date }, c) {
     const clock = fmtClock(date); // "오전 7:46"
     const [ampm, digits] = clock.split(' ');
-    ctx.textAlign = 'center';
     textShadow(ctx, c, u, 22);
     ctx.fillStyle = c.fill;
-    ctx.font = font(800, 236 * u);
-    setSpacing(ctx, -9 * u);
-    ctx.fillText(digits, side / 2, 612 * u);
-    setSpacing(ctx, -0.5 * u);
-    ctx.font = font(600, 50 * u);
-    ctx.fillText(`${ampm} · ${fmtLongDate(date)}`, side / 2, 704 * u);
+    const big = 236 * u;
+    ctx.font = font(800, big);
+    fillTracked(ctx, digits, side / 2, 612 * u, big, TRACK.big, 'center');
+    const px = 48 * u;
+    ctx.font = font(650, px);
+    fillTracked(ctx, `${ampm} · ${fmtLongDate(date)}`, side / 2, 700 * u, px, TRACK.text, 'center');
   },
 
   film(ctx, side, u, { date }) {
@@ -126,9 +155,9 @@ const DRAW = {
     const x = 58 * u;
     const top = 70 * u;
     const ph = 72 * u;
-    ctx.font = font(700, 40 * u);
-    setSpacing(ctx, 0);
-    const pw = ctx.measureText(label).width + 52 * u;
+    const lp = 40 * u;
+    ctx.font = font(700, lp);
+    const pw = trackedWidth(ctx, label, lp, TRACK.label) + 52 * u;
     // 라벨: 고른 색으로 칠하고 글자는 반대색
     ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
     ctx.shadowBlur = 12 * u;
@@ -139,24 +168,24 @@ const DRAW = {
     noShadow(ctx);
     ctx.fillStyle = c.fill === '#191f28' ? '#ffffff' : '#191f28';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, x + 26 * u, top + ph / 2 + 2 * u);
+    fillTracked(ctx, label, x + 26 * u, top + ph / 2 + 2 * u, lp, TRACK.label);
 
     ctx.textBaseline = 'alphabetic';
     textShadow(ctx, c, u);
     ctx.fillStyle = c.fill;
-    ctx.font = font(800, 80 * u);
-    setSpacing(ctx, -2.4 * u);
-    ctx.fillText(fmtClock(date), x, top + ph + 98 * u);
-    ctx.font = font(600, 42 * u);
-    setSpacing(ctx, -0.4 * u);
-    ctx.fillText(monthDay(date), x, top + ph + 158 * u);
+    const tp = 80 * u;
+    ctx.font = font(800, tp);
+    fillTracked(ctx, fmtClock(date), x, top + ph + 98 * u, tp);
+    const dp = 42 * u;
+    ctx.font = font(650, dp);
+    fillTracked(ctx, monthDay(date), x, top + ph + 156 * u, dp);
   },
 
   capsule(ctx, side, u, { date }, c) {
     const text = `${monthDay(date)}  ${fmtClock(date)}`;
-    ctx.font = font(600, 44 * u);
-    setSpacing(ctx, -0.4 * u);
-    const tw = ctx.measureText(text).width;
+    const px = 44 * u;
+    ctx.font = font(650, px);
+    const tw = trackedWidth(ctx, text, px, TRACK.text);
     const h = 88 * u;
     const x = 48 * u;
     const y = side - 64 * u - h;
@@ -166,7 +195,7 @@ const DRAW = {
     ctx.fill();
     ctx.fillStyle = c.fill;
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, x + 32 * u, y + h / 2 + 2 * u);
+    fillTracked(ctx, text, x + 32 * u, y + h / 2 + 2 * u, px);
   },
 
   mascot(ctx, side, u, { date, face }, c) {
@@ -184,12 +213,12 @@ const DRAW = {
     }
     textShadow(ctx, c, u);
     ctx.fillStyle = c.fill;
-    ctx.font = font(800, 76 * u);
-    setSpacing(ctx, -2.2 * u);
-    ctx.fillText(fmtClock(date), tx, top + 88 * u);
-    ctx.font = font(600, 40 * u);
-    setSpacing(ctx, -0.4 * u);
-    ctx.fillText(monthDay(date), tx, top + 138 * u);
+    const tp = 76 * u;
+    ctx.font = font(800, tp);
+    fillTracked(ctx, fmtClock(date), tx, top + 88 * u, tp);
+    const dp = 40 * u;
+    ctx.font = font(650, dp);
+    fillTracked(ctx, monthDay(date), tx, top + 136 * u, dp);
   },
 };
 
