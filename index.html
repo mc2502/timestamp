@@ -17,8 +17,28 @@
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css">
-<script type="module" src="js/app.js"></script>
+<link rel="stylesheet" href="styles.css?v=4">
+<script>
+  // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
+  (function () {
+    var KEY = 'timestamp:healed';
+    function heal() {
+      try {
+        if (sessionStorage.getItem(KEY)) return;
+        sessionStorage.setItem(KEY, '1');
+      } catch (e) { return; }
+      var go = function () { location.replace(location.pathname + '?r=' + Date.now()); };
+      var jobs = [];
+      if (window.caches) jobs.push(caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); }));
+      if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (regs) { return Promise.all(regs.map(function (r) { return r.update(); })); }));
+      Promise.all(jobs).then(go, go);
+    }
+    window.addEventListener('error', function () { if (!window.__tsBooted) heal(); });
+    window.addEventListener('unhandledrejection', function () { if (!window.__tsBooted) heal(); });
+    setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
+  })();
+</script>
+<script type="module" src="js/app.js?v=4"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -133,6 +153,14 @@
         <h2 class="set-h">이 기기에 남은 기록</h2>
         <p class="set-p" id="storage-note"></p>
       </article>
+
+      <article class="card settings">
+        <h2 class="set-h">앱 정보</h2>
+        <div class="set-about">
+          <p class="set-p" id="app-version"></p>
+          <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
+        </div>
+      </article>
     </section>
   </main>
 
@@ -153,6 +181,13 @@
   <img class="toast-face" data-art="face" alt="" aria-hidden="true" width="28" height="28">
   <span class="toast-text" id="toast-text"></span>
   <button class="toast-btn" type="button" id="toast-send" hidden>보내기</button>
+</div>
+
+<!-- 당겨서 새로고침: 다음에 올 마스코트 얼굴이 굴러 들어온다 (PT Note) -->
+<div class="pull-refresh has-face" id="pull" role="status" aria-live="polite" hidden>
+  <img class="pull-refresh-face" id="pull-face" alt="" aria-hidden="true" width="28" height="28">
+  <span class="pull-refresh-label" id="pull-label"></span>
+  <i class="pull-refresh-dots" aria-hidden="true"><b></b><b></b><b></b></i>
 </div>
 
 <!-- 앱 열면 바로 카메라 -->

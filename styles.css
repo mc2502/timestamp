@@ -63,6 +63,8 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+/* 맨 위에서 고무줄처럼 늘어나는 기본 동작을 끄고, 직접 만든 당겨서 새로고침을 쓴다 */
+html, body { overscroll-behavior-y: none; }
 html { background: var(--canvas); color-scheme: light; -webkit-text-size-adjust: 100%; }
 html.is-locked, html.is-locked body { overflow: hidden; }
 body {
@@ -333,6 +335,44 @@ img { display: block; }
 }
 .add svg { width: 25px; height: 25px; }
 .tab:active, .add:active { transform: scale(.94); }
+
+.set-about { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 6px; }
+.set-about .set-p { padding-bottom: 0; }
+.set-about .pt-text-button { flex: none; }
+
+/* ── 당겨서 새로고침 (PT Note PullRefresh) ── */
+.pull-refresh {
+  position: fixed; z-index: 40; top: calc(var(--st) + 24px); left: 0; right: 0; width: max-content; min-width: 152px;
+  max-width: calc(100% - 32px); margin-inline: auto; display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; padding: 10px 14px; border-radius: 22px; color: var(--ink2); font-size: 13px; line-height: 20px;
+  font-weight: 600; white-space: nowrap; pointer-events: none; --mascot-tone: var(--blue-ink);
+}
+.pull-refresh::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border: 1px solid var(--glass-rim); border-radius: inherit;
+  background: rgba(248, 251, 255, .94); box-shadow: 0 3px 12px rgba(29, 54, 86, .08);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.pull-refresh.has-face { padding: 6px 16px 6px 6px; }
+.pull-refresh[data-family="odung"] { --mascot-tone: #4e8ee8; }
+.pull-refresh[data-family="perpeng"] { --mascot-tone: #33ae9e; }
+.pull-refresh-label { white-space: nowrap; }
+.pull-refresh-face {
+  display: block; flex: none; width: 28px; height: 28px; border-radius: 50%; transform-origin: 50% 55%;
+  transform: rotate(calc(-100deg * (1 - var(--pull, 1)))) scale(calc(.5 + .5 * var(--pull, 1)));
+  transition: transform .08s linear; user-select: none; -webkit-user-drag: none;
+}
+html[data-refresh-state="ready"] .pull-refresh-face { transform: none; animation: refresh-face-pop .36s cubic-bezier(.34, 1.56, .64, 1); }
+html[data-refresh-state="refreshing"] .pull-refresh-face,
+html[data-refresh-state="settling"] .pull-refresh-face { transform: none; transform-origin: 50% 92%; animation: refresh-face-waddle .7s ease-in-out infinite; }
+html[data-refresh-state="error"] .pull-refresh-face { transform: none; filter: grayscale(1); opacity: .5; }
+.pull-refresh-dots { display: none; align-items: center; gap: 3px; height: 12px; margin-left: -4px; font-style: normal; }
+html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex; }
+.pull-refresh-dots b { width: 4px; height: 4px; border-radius: 50%; background: var(--mascot-tone); opacity: .28; animation: refresh-dot 1.05s ease-in-out infinite; }
+.pull-refresh-dots b:nth-child(2) { animation-delay: .15s; }
+.pull-refresh-dots b:nth-child(3) { animation-delay: .3s; }
+@keyframes refresh-face-pop { 0% { transform: scale(.86); } 55% { transform: scale(1.14); } 100% { transform: scale(1); } }
+@keyframes refresh-face-waddle { 0%, 100% { transform: translateY(0) rotate(-10deg); } 25% { transform: translateY(-2.5px) rotate(0); } 50% { transform: translateY(0) rotate(10deg); } 75% { transform: translateY(-2.5px) rotate(0); } }
+@keyframes refresh-dot { 0%, 60%, 100% { opacity: .28; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 
 /* ── 시트 공통 ── */
 .sheet {

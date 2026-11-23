@@ -1,10 +1,13 @@
 import {
   WEEKDAYS, MEALS, pad2, fmtDate, fmtClock, fmtLongDate, weekday, monthDay, dayKey, fromDayKey, fileStamp,
   weekLabel, relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js';
-import { readExifDate } from './exif.js';
-import { drawStamp } from './stamp.js';
-import * as db from './db.js';
+} from './format.js?v=4';
+import { readExifDate } from './exif.js?v=4';
+import { drawStamp } from './stamp.js?v=4';
+import * as db from './db.js?v=4';
+
+// 배포할 때 scripts/bump-version.sh 가 함께 올린다
+const APP_VERSION = '4';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -82,9 +85,13 @@ async function init() {
   state.selectedDay = dayKey(now);
 
   bindEvents();
+  bindPull();
   fillSettings();
   setMode(state.mode);
   renderAll();
+  $('#app-version').textContent = `TimeStamp 버전 ${APP_VERSION}. 화면을 아래로 당기면 새로고침하면서 새 버전도 받아요.`;
+  window.__tsBooted = true;
+  try { sessionStorage.removeItem('timestamp:healed'); } catch { /* 없어도 된다 */ }
   fontsReady();
   if (settings.launchCamera) openLaunch();
 
@@ -195,6 +202,104 @@ const easeOutBack = (p) => {
   const c1 = 1.70158;
   return 1 + (c1 + 1) * (p - 1) ** 3 + c1 * (p - 1) ** 2;
 };
+
+/* ── 당겨서 새로고침 (PT Note) ──
+   맨 위에서 아래로 당기면 다음에 올 마스코트 얼굴이 굴러 들어오고, 놓으면 앱을 새로 불러온다.
+   앱은 열 때마다 마스코트가 바뀌므로 ‘놓으면 퍼펭이가 와요’가 그대로 이루어진다. */
+
+const PULL_DISTANCE = 140; // 이만큼 당기면 놓을 준비가 된다
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+let refreshing = false;
+
+function setRefreshState(s) {
+  if (s) document.documentElement.dataset.refreshState = s;
+  else delete document.documentElement.dataset.refreshState;
+}
+
+function bindPull() {
+  const pill = $('#pull');
+  const label = $('#pull-label');
+  const next = state.family === 'odung' ? 'perpeng' : 'odung';
+  const name = next === 'odung' ? '오둥이' : '퍼펭이';
+  pill.dataset.family = next;
+  $('#pull-face').src = ART[next].face;
+  pill.refreshLabel = `${name} 오는 중`;
+
+  let startY = null;
+  let pulling = false;
+  let ready = false;
+
+  const reset = () => {
+    startY = null;
+    pulling = false;
+    ready = false;
+    if (refreshing) return;
+    setRefreshState(null);
+    pill.hidden = true;
+    pill.style.removeProperty('opacity');
+  };
+
+  document.addEventListener('touchstart', (e) => {
+    if (refreshing || openSheets.length || e.touches.length !== 1 || window.scrollY > 0) { startY = null; return; }
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (startY === null || refreshing) return;
+    if (e.touches.length !== 1) { reset(); return; }
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0 || window.scrollY > 0) { if (pulling) reset(); return; }
+    pulling = true;
+    const pull = Math.min(1, dy / PULL_DISTANCE);
+    pill.style.setProperty('--pull', pull.toFixed(3));
+    pill.style.opacity = String(Math.min(1, dy / 36));
+    pill.hidden = false;
+    const nowReady = pull >= 1;
+    if (nowReady !== ready || !document.documentElement.dataset.refreshState) {
+      ready = nowReady;
+      setRefreshState(ready ? 'ready' : 'pulling');
+      label.textContent = ready ? `놓으면 ${name}가 와요` : `당겨서 ${name} 부르기`;
+    }
+  }, { passive: true });
+
+  const end = () => {
+    if (!pulling) { startY = null; return; }
+    if (ready) { startY = null; pulling = false; refreshApp(); } else reset();
+  };
+  document.addEventListener('touchend', end, { passive: true });
+  document.addEventListener('touchcancel', reset, { passive: true });
+
+  $('#refresh-now').addEventListener('click', refreshApp);
+}
+
+async function refreshApp() {
+  if (refreshing) return;
+  refreshing = true;
+  const pill = $('#pull');
+  const label = $('#pull-label');
+  pill.style.removeProperty('opacity');
+  pill.hidden = false;
+
+  if (navigator.onLine === false) {
+    setRefreshState('error');
+    label.textContent = '연결을 확인해 주세요';
+    await wait(1600);
+    refreshing = false;
+    setRefreshState(null);
+    pill.hidden = true;
+    return;
+  }
+
+  setRefreshState('refreshing');
+  label.textContent = pill.refreshLabel;
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    await Promise.race([reg?.update(), wait(1500)]);
+  } catch { /* 새 버전 확인은 못 해도 다시 불러오면 된다 */ }
+  await wait(650); // 마스코트가 뒤뚱거리는 모습이 잠깐 보이도록
+  setRefreshState('settling');
+  location.reload();
+}
 
 /* ── 이벤트 ── */
 

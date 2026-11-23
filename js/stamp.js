@@ -11,7 +11,7 @@
 //
 // 모든 값은 1080px 정사각형 기준이고, 실제 크기에 비율로 맞춘다.
 
-import { fmtLongDate, fmtClock } from './format.js';
+import { fmtLongDate, fmtClock } from './format.js?v=4';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 

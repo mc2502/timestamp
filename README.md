@@ -53,6 +53,16 @@ python3 -m http.server 5173
 
 Mac 브라우저에서 http://localhost:5173 을 열어요.
 
+## 배포할 때
+
+GitHub Pages는 파일을 10분씩 캐시하게 해서, 배포 직후 아이폰이 예전 파일과 새 파일을 섞어 쓰면 앱이 깨질 수 있어요. 그래서 배포 전에 버전 숫자를 올려요.
+
+```bash
+./scripts/bump-version.sh
+```
+
+`index.html`, `js/app.js`, `js/stamp.js`의 `?v=` 숫자와 `sw.js`, `js/app.js`의 버전이 함께 1 올라가요. 그래도 앱이 시작하지 못하면 앱이 스스로 한 번 캐시를 비우고 다시 불러와요. 앱 안에서는 화면을 아래로 당기면 새로고침하면서 새 버전을 받아요.
+
 ## 아이폰에서 쓰기
 
 공유 화면(카카오톡, 이미지 저장)과 홈 화면 앱은 **HTTPS 주소**에서만 동작해요. GitHub Pages, Netlify, Vercel 같은 곳에 이 폴더를 그대로 올리면 돼요.
