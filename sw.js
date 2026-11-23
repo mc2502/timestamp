@@ -1,5 +1,5 @@
 // 네트워크를 먼저 쓰고, 끊기면 마지막으로 받은 파일을 보여 준다.
-const CACHE = 'timestamp-v1';
+const CACHE = 'timestamp-v3';
 const SHELL = [
   './',
   './index.html',

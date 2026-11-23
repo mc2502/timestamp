@@ -1,4 +1,4 @@
-// 날짜·시간 표기와 식사 구분. 스탬프 표기: 2026.11.23 (월) 12:34
+// 날짜·시간 표기와 식사 구분. 스탬프 표기: 2026년 11월 23일 (월) / 오전 7:46
 
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const ORDINALS = ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'];
@@ -8,7 +8,14 @@ export const pad2 = (n) => String(n).padStart(2, '0');
 export const fmtDate = (d) => `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}`;
 export const fmtTime = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 export const weekday = (d) => WEEKDAYS[d.getDay()];
-export const fmtFull = (d) => `${fmtDate(d)} (${weekday(d)}) ${fmtTime(d)}`;
+export const fmtLongDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${weekday(d)})`;
+
+// 아이폰과 같은 12시간제: 오전 12:05, 오전 7:46, 오후 12:30
+export function fmtClock(d) {
+  const h = d.getHours();
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h < 12 ? '오전' : '오후'} ${h12}:${pad2(d.getMinutes())}`;
+}
 export const monthDay = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일 (${weekday(d)})`;
 
 export const dayKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
