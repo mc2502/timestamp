@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eef3f9">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="TimeStamp">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
+<title>TimeStamp</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<div id="app" class="app">
+  <main>
+    <!-- 오늘 -->
+    <section class="view" id="view-today" aria-labelledby="today-h">
+      <header class="page-head">
+        <p class="eyebrow" id="today-date"></p>
+        <h1 class="page-title" id="today-h">TimeStamp</h1>
+      </header>
+
+      <article class="card hero">
+        <div class="hero-top">
+          <div class="hero-text">
+            <h2 class="hero-title" id="hero-title">식단 사진을<br>남겨 볼까요?</h2>
+            <p class="hero-sub">찍는 순간의 날짜와 시간이<br>사진에 함께 남아요</p>
+          </div>
+          <img class="hero-mascot" data-art="summary" alt="" aria-hidden="true" width="112" height="112">
+        </div>
+        <div class="sample">
+          <canvas class="sample-stamp" id="sample-stamp" aria-hidden="true"></canvas>
+          <p>지금 찍으면<br>이렇게 남아요</p>
+        </div>
+        <div class="hero-actions">
+          <button class="btn sec" type="button" data-pick="album"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></svg>앨범에서</button>
+          <button class="btn pri" type="button" data-pick="camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>사진 찍기</button>
+        </div>
+      </article>
+
+      <article class="card today-week">
+        <div class="sec-h"><h2 class="week-heading" id="week-heading"></h2><div class="sec-s" id="week-label"></div></div>
+        <div class="week" id="week" role="group" aria-label="지난주와 이번 주 기록"></div>
+        <div class="week-footer"><img class="week-mascots" data-art="trio" alt="" aria-hidden="true" width="720" height="240"></div>
+      </article>
+
+      <article class="card">
+        <div class="sec-h"><h2 class="sec-t">오늘 남긴 사진</h2><span class="sec-s" id="today-count"></span></div>
+        <div class="thumbs" id="today-thumbs"></div>
+        <div class="empty" id="today-empty" hidden><img src="assets/illustrations/empty-log.png" alt="" aria-hidden="true" width="72" height="72"><span>아직 오늘 남긴 사진이 없어요.</span></div>
+      </article>
+    </section>
+
+    <!-- 기록 -->
+    <section class="view" id="view-log" aria-labelledby="log-h" hidden>
+      <header class="page-head">
+        <p class="eyebrow">날짜별로 모아 봐요</p>
+        <h1 class="page-title" id="log-h">기록</h1>
+      </header>
+
+      <article class="card log-summary">
+        <header class="log-summary-head">
+          <img class="log-summary-mascot" data-art="summary" alt="" aria-hidden="true" width="84" height="84">
+          <h2 class="h1" id="sum-title"></h2>
+          <p class="lead" id="sum-lead"></p>
+        </header>
+        <div class="tot" id="sum-tot"></div>
+      </article>
+
+      <article class="card">
+        <div class="mon">
+          <h2 class="mon-t" id="mon-t"></h2>
+          <div class="mon-n"><button type="button" id="mon-prev" aria-label="이전 달"><i></i></button><button type="button" id="mon-next" aria-label="다음 달"><i></i></button></div>
+        </div>
+        <div class="cal" id="cal"></div>
+        <div class="legend"><span><i></i>사진 남긴 날</span></div>
+      </article>
+
+      <article class="card">
+        <div class="sec-h"><h2 class="sec-t" id="day-title"></h2><span class="sec-s" id="day-count"></span></div>
+        <div class="rows" id="day-rows"></div>
+        <div class="empty" id="day-empty" hidden><img src="assets/illustrations/empty-log.png" alt="" aria-hidden="true" width="72" height="72"><span>이 날에는 남긴 사진이 없어요.</span></div>
+      </article>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="주 메뉴"><div class="tabs-in">
+    <button class="tab on" type="button" data-view="today" aria-current="page"><svg class="nav-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"/><path d="M3 6l0 13"/><path d="M12 6l0 13"/><path d="M21 6l0 13"/></svg>오늘</button>
+    <button class="add" type="button" id="add" aria-label="사진 남기기" aria-haspopup="dialog"></button>
+    <button class="tab" type="button" data-view="log"><svg class="nav-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><path d="M7 14h.013"/><path d="M10.01 14h.005"/><path d="M13.01 14h.005"/><path d="M16.015 14h.005"/><path d="M13.015 17h.005"/><path d="M7.01 17h.005"/><path d="M10.01 17h.005"/></svg>기록</button>
+  </div></nav>
+</div>
+
+<input class="vh" type="file" id="input-camera" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+<input class="vh" type="file" id="input-album" accept="image/*" tabindex="-1" aria-hidden="true">
+
+<!-- + : 무엇으로 남길까요 -->
+<div class="scrim" id="choose" hidden>
+  <div class="choose-sheet" role="dialog" aria-modal="true" aria-labelledby="choose-t">
+    <button class="choose-sheet-close" type="button" data-close aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
+    <h2 class="sec-t" id="choose-t">무엇으로 남길까요?</h2>
+    <div class="entry-choices">
+      <button class="entry-choice" type="button" data-pick="camera" data-autofocus><b>사진 찍기</b><span>카메라로 바로</span><span class="entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg></span></button>
+      <button class="entry-choice entry-choice-alt" type="button" data-pick="album"><b>앨범에서</b><span>찍어 둔 사진</span><span class="entry-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5"/><path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3"/></svg></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- 스탬프 확인 -->
+<div class="sheet" id="editor" hidden>
+  <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="ed-t">
+    <div class="sheet-h">
+      <div class="ht"><b id="ed-t">스탬프 확인</b><span>보내기 전에 시각과 위치를 확인해요</span></div>
+      <button class="sheet-x" type="button" id="ed-close" aria-label="닫기" data-autofocus><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="sheet-b">
+      <div class="preview" id="preview">
+        <div class="preview-skel" id="preview-skel"><span>사진을 준비하고 있어요</span></div>
+        <canvas id="preview-canvas" role="img" aria-label="스탬프가 찍힌 사진 미리보기" hidden></canvas>
+        <button class="stamp-handle" type="button" id="stamp-handle" aria-label="스탬프 위치. 끌거나 방향키로 옮겨요" hidden></button>
+      </div>
+      <div class="pos-row">
+        <p>스탬프를 끌거나 사진을 눌러 옮겨요</p>
+        <button class="pt-text-button" type="button" id="pos-auto" hidden>자동 위치</button>
+      </div>
+
+      <div class="field">
+        <label class="field-l" for="ed-time">촬영 시각</label>
+        <span class="date-pill"><span id="ed-time-text"></span><i class="chev-d" aria-hidden="true"></i><input type="datetime-local" id="ed-time"></span>
+      </div>
+      <p class="time-note" id="ed-time-note"></p>
+
+      <div class="field field-col">
+        <span class="field-l" id="meal-l">식사</span>
+        <div class="seg" id="meal-seg" role="group" aria-labelledby="meal-l">
+          <button type="button" data-meal="breakfast" aria-pressed="false">아침</button>
+          <button type="button" data-meal="lunch" aria-pressed="false">점심</button>
+          <button type="button" data-meal="dinner" aria-pressed="false">저녁</button>
+          <button type="button" data-meal="snack" aria-pressed="false">간식</button>
+          <button type="button" data-meal="none" aria-pressed="false">없음</button>
+        </div>
+      </div>
+
+      <div class="msg-slot" id="ed-msg" aria-live="polite"></div>
+      <p class="sheet-hint">공유 화면에서 ‘이미지 저장’을 누르면 앨범에, 카카오톡을 고르면 트레이너에게 보낼 수 있어요.</p>
+    </div>
+    <div class="sheet-f">
+      <button class="btn sec" type="button" id="ed-save" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장</button>
+      <button class="btn pri" type="button" id="ed-send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 14l11 -11"/><path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5"/></svg>보내기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 기록 사진 보기 -->
+<div class="sheet" id="viewer" hidden>
+  <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="vw-t">
+    <div class="sheet-h">
+      <div class="ht"><b id="vw-t"></b><span id="vw-s"></span></div>
+      <button class="sheet-x" type="button" data-close aria-label="닫기" data-autofocus><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <div class="sheet-b">
+      <div class="viewer-img"><img id="vw-img" alt=""></div>
+      <div class="msg-slot" id="vw-msg" aria-live="polite"></div>
+      <button class="pt-text-button danger" type="button" id="vw-del">이 사진 지우기</button>
+    </div>
+    <div class="sheet-f">
+      <button class="btn sec" type="button" id="vw-save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장</button>
+      <button class="btn pri" type="button" id="vw-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 14l11 -11"/><path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5"/></svg>보내기</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
