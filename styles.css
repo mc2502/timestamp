@@ -555,7 +555,7 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .sheet-x:active { transform: scale(.94); }
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .icon-btn, .ed-icon, .btn-pill, .seg-filter, .tabs-in {
+  .icon-btn, .ed-icon, .btn-pill, .seg-filter, .tabs-in, .today-card {
     background: var(--bg); box-shadow: 0 0 0 1px var(--hc-border); -webkit-backdrop-filter: none; backdrop-filter: none;
   }
 }
@@ -607,8 +607,10 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 /* ── 오늘 카드: 그날의 오둥이 · 퍼펭이 + 지금 끼니 한 줄 (보여 주기만) ── */
 .today-card {
   display: flex; align-items: center; gap: 14px; margin: 10px var(--gr) 4px var(--gl); padding: 16px 20px 16px 16px;
-  border-radius: 24px; text-align: left; background: rgba(255, 255, 255, .86);
-  box-shadow: 0 0 0 .5px rgba(109, 134, 164, .1), 0 4px 14px -10px rgba(29, 54, 86, .08);
+  border-radius: 24px; text-align: left;
+  /* 위 끼니 거르기와 같은 리퀴드 유리 */
+  background: var(--glass-fill); box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
 }
 .today-hero { flex: none; width: 64px; height: 64px; object-fit: contain; }
 .today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
