@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=37';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=38';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -26,7 +26,7 @@ export const STYLES = [
 // 글자색. 밝은 사진에는 검정, 눈에 띄게 하려면 노랑.
 export const COLORS = {
   white: { label: '흰색', fill: '#ffffff', shadow: 'rgba(0, 0, 0, 0.45)' },
-  black: { label: '검정', fill: '#191f28', shadow: 'rgba(255, 255, 255, 0.6)' },
+  sky: { label: '하늘', fill: '#cfe7ff', shadow: 'rgba(0, 0, 0, 0.45)' }, // 검정 대신 앱 아이콘과 같은 하늘색
   yellow: { label: '노랑', fill: '#f4d77a', shadow: 'rgba(0, 0, 0, 0.45)' }, // 쨍한 원색 대신 버터색
 };
 
@@ -258,7 +258,7 @@ function sealGeom(side, u, edge = SEAL_EDGE) {
 const SEAL = {
   // 원색을 덜어낸 색: 쨍한 파랑 대신 차분한 청색, 노랑은 버터색, 끼니 꼬리표는 옅은 바탕에 진한 글자
   white: { disc: 'rgba(255, 255, 255, 0.95)', ink: '#4169a6', sub: '#5f6b7a', tag: '#e6edf7', tagInk: '#3a5f98' },
-  black: { disc: 'rgba(32, 37, 46, 0.88)', ink: '#f4f6f9', sub: '#c3cad4', tag: 'rgba(255, 255, 255, 0.16)', tagInk: '#f1dfa6' },
+  sky: { disc: '#c4e2fd', ink: '#1f4f96', sub: '#46668f', tag: 'rgba(31, 79, 150, 0.12)', tagInk: '#1f4f96' },
   yellow: { disc: '#f4dc8c', ink: '#3a3426', sub: '#6a5c34', tag: 'rgba(58, 52, 38, 0.12)', tagInk: '#3a3426' },
 };
 

@@ -420,7 +420,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .swatches button { width: 32px; height: 40px; display: grid; place-items: center; }
 .swatches i { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .18); transition: box-shadow .15s; }
 .swatches [data-color="white"] i { background: #ffffff; }
-.swatches [data-color="black"] i { background: #262b33; }
+.swatches [data-color="sky"] i { background: #bfe3fd; }
 .swatches [data-color="yellow"] i { background: #f4d77a; }
 .swatches [aria-checked="true"] i { box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .18), 0 0 0 2px #eef3f9, 0 0 0 3.5px var(--ink2); }
 .swatches.is-off { opacity: .35; pointer-events: none; }
