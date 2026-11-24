@@ -113,7 +113,7 @@ img { display: block; }
   min-height: calc(var(--st) + 56px);
   padding: calc(var(--st) + 6px) 12px 6px var(--gl);
 }
-.topbar-tools { padding-left: 0; }
+.topbar-tools { padding-left: 0; padding-right: var(--gr); } /* 왼쪽 · 오른쪽 끝을 아래 카드 · 날짜 줄과 맞춘다 */
 .topbar > :last-child { margin-left: auto; }
 .topbar::before {
   content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -139,7 +139,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 /* ── 끼니 거르기: 유리 세그먼트 하나 (흰 손잡이가 미끄러진다) ── */
 .seg-filter {
   position: relative; flex: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-  width: 256px; height: 44px; margin-left: var(--gl); padding: 4px; border-radius: 22px;
+  flex: 1; min-width: 0; height: 44px; margin: 0 10px 0 var(--gl); padding: 4px; border-radius: 22px;
   background: rgba(255, 255, 255, .55); box-shadow: 0 0 0 1px var(--ring, rgba(109, 134, 164, .24)), inset 0 1px 0 rgba(255, 255, 255, .85);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
@@ -148,7 +148,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
   background: #ffffff; box-shadow: 0 1px 2px rgba(22, 42, 66, .06), 0 3px 10px rgba(22, 42, 66, .1);
   transform: translateX(calc(var(--i, 0) * 100%)); transition: transform .34s cubic-bezier(.22, .8, .25, 1);
 }
-.seg-filter button { position: relative; z-index: 1; display: grid; place-items: center; text-align: center; border-radius: 18px; font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: var(--ink3); transition: color .2s; }
+.seg-filter button { position: relative; z-index: 1; display: grid; place-items: center; text-align: center; border-radius: 18px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ink3); transition: color .2s; }
 .seg-filter [aria-pressed="true"] { color: var(--ink); font-weight: 700; }
 
 /* ── 사진: 날짜 머리글(오늘은 크게, 이게 화면의 제목) + 3열, 카드 여백 12px · 모서리 12px ── */
@@ -604,14 +604,12 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 /* 사진이 하나도 없을 때(끼니 세그먼트가 없을 때): 사진 고르기 · 설정 캡슐을 제목 줄 오른쪽으로 */
 .topbar-tools:has(#filters[hidden]) { margin-top: -55px; }
 
-/* ── 오늘 카드: 그날의 오둥이 · 퍼펭이 + 지금 끼니 한 줄. 누르면 카메라 ── */
+/* ── 오늘 카드: 그날의 오둥이 · 퍼펭이 + 지금 끼니 한 줄 (보여 주기만) ── */
 .today-card {
-  display: flex; align-items: center; gap: 14px; width: calc(100% - 32px); margin: 10px 16px 4px; padding: 16px 20px 16px 16px;
+  display: flex; align-items: center; gap: 14px; margin: 10px var(--gr) 4px var(--gl); padding: 16px 20px 16px 16px;
   border-radius: 24px; text-align: left; background: rgba(255, 255, 255, .86);
   box-shadow: 0 0 0 .5px rgba(109, 134, 164, .1), 0 4px 14px -10px rgba(29, 54, 86, .08);
-  transition: transform .2s;
 }
-.today-card:active { transform: scale(.98); }
 .today-hero { flex: none; width: 64px; height: 64px; object-fit: contain; }
 .today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .today-text b { font-size: 17px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }

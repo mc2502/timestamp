@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=54';
-import { readExifDate } from './exif.js?v=54';
-import { drawStamp, characterBox, SEAL_RING, STYLES, COLORS, styleUsesColor } from './stamp.js?v=54';
-import * as db from './db.js?v=54';
+} from './format.js?v=55';
+import { readExifDate } from './exif.js?v=55';
+import { drawStamp, characterBox, SEAL_RING, STYLES, COLORS, styleUsesColor } from './stamp.js?v=55';
+import * as db from './db.js?v=55';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '54';
+const APP_VERSION = '55';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -724,7 +724,6 @@ function renderTodayCard(has, todayKey) {
   $('#today-t').textContent = title;
   $('#today-s').textContent = sub;
   card.classList.toggle('is-done', done);
-  card.setAttribute('aria-label', `${title}. ${sub}. 카메라 열기`);
 }
 
 function tileHtml(r, animate) {
