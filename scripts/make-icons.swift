@@ -18,8 +18,8 @@ func load(_ p: String) -> CGImage {
 let hero = load(heroPath)
 let clock = load(clockPath)
 
-// hero opaque box (top-left coords, 1024 art): x 174-868, y 84-947
-let heroBox = (x0: 174.0, x1: 868.0, y0: 84.0)
+// hero opaque box (top-left coords, 1024 art): x 175-861, y 83-948
+let heroBox = (x0: 175.0, x1: 861.0, y0: 83.0)
 
 func save(_ img: CGImage, _ name: String) {
   let url = URL(fileURLWithPath: outDir).appendingPathComponent(name)
