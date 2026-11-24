@@ -618,7 +618,7 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 /* ── 달력 탭: 스크롤 없이 한 화면에 ──
    카드 머리는 한 줄(달 · 기록 수 · 이전/다음), 날짜 칸은 낮게(숫자 + 작은 얼굴 스탬프),
    고른 날 사진은 세로로 쌓지 않고 옆으로 넘기는 한 줄 */
-#view-calendar .page-head { padding-top: calc(var(--st) + 20px); padding-bottom: 2px; }
+#view-calendar .page-head { padding-bottom: 2px; } /* 제목 위치는 앨범과 같게 (위 여백 그대로) */
 .cal-card { margin: 10px var(--gr) 0 var(--gl); padding: 16px 16px 10px; }
 .cal-card .pt-card-head { align-items: center; padding: 0 0 0 4px; }
 .cal-card .pt-card-title { display: flex; align-items: baseline; gap: 8px; }
