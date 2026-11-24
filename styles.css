@@ -362,9 +362,9 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 }
 .ed-hint.gone { opacity: 0; }
 
-/* 꽉 채우기 ↔ 사진 전체: 사진 오른쪽 아래 (도장은 왼쪽 아래, 캐릭터는 오른쪽 위) */
+/* 꽉 채우기 ↔ 사진 전체: 사진 오른쪽 위 (오른쪽 아래는 필름 스탬프 자리, 왼쪽 아래는 도장 · 캐릭터) */
 .ed-fit {
-  position: absolute; right: 10px; bottom: 10px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%;
+  position: absolute; right: 10px; top: 10px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%;
   color: #ffffff; background: rgba(25, 31, 40, .42); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); transition: transform .2s;
 }
