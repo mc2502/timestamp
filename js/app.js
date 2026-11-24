@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=13';
-import { readExifDate } from './exif.js?v=13';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=13';
-import * as db from './db.js?v=13';
+} from './format.js?v=14';
+import { readExifDate } from './exif.js?v=14';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=14';
+import * as db from './db.js?v=14';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '13';
+const APP_VERSION = '14';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -593,13 +593,18 @@ let toastTimer = 0;
 let toastFile = null;
 let toastRecordId = null;
 
-function showToast(text, { file = null, recordId = null, pop = false, stay = false } = {}) {
+let toastMark = true;
+
+// file이 있으면 오른쪽에 공유 버튼(label). mark: 공유를 마치면 그 사진을 ‘공유했어요’로 표시
+function showToast(text, { file = null, recordId = null, label = '저장 · 보내기', mark = true, pop = false, stay = false } = {}) {
   const el = $('#toast');
   clearTimeout(toastTimer);
   $('#toast-text').textContent = text;
   toastFile = file;
   toastRecordId = recordId;
+  toastMark = mark;
   $('#toast-send').hidden = !file;
+  $('#toast-send').textContent = label;
   el.classList.remove('pop');
   el.hidden = false;
   if (pop && settings.effects && !reducedMotion()) {
@@ -620,14 +625,16 @@ async function toastSend() {
   if (!toastFile) return;
   const file = toastFile;
   const id = toastRecordId;
+  const mark = toastMark;
+  const label = $('#toast-send').textContent;
   clearTimeout(toastTimer);
   const result = await shareFiles([file]);
   if (result === 'cancelled') { toastTimer = setTimeout(hideToast, 4000); return; }
-  if (result === 'retry') { showToast('한 번 더 눌러 주세요', { file, recordId: id, stay: true }); return; }
+  if (result === 'retry') { showToast('한 번 더 눌러 주세요', { file, recordId: id, label, mark, stay: true }); return; }
   if (result === 'error') { showToast('공유 화면을 열지 못했어요'); return; }
-  const rec = state.records.find((r) => r.id === id);
+  const rec = mark && state.records.find((r) => r.id === id);
   if (rec) await updateRecord({ ...rec, sentAt: Date.now() });
-  showToast(result === 'downloaded' ? '사진을 내려받았어요' : '보냈어요');
+  showToast(result === 'downloaded' ? '사진을 내려받았어요' : '다 됐어요');
 }
 
 /* ── 기록 데이터 ── */
@@ -667,10 +674,9 @@ async function updateRecord(rec) {
   return true;
 }
 
+// 저장과 보내기는 같은 아이폰 공유 화면이라 어디로 갔는지는 알 수 없다
 function statusText(rec) {
-  if (rec.sentAt) return '보냈어요';
-  if (rec.savedAt) return '저장했어요';
-  return '';
+  return rec.sentAt || rec.savedAt ? '공유했어요' : '';
 }
 
 const stampedName = (date) => `TimeStamp_${fileStamp(date)}.jpg`;
@@ -920,16 +926,8 @@ async function shareFiles(files) {
 }
 
 // ‘앨범에 저장’은 설정에 따라 원본도 함께, ‘보내기’는 스탬프 사진만
-function filesFor(kind, stamped, original, date) {
-  const files = [stamped];
-  if (kind === 'save' && settings.saveOriginal && original) files.push(originalFile(original, date));
-  return files;
-}
-
-function resultText(kind, result, count) {
-  if (result === 'downloaded') return kind === 'send' ? '사진을 내려받았어요. 카카오톡에서 골라 보내 주세요.' : '사진을 내려받았어요.';
-  if (kind === 'send') return '보냈어요.';
-  return count > 1 ? '스탬프 사진과 원본을 저장했어요.' : '저장했어요.';
+function shareText(result) {
+  return result === 'downloaded' ? '사진을 내려받았어요. 카카오톡에서 골라 보내 주세요' : '앨범 탭에도 남겼어요';
 }
 
 /* ── 즉시 저장: 스탬프 화면 없이, 가운데를 정사각형으로, 마지막에 쓴 스탬프로 ── */
@@ -999,8 +997,7 @@ const E = {
   timeText: $('#ed-time-text'),
   timePill: $('#ed-time-pill'),
   seg: $('#meal-seg'),
-  save: $('#ed-save'),
-  send: $('#ed-send'),
+  share: $('#ed-share'),
 };
 
 // 시각을 지어내지 않는다: 사진에 시각이 없을 때만 알려 준다
@@ -1024,8 +1021,7 @@ async function startEdit(file, { camera = false } = {}) {
   E.canvas.hidden = true;
   E.skel.hidden = false;
   E.reset.hidden = true;
-  E.save.disabled = true;
-  E.send.disabled = true;
+  E.share.disabled = true;
   E.timeText.textContent = '';
   E.timePill.classList.remove('is-guess');
   E.skel.classList.remove('is-err');
@@ -1048,8 +1044,7 @@ async function startEdit(file, { camera = false } = {}) {
 
     E.skel.hidden = true;
     E.canvas.hidden = false;
-    E.save.disabled = false;
-    E.send.disabled = false;
+    E.share.disabled = false;
     fillFields();
     stampIn();
     markDirty();
@@ -1255,27 +1250,31 @@ async function readyFile() {
   return ed.file;
 }
 
-async function editorShare(kind) {
+// 저장 · 보내기: 아이폰 공유 화면 하나에서 ‘이미지 저장’이나 카카오톡을 고른다
+async function editorShare() {
   if (!ed?.ready) return;
   const mine = ed;
-  const button = kind === 'save' ? E.save : E.send;
   let file = mine.file;
   if (!file) {
-    button.classList.add('is-busy');
-    try { file = await readyFile(); } finally { button.classList.remove('is-busy'); }
+    E.share.classList.add('is-busy');
+    try { file = await readyFile(); } finally { E.share.classList.remove('is-busy'); }
     if (!file) return;
   }
-  const files = filesFor(kind, file, mine.source, mine.takenAt);
-  const result = await shareFiles(files);
+  const result = await shareFiles([file]);
   if (ed !== mine || result === 'cancelled') return;
   if (result === 'retry') { showToast('사진을 준비했어요. 한 번 더 눌러 주세요'); return; }
   if (result === 'error') { showToast('공유 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요'); return; }
 
-  if (kind === 'save') mine.savedAt = Date.now(); else mine.sentAt = Date.now();
+  mine.sentAt = Date.now();
   const kept = await persistEdit(mine);
   if (ed !== mine) return;
-  if (!kept) { showToast(`${resultText(kind, result, files.length)} 이 기기에는 기록을 남기지 못했어요`); return; }
-  showToast(resultText(kind, result, files.length).replace(/\.$/, ''), { pop: true });
+  if (!kept) { showToast('이 기기에는 기록을 남기지 못했어요'); return; }
+  // 원본도 남기기로 했으면: 카카오톡에 같이 가지 않게 따로 저장 버튼을 띄운다
+  if (settings.saveOriginal && mine.source && result !== 'downloaded') {
+    showToast('원본도 저장할까요?', { file: originalFile(mine.source, mine.takenAt), label: '원본 저장', mark: false, pop: true });
+    return;
+  }
+  showToast(shareText(result), { pop: true });
 }
 
 async function persistEdit(e) {
@@ -1328,8 +1327,7 @@ function closeEditor() {
 
 function bindEditor() {
   $('#ed-close').addEventListener('click', closeEditor);
-  E.save.addEventListener('click', () => editorShare('save'));
-  E.send.addEventListener('click', () => editorShare('send'));
+  E.share.addEventListener('click', editorShare);
 
   E.strip.addEventListener('click', (e) => {
     const b = e.target.closest('[data-style]');
@@ -1486,6 +1484,7 @@ function openViewer(id) {
     file: new File([rec.blob], stampedName(d), { type: 'image/jpeg', lastModified: rec.takenAt }),
   };
   viewerTitles(rec);
+  $('#vw-orig').hidden = !rec.original;
   V.img.src = vw.url;
   V.img.alt = `${monthDay(d)} ${fmtClock(d)}에 찍은 ${mealLabel(rec.meal) || ''} 사진`.replace(/\s+/g, ' ');
   showMsg(V.msg, '', '');
@@ -1499,20 +1498,30 @@ function closeViewer() {
   closeSheet(V.sheet);
 }
 
-async function viewerShare(kind) {
+async function viewerShare() {
   if (!vw) return;
   const mine = vw;
-  const files = filesFor(kind, mine.file, mine.rec.original, new Date(mine.rec.takenAt));
-  const result = await shareFiles(files);
+  const result = await shareFiles([mine.file]);
   if (vw !== mine || result === 'cancelled') return;
   if (result === 'retry') { showMsg(V.msg, 'warn', '한 번 더 눌러 주세요.'); return; }
   if (result === 'error') { showMsg(V.msg, 'err', '공유 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.'); return; }
-  const rec = { ...mine.rec, [kind === 'save' ? 'savedAt' : 'sentAt']: Date.now() };
+  const rec = { ...mine.rec, sentAt: Date.now() };
   if (await updateRecord(rec)) {
     mine.rec = rec;
     if (vw === mine) viewerTitles(rec);
   }
-  if (vw === mine) showMsg(V.msg, 'ok', resultText(kind, result, files.length));
+  if (vw === mine) showMsg(V.msg, 'ok', result === 'downloaded' ? '사진을 내려받았어요.' : '다 됐어요.');
+}
+
+// 스탬프 없는 원본 (설정에서 ‘원본 사진도 저장’을 켰을 때 남겨 둔 것)
+async function viewerOriginal() {
+  if (!vw?.rec.original) return;
+  const mine = vw;
+  const result = await shareFiles([originalFile(mine.rec.original, new Date(mine.rec.takenAt))]);
+  if (vw !== mine || result === 'cancelled') return;
+  if (result === 'retry') { showMsg(V.msg, 'warn', '한 번 더 눌러 주세요.'); return; }
+  if (result === 'error') { showMsg(V.msg, 'err', '공유 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.'); return; }
+  showMsg(V.msg, 'ok', result === 'downloaded' ? '원본을 내려받았어요.' : '원본도 다 됐어요.');
 }
 
 async function viewerDelete() {
@@ -1532,8 +1541,8 @@ async function viewerDelete() {
 }
 
 function bindViewer() {
-  $('#vw-save').addEventListener('click', () => viewerShare('save'));
-  $('#vw-send').addEventListener('click', () => viewerShare('send'));
+  $('#vw-share').addEventListener('click', viewerShare);
+  $('#vw-orig').addEventListener('click', viewerOriginal);
   $('#vw-del').addEventListener('click', viewerDelete);
 }
 

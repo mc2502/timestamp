@@ -430,7 +430,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .ed-meal [aria-pressed="true"] { background: var(--bg); color: var(--ink); font-weight: 650; box-shadow: var(--shadow-segment-on); }
 
 .ed-actions { display: flex; gap: 8px; margin-top: 4px; }
-.ed-actions .btn.sec { background: var(--control-fill); border: 0; color: var(--ink); }
+.vw-more { display: flex; justify-content: center; gap: 8px; }
 
 /* ── 즉시 저장 알림 ── */
 .toast {
