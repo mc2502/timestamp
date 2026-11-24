@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=38';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=39';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -23,11 +23,11 @@ export const STYLES = [
   { id: 'capsule', label: '캡슐' },
 ];
 
-// 글자색. 밝은 사진에는 검정, 눈에 띄게 하려면 노랑.
+// 글자색: 흰색 · 하늘색(앱 아이콘) · 민트(오둥이가 든 책 색).
 export const COLORS = {
   white: { label: '흰색', fill: '#ffffff', shadow: 'rgba(0, 0, 0, 0.45)' },
   sky: { label: '하늘', fill: '#cfe7ff', shadow: 'rgba(0, 0, 0, 0.45)' }, // 검정 대신 앱 아이콘과 같은 하늘색
-  yellow: { label: '노랑', fill: '#f4d77a', shadow: 'rgba(0, 0, 0, 0.45)' }, // 쨍한 원색 대신 버터색
+  mint: { label: '민트', fill: '#8ad8ca', shadow: 'rgba(0, 0, 0, 0.45)' }, // 오둥이가 든 책 색(#5bc0af)을 글씨로 읽히게 조금 밝게
 };
 
 // 필름 스탬프는 색을 고르지 않는다 (필름 카메라 날짜의 주황색)
@@ -256,10 +256,10 @@ function sealGeom(side, u, edge = SEAL_EDGE) {
   return { R, cx, cy, sh, tx: cx + sh, ty: cy - sh };
 }
 const SEAL = {
-  // 원색을 덜어낸 색: 쨍한 파랑 대신 차분한 청색, 노랑은 버터색, 끼니 꼬리표는 옅은 바탕에 진한 글자
+  // 원색을 덜어낸 색: 흰 원판엔 차분한 청색, 하늘색 원판엔 진한 청색, 민트(오둥이 책 색) 원판엔 진한 초록
   white: { disc: 'rgba(255, 255, 255, 0.95)', ink: '#4169a6', sub: '#5f6b7a', tag: '#e6edf7', tagInk: '#3a5f98' },
   sky: { disc: '#c4e2fd', ink: '#1f4f96', sub: '#46668f', tag: 'rgba(31, 79, 150, 0.12)', tagInk: '#1f4f96' },
-  yellow: { disc: '#f4dc8c', ink: '#3a3426', sub: '#6a5c34', tag: 'rgba(58, 52, 38, 0.12)', tagInk: '#3a3426' },
+  mint: { disc: '#5bc0af', ink: '#173f37', sub: '#235449', tag: 'rgba(23, 63, 55, 0.12)', tagInk: '#173f37' },
 };
 
 function drawCharacter(ctx, side, u, { date, meal, chars, charPos }, c, who, edge) {
