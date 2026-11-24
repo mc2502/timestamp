@@ -162,7 +162,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .grid-day h2 small, .day-head h3 small { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--ink2); } /* 오늘 · 어제 옆 날짜 — PT Note ‘54회차’와 같은 글꼴 */
 .grid-day > span, .day-head > span { font-size: 12px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
 .grid-day > span b, .day-head > span b { font-size: 14px; font-weight: 650; color: var(--ink2); margin-right: 1px; }
-.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 12px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 var(--gr) 0 var(--gl); } /* 사진도 제목 · 끼니 줄 · 카드 · 날짜와 같은 왼쪽 · 오른쪽 선 */
 .tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); transition: transform .2s; }
 .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; transition: filter .2s; }
 .tile:active { transform: scale(.96); }
@@ -619,7 +619,7 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
    카드 머리는 한 줄(달 · 기록 수 · 이전/다음), 날짜 칸은 낮게(숫자 + 작은 얼굴 스탬프),
    고른 날 사진은 세로로 쌓지 않고 옆으로 넘기는 한 줄 */
 #view-calendar .page-head { padding-top: calc(var(--st) + 20px); padding-bottom: 2px; }
-.cal-card { margin: 10px 16px 0; padding: 16px 16px 10px; }
+.cal-card { margin: 10px var(--gr) 0 var(--gl); padding: 16px 16px 10px; }
 .cal-card .pt-card-head { align-items: center; padding: 0 0 0 4px; }
 .cal-card .pt-card-title { display: flex; align-items: baseline; gap: 8px; }
 .cal-card .pt-card-title h2 { font-size: 18px; line-height: 26px; }
@@ -632,9 +632,9 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .cal-card .num { height: 20px; font-size: 13px; border-radius: 10px; }
 .cal-card .day-stamp { width: 19px; height: 19px; }
 #view-calendar .day-head { padding: 16px var(--gr) 8px var(--gl); }
-#day-grid { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 0 12px; scroll-padding-inline: 12px; }
+#day-grid { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 0 var(--gr) 0 var(--gl); scroll-padding-inline: var(--gl); }
 #day-grid::-webkit-scrollbar { display: none; }
-#day-grid .tile { flex: none; width: calc((min(100vw, 430px) - 36px) / 3); }
+#day-grid .tile { flex: none; width: calc((min(100vw, 430px) - 48px) / 3); }
 /* 사진 없는 날: 달력이 작아진 만큼 빈 접시 캐릭터를 크게, 가운데에 */
 #view-calendar .empty { flex-direction: column; justify-content: center; gap: 6px; padding: 4px 0 0; }
 #view-calendar .empty img { width: 132px; height: 132px; }
