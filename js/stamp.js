@@ -9,7 +9,7 @@
 //  meal    혼합     왼쪽 위 끼니 라벨 + 시각 + 날짜 (여러 가지를 섞어 한 묶음으로)
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=47';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=48';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -17,9 +17,9 @@ export const STYLES = [
   { id: 'odung', label: '오둥이', character: true },
   { id: 'perpeng', label: '퍼펭이', character: true },
   { id: 'basic', label: '기본' },
-  { id: 'big', label: '크게' },
-  { id: 'meal', label: '혼합' },
   { id: 'capsule', label: '캡슐' },
+  { id: 'meal', label: '혼합' },
+  { id: 'big', label: '크게' },
   { id: 'film', label: '필름' }, // 맨 오른쪽
 ];
 
@@ -108,6 +108,9 @@ function anchor(style, side, u) {
  * info: { date: Date, meal: string|null, chars: { odung, perpeng } (카메라 든 캐릭터 그림) }
  * opts: { style, color, pop: { scale, alpha } | null }
  */
+// 캐릭터 도장이 아닌 스탬프의 불투명도 (글씨는 그림자가 받쳐 줘서 읽힌다)
+const STYLE_ALPHA = { basic: 0.86, capsule: 0.9, meal: 0.88, big: 0.82, film: 0.85 };
+
 export function drawStamp(ctx, side, info, { style = 'basic', color = 'white', pop = null } = {}) {
   const u = side / 1080;
   const c = COLORS[color] || COLORS.white;
@@ -121,6 +124,7 @@ export function drawStamp(ctx, side, info, { style = 'basic', color = 'white', p
     ctx.scale(pop.scale, pop.scale);
     ctx.translate(-ax, -ay);
   }
+  ctx.globalAlpha *= STYLE_ALPHA[style] ?? 1; // 글씨 스탬프도 도장처럼 사진이 살짝 비치게
   (DRAW[style] || DRAW.basic)(ctx, side, u, info, c);
   ctx.restore();
 }
@@ -168,7 +172,10 @@ const DRAW = {
     ctx.shadowOffsetY = 2 * u;
     roundRect(ctx, x, top, pw, ph, ph / 2);
     ctx.fillStyle = c.fill;
+    ctx.save();
+    ctx.globalAlpha *= 0.8; // 꼬리표 바탕은 더 비치게
     ctx.fill();
+    ctx.restore();
     noShadow(ctx);
     ctx.fillStyle = c.fill === '#191f28' ? '#ffffff' : '#191f28';
     ctx.textBaseline = 'middle';
@@ -195,7 +202,7 @@ const DRAW = {
     const y = side - 64 * u - h;
     const dark = c.fill !== '#191f28';
     roundRect(ctx, x, y, tw + 64 * u, h, h / 2);
-    ctx.fillStyle = dark ? 'rgba(17, 20, 26, 0.52)' : 'rgba(255, 255, 255, 0.78)';
+    ctx.fillStyle = dark ? 'rgba(17, 20, 26, 0.38)' : 'rgba(255, 255, 255, 0.6)';
     ctx.fill();
     ctx.fillStyle = c.fill;
     ctx.textBaseline = 'middle';
