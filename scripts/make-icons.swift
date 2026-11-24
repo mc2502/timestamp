@@ -16,6 +16,10 @@ let hero = CGImageSourceCreateImageAtIndex(src, 0, nil)!
 // opaque box of the art (top-left coords, 1024px): x 175-861, y 83-948
 let box = (x0: 175.0, x1: 861.0, y0: 83.0, y1: 948.0)
 
+// background: top and bottom of the sky gradient, and the glow colour behind the character (sRGB 0-255)
+let skyTop = (r: 0xd6, g: 0xe7, b: 0xfc), skyBottom = (r: 0xb1, g: 0xcd, b: 0xf4)
+let glowRGB = (r: 150.0, g: 192.0, b: 255.0), glowAlpha = 0.7
+
 func save(_ img: CGImage, _ name: String) {
   let url = URL(fileURLWithPath: outDir).appendingPathComponent(name)
   let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)!
@@ -30,15 +34,15 @@ func make(_ size: Int, _ name: String, fill: CGFloat) {
   let s = CGFloat(size)
   ctx.interpolationQuality = .high
 
-  // light sky canvas: a touch bluer than PT Note #eef3f9, brighter at the top, soft sky glow behind the character
+  // soft sky-blue canvas, brighter at the top, a bluer glow behind the character so white 오둥이 stands out
   let ground = CGGradient(colorsSpace: cs, colors: [
-    CGColor(srgbRed: 0xec / 255, green: 0xf3 / 255, blue: 0xfd / 255, alpha: 1),
-    CGColor(srgbRed: 0xd5 / 255, green: 0xe4 / 255, blue: 0xf8 / 255, alpha: 1),
+    CGColor(srgbRed: CGFloat(skyTop.r) / 255, green: CGFloat(skyTop.g) / 255, blue: CGFloat(skyTop.b) / 255, alpha: 1),
+    CGColor(srgbRed: CGFloat(skyBottom.r) / 255, green: CGFloat(skyBottom.g) / 255, blue: CGFloat(skyBottom.b) / 255, alpha: 1),
   ] as CFArray, locations: [0, 1])!
   ctx.drawLinearGradient(ground, start: CGPoint(x: 0, y: s), end: CGPoint(x: 0, y: 0), options: [])
   let glow = CGGradient(colorsSpace: cs, colors: [
-    CGColor(srgbRed: 0.70, green: 0.83, blue: 1.0, alpha: 0.6),
-    CGColor(srgbRed: 0.70, green: 0.83, blue: 1.0, alpha: 0),
+    CGColor(srgbRed: glowRGB.r / 255, green: glowRGB.g / 255, blue: glowRGB.b / 255, alpha: glowAlpha),
+    CGColor(srgbRed: glowRGB.r / 255, green: glowRGB.g / 255, blue: glowRGB.b / 255, alpha: 0),
   ] as CFArray, locations: [0, 1])!
   ctx.drawRadialGradient(glow, startCenter: CGPoint(x: s * 0.5, y: s * 0.46), startRadius: 0,
                          endCenter: CGPoint(x: s * 0.5, y: s * 0.46), endRadius: s * 0.5, options: [])
