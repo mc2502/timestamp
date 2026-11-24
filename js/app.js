@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=16';
-import { readExifDate } from './exif.js?v=16';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=16';
-import * as db from './db.js?v=16';
+} from './format.js?v=17';
+import { readExifDate } from './exif.js?v=17';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=17';
+import * as db from './db.js?v=17';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '16';
+const APP_VERSION = '17';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -47,10 +47,14 @@ const ART = {
   odung: {
     camera: 'assets/mascots/odung-camera-v2.png',
     face: 'assets/mascots/odung-calendar-face-v7.png',
+    hero: 'assets/art/odung-hero.png', // 앱 아이콘과 같은 그림 (첫 화면 · 시작 화면)
+    empty: 'assets/art/odung-empty.png', // 빈 접시 (사진이 없는 끼니 · 날)
   },
   perpeng: {
     camera: 'assets/mascots/perpeng-camera-v2.png',
     face: 'assets/mascots/perpeng-calendar-face-v4.png',
+    hero: 'assets/art/perpeng-hero.png',
+    empty: 'assets/art/perpeng-empty.png',
   },
 };
 

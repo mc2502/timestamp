@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=16">
+<link rel="stylesheet" href="styles.css?v=17">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=16"></script>
+<script type="module" src="js/app.js?v=17"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -61,13 +61,13 @@
 
       <!-- 사진이 하나도 없을 때 -->
       <div class="intro" id="album-intro" hidden>
-        <img data-art="camera" alt="" aria-hidden="true" width="150" height="150">
+        <div class="hero-art"><img class="hero-main" data-art="hero" alt="" aria-hidden="true" width="184" height="184"><img class="hero-clock" src="assets/art/stamp-clock.png" alt="" aria-hidden="true" width="64" height="64"></div>
         <h2>첫 식단 사진을<br>남겨 볼까요?</h2>
         <p>가운데 카메라 버튼을 누르면 바로 찍어요.<br>찍어 둔 사진은 위의 앨범 버튼으로 골라요.</p>
       </div>
 
       <div id="album-grid"></div>
-      <div class="empty" id="filter-empty" hidden><img src="assets/illustrations/empty-log.png" alt="" aria-hidden="true" width="72" height="72"><span id="filter-empty-text"></span></div>
+      <div class="empty" id="filter-empty" hidden><img data-art="empty" alt="" aria-hidden="true" width="104" height="104"><span id="filter-empty-text"></span></div>
     </section>
 
     <!-- 달력 -->
@@ -94,7 +94,7 @@
 
       <div class="day-head"><h3 id="day-title"></h3><span id="day-count"></span></div>
       <div class="grid" id="day-grid"></div>
-      <div class="empty" id="day-empty" hidden><img src="assets/illustrations/empty-log.png" alt="" aria-hidden="true" width="72" height="72"><span>이 날에는 남긴 사진이 없어요.</span></div>
+      <div class="empty" id="day-empty" hidden><img data-art="empty" alt="" aria-hidden="true" width="104" height="104"><span>이 날에는 남긴 사진이 없어요.</span></div>
     </section>
   </main>
 
@@ -134,7 +134,7 @@
     <div class="sheet-b launch-b">
       <div class="pt-entry-hero">
         <div><b id="launch-t">식단 사진을<br>찍어 볼까요?</b><p>찍는 순간의 날짜와 시간이<br>사진에 함께 남아요</p></div>
-        <img data-art="camera" width="100" height="100" alt="" aria-hidden="true">
+        <div class="hero-art is-small"><img class="hero-main" data-art="hero" alt="" aria-hidden="true" width="112" height="112"><img class="hero-clock" src="assets/art/stamp-clock.png" alt="" aria-hidden="true" width="64" height="64"></div>
       </div>
       <button class="shutter" type="button" id="launch-shoot" data-autofocus aria-label="사진 찍기"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg></span></button>
       <button class="pt-text-button launch-album" type="button" id="launch-album">사진 앨범에서 고르기</button>
@@ -184,6 +184,7 @@
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
+          <img class="about-icon" src="assets/icons/icon-192.png" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
