@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=32';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=33';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -214,7 +214,19 @@ const DRAW = {
 // 도장이 사진 왼쪽 아래 모서리에 걸쳐 찍힌다: 원의 일부는 사진 밖으로 잘려 나가고,
 // 글씨는 보이는 쪽(오른쪽 위)으로 옮겨 다 읽히게 한다.
 //   r: 반지름, bleed: 사진 밖으로 나간 길이, shift: 글씨를 보이는 쪽으로 옮기는 길이 (모두 u)
-export const SEAL_EDGE = { r: 155, bleed: 70, shift: 13 };
+export const SEAL_EDGE = { r: 140, bleed: 63, shift: 12 };
+// 캐릭터 자리 (사진 좌표). 기본은 도장 오른쪽에 살짝 겹쳐 붙고, info.charPos(0–1, 가운데 기준)가 있으면 그 자리.
+// 편집 화면에서 손가락으로 캐릭터를 집었는지 알아볼 때도 쓴다.
+const CHAR_SIZE = 215;
+export function characterBox(side, style, info = {}) {
+  if (style !== 'odung' && style !== 'perpeng') return null;
+  const u = side / 1080;
+  const size = CHAR_SIZE * u;
+  if (info.charPos) return { x: info.charPos.x * side - size / 2, y: info.charPos.y * side - size / 2, size };
+  const { R, cx } = sealGeom(side, u);
+  return { x: cx + R * 0.52, y: side - 16 * u - size * 0.97, size };
+}
+
 function sealGeom(side, u, edge = SEAL_EDGE) {
   const R = edge.r * u;
   const cx = (edge.r - edge.bleed) * u; // 원 중심: 왼쪽 · 아래 가장자리에서 r - bleed
@@ -229,14 +241,15 @@ const SEAL = {
   yellow: { disc: '#f4dc8c', ink: '#3a3426', sub: '#6a5c34', tag: 'rgba(58, 52, 38, 0.12)', tagInk: '#3a3426' },
 };
 
-function drawCharacter(ctx, side, u, { date, meal, chars }, c, who, edge) {
+function drawCharacter(ctx, side, u, { date, meal, chars, charPos }, c, who, edge) {
   const img = chars?.[who];
   const scheme = SEAL[Object.keys(COLORS).find((k) => COLORS[k] === c) || 'white'];
   // 도장은 왼쪽 아래 모서리에 걸쳐, 캐릭터는 보이는 도장 바로 오른쪽에 발을 맞춰 선다 — 가운데(음식)는 비워 둔다
   const { R, cx, cy, sh } = sealGeom(side, u, edge);
-  const size = 215 * u; // 캐릭터 (그림 둘레에 투명 여백이 있어 살짝 겹쳐도 붙어 보인다)
-  const left = cx + R * 0.82;
-  const top = side - 18 * u - size * 0.97;
+  const box = characterBox(side, who, { charPos }); // 캐릭터는 도장 앞에 겹쳐 선다
+  const { size } = box;
+  const left = box.x;
+  const top = box.y;
 
   // 도장: 흰 원판 + 가는 고리 하나 (기울임 · 점선 없이)
   ctx.save();

@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=32';
-import { readExifDate } from './exif.js?v=32';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=32';
-import * as db from './db.js?v=32';
+} from './format.js?v=33';
+import { readExifDate } from './exif.js?v=33';
+import { drawStamp, characterBox, STYLES, COLORS, styleUsesColor } from './stamp.js?v=33';
+import * as db from './db.js?v=33';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '32';
+const APP_VERSION = '33';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1033,7 +1033,7 @@ const TIME_NOTES = {
   now: '촬영 시각이 없어 지금 시각을 넣었어요',
 };
 
-const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: poseImages(e.pose) });
+const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: poseImages(e.pose), charPos: e.charPos });
 const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
 async function startEdit(file, { camera = false } = {}) {
@@ -1043,6 +1043,7 @@ async function startEdit(file, { camera = false } = {}) {
     meal: null, mealAuto: true, ready: false, crop: null, cropMoved: false,
     style: settings.stampStyle, color: settings.stampColor,
     pose: { odung: randomPose('odung'), perpeng: randomPose('perpeng') }, // 사진마다 다른 모습
+    charPos: null, // 캐릭터를 옮긴 자리 (없으면 도장에 붙어 있다)
   };
   ed = mine;
   E.canvas.hidden = true;
@@ -1053,6 +1054,8 @@ async function startEdit(file, { camera = false } = {}) {
   E.timePill.classList.remove('is-guess');
   E.skel.classList.remove('is-err');
   E.skelText.textContent = '사진을 준비하고 있어요';
+  E.hint.textContent = STYLES.find((s) => s.id === mine.style)?.character
+    ? '사진과 캐릭터를 끌어서 옮겨요' : '끌어서 옮기고, 두 손가락으로 줄이거나 키워요';
   E.hint.classList.remove('gone');
   buildStrip();
   openSheet(E.sheet);
@@ -1237,7 +1240,7 @@ function drawPreview(pop = null) {
   const r = cropRect(ed);
   drawCrop(ctx, ed.base, ed.baseK, r, c.width, ed.W0, ed.H0, ed.backdrop);
   drawStamp(ctx, c.width, infoOf(ed), lookOf(ed, pop));
-  E.reset.hidden = !ed.cropMoved;
+  E.reset.hidden = !ed.cropMoved && !ed.charPos;
   fillFit();
 }
 
@@ -1405,6 +1408,7 @@ function bindEditor() {
     if (!ed?.ready) return;
     ed.crop = { cx: ed.W0 / 2, cy: ed.H0 / 2, z: 1 };
     ed.cropMoved = false;
+    ed.charPos = null; // 캐릭터도 도장 옆으로
     changed();
   });
 
@@ -1423,10 +1427,34 @@ function bindEditor() {
     };
   };
 
+  // 캐릭터를 집었는지: 그림 둘레의 투명 여백은 빼고 가운데 쪽만
+  const charAt = (x, y) => {
+    const box = characterBox(1, ed.style, infoOf(ed));
+    if (!box) return null;
+    const r = E.canvas.getBoundingClientRect();
+    const nx = (x - r.left) / r.width;
+    const ny = (y - r.top) / r.height;
+    const pad = box.size * 0.16;
+    if (nx < box.x + pad || nx > box.x + box.size - pad || ny < box.y + pad || ny > box.y + box.size - pad) return null;
+    return { cx: box.x + box.size / 2, cy: box.y + box.size / 2, rect: r };
+  };
+
   E.preview.addEventListener('pointerdown', (e) => {
     if (!ed?.ready || e.target.closest('button')) return;
     e.preventDefault();
-    E.preview.setPointerCapture(e.pointerId);
+    if (gesture?.mode === 'char') return; // 캐릭터를 옮기는 중엔 다른 손가락은 무시
+    E.hint.classList.add('gone');
+    if (!pointers.size) {
+      const hit = charAt(e.clientX, e.clientY);
+      if (hit) {
+        try { E.preview.setPointerCapture(e.pointerId); } catch { /* 이미 끝난 손가락 */ }
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        gesture = { mode: 'char', p: { x: e.clientX, y: e.clientY }, from: { x: hit.cx, y: hit.cy }, rect: hit.rect, moved: false };
+        ed.gesturing = true;
+        return;
+      }
+    }
+    try { E.preview.setPointerCapture(e.pointerId); } catch { /* 이미 끝난 손가락 */ }
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     E.preview.classList.add('grabbing');
     E.hint.classList.add('gone');
@@ -1437,6 +1465,18 @@ function bindEditor() {
   E.preview.addEventListener('pointermove', (e) => {
     if (!pointers.has(e.pointerId) || !gesture || !ed?.ready) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (gesture.mode === 'char') {
+      const dx = e.clientX - gesture.p.x;
+      const dy = e.clientY - gesture.p.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) gesture.moved = true;
+      if (!gesture.moved) return;
+      ed.charPos = {
+        x: clamp(gesture.from.x + dx / gesture.rect.width, 0.08, 0.92),
+        y: clamp(gesture.from.y + dy / gesture.rect.height, 0.08, 0.92),
+      };
+      schedulePreview();
+      return;
+    }
     const pts = [...pointers.values()];
     if (pts.length !== gesture.n) { beginGesture(); return; }
     const c = center(pts);
@@ -1452,6 +1492,17 @@ function bindEditor() {
   const endPointer = (e) => {
     if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
+    if (gesture?.mode === 'char') {
+      const moved = gesture.moved;
+      gesture = null;
+      E.preview.classList.remove('grabbing');
+      if (!ed?.ready) return;
+      ed.gesturing = false;
+      lastTap = 0;
+      if (moved) changed();
+      else shufflePose(); // 캐릭터를 톡 누르면 다른 포즈
+      return;
+    }
     if (pointers.size) { beginGesture(); return; }
     E.preview.classList.remove('grabbing');
     const moved = gesture?.moved;
