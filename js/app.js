@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=42';
-import { readExifDate } from './exif.js?v=42';
-import { drawStamp, characterBox, SEAL_RING, STYLES, COLORS, styleUsesColor } from './stamp.js?v=42';
-import * as db from './db.js?v=42';
+} from './format.js?v=43';
+import { readExifDate } from './exif.js?v=43';
+import { drawStamp, characterBox, SEAL_RING, STYLES, COLORS, styleUsesColor } from './stamp.js?v=43';
+import * as db from './db.js?v=43';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '42';
+const APP_VERSION = '43';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1099,7 +1099,7 @@ const STYLE_GLYPH = {
   basic: '<span class="g-basic"><i></i><i></i></span>',
   big: '<b class="g-big">7:46</b>',
   film: '<b class="g-film">\'26</b>',
-  meal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 3v8"/><path d="M4 3v5a3 3 0 0 0 6 0v-5"/><path d="M7 11v10"/><path d="M17 3c-2 2 -3 5 -3 8h3v10"/></svg>',
+  meal: '<span class="g-mix"><b></b><i></i><i></i></span>', // 끼니 꼬리표 + 시각 + 날짜를 섞은 모양
   capsule: '<span class="g-capsule"></span>',
 };
 function buildStrip() {
@@ -1394,7 +1394,7 @@ function bindEditor() {
     ed.meal = b.dataset.meal === 'none' ? null : b.dataset.meal;
     ed.mealAuto = false;
     fillFields();
-    changed(); // 식단 스탬프에는 끼니가 찍힌다
+    changed(); // 혼합 스탬프 · 도장에는 끼니가 찍힌다
   });
 
   E.time.addEventListener('change', () => {
