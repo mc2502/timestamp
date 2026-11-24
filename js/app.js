@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=30';
-import { readExifDate } from './exif.js?v=30';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=30';
-import * as db from './db.js?v=30';
+} from './format.js?v=31';
+import { readExifDate } from './exif.js?v=31';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=31';
+import * as db from './db.js?v=31';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '30';
+const APP_VERSION = '31';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1025,8 +1025,7 @@ const E = {
   time: $('#ed-time'),
   timeText: $('#ed-time-text'),
   timePill: $('#ed-time-pill'),
-  mealSel: $('#ed-meal'),
-  mealText: $('#ed-meal-text'),
+  seg: $('#meal-seg'),
   share: $('#ed-share'),
 };
 
@@ -1053,7 +1052,6 @@ async function startEdit(file, { camera = false } = {}) {
   E.reset.hidden = true;
   E.share.disabled = true;
   E.timeText.textContent = '';
-  E.mealText.textContent = '';
   E.timePill.classList.remove('is-guess');
   E.skel.classList.remove('is-err');
   E.skelText.textContent = '사진을 준비하고 있어요';
@@ -1088,13 +1086,20 @@ async function startEdit(file, { camera = false } = {}) {
   }
 }
 
-// 스탬프 고르기: 이름만 나란히. 결과는 위의 큰 사진에서 바로 보인다.
-// 캐릭터는 얼굴과 함께, 고른 캐릭터를 한 번 더 누르면 다른 포즈 (따로 표시는 하지 않는다)
+// 스탬프 고르기: 작은 그림 타일 일곱 개가 한 줄에. 결과는 위의 큰 사진에서 바로 보인다.
+// 캐릭터는 얼굴, 나머지는 모양을 닮은 작은 표시. 고른 캐릭터를 한 번 더 누르면 다른 포즈
+const STYLE_GLYPH = {
+  basic: '<span class="g-basic"><i></i><i></i></span>',
+  big: '<b class="g-big">7:46</b>',
+  film: '<b class="g-film">\'26</b>',
+  meal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 3v8"/><path d="M4 3v5a3 3 0 0 0 6 0v-5"/><path d="M7 11v10"/><path d="M17 3c-2 2 -3 5 -3 8h3v10"/></svg>',
+  capsule: '<span class="g-capsule"></span>',
+};
 function buildStrip() {
   E.strip.innerHTML = STYLES.map((s) =>
-    `<button class="st-chip${s.character ? ' is-char' : ''}" type="button" role="radio" data-style="${s.id}" aria-checked="${s.id === ed.style}"${s.character ? ' aria-description="한 번 더 누르면 다른 포즈"' : ''}>`
-    + (s.character ? `<img src="${ART[s.id].face}" alt="" aria-hidden="true">` : '')
-    + `<span>${s.label}</span></button>`).join('');
+    `<button class="st-tile" type="button" role="radio" data-style="${s.id}" aria-checked="${s.id === ed.style}" aria-label="${s.label}"${s.character ? ' aria-description="한 번 더 누르면 다른 포즈"' : ''}>`
+    + `<span class="t-box" aria-hidden="true">${s.character ? `<img src="${ART[s.id].face}" alt="">` : STYLE_GLYPH[s.id] || ''}</span>`
+    + `<span class="t-name" aria-hidden="true">${s.label}</span></button>`).join('');
 }
 
 function fillLook() {
@@ -1128,8 +1133,10 @@ function fillFields() {
   E.time.value = toLocalInput(d);
   E.time.max = toLocalInput(new Date(Date.now() + 60000));
   E.timePill.classList.toggle('is-guess', Boolean(TIME_NOTES[ed.timeSource]));
-  E.mealSel.value = ed.meal || 'none';
-  E.mealText.textContent = mealLabel(ed.meal) || '끼니 없음';
+  for (const b of $$('button', E.seg)) {
+    const id = b.dataset.meal === 'none' ? null : b.dataset.meal;
+    b.setAttribute('aria-pressed', String(id === ed.meal));
+  }
   fillLook();
 }
 
@@ -1374,9 +1381,10 @@ function bindEditor() {
     changed();
   });
 
-  E.mealSel.addEventListener('change', () => {
-    if (!ed?.ready) return;
-    ed.meal = E.mealSel.value === 'none' ? null : E.mealSel.value;
+  E.seg.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-meal]');
+    if (!b || !ed?.ready) return;
+    ed.meal = b.dataset.meal === 'none' ? null : b.dataset.meal;
     ed.mealAuto = false;
     fillFields();
     changed(); // 식단 스탬프에는 끼니가 찍힌다
