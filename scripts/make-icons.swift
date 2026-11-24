@@ -30,15 +30,15 @@ func make(_ size: Int, _ name: String, fill: CGFloat) {
   let s = CGFloat(size)
   ctx.interpolationQuality = .high
 
-  // light canvas: PT Note #eef3f9, a touch brighter at the top, soft sky glow behind the character
+  // light sky canvas: a touch bluer than PT Note #eef3f9, brighter at the top, soft sky glow behind the character
   let ground = CGGradient(colorsSpace: cs, colors: [
-    CGColor(srgbRed: 0xf5 / 255, green: 0xf8 / 255, blue: 0xfc / 255, alpha: 1),
-    CGColor(srgbRed: 0xe4 / 255, green: 0xec / 255, blue: 0xf7 / 255, alpha: 1),
+    CGColor(srgbRed: 0xec / 255, green: 0xf3 / 255, blue: 0xfd / 255, alpha: 1),
+    CGColor(srgbRed: 0xd5 / 255, green: 0xe4 / 255, blue: 0xf8 / 255, alpha: 1),
   ] as CFArray, locations: [0, 1])!
   ctx.drawLinearGradient(ground, start: CGPoint(x: 0, y: s), end: CGPoint(x: 0, y: 0), options: [])
   let glow = CGGradient(colorsSpace: cs, colors: [
-    CGColor(srgbRed: 0.75, green: 0.86, blue: 0.99, alpha: 0.55),
-    CGColor(srgbRed: 0.75, green: 0.86, blue: 0.99, alpha: 0),
+    CGColor(srgbRed: 0.70, green: 0.83, blue: 1.0, alpha: 0.6),
+    CGColor(srgbRed: 0.70, green: 0.83, blue: 1.0, alpha: 0),
   ] as CFArray, locations: [0, 1])!
   ctx.drawRadialGradient(glow, startCenter: CGPoint(x: s * 0.5, y: s * 0.46), startRadius: 0,
                          endCenter: CGPoint(x: s * 0.5, y: s * 0.46), endRadius: s * 0.5, options: [])
