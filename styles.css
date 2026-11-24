@@ -406,7 +406,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .swatches i { width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .16); transition: box-shadow .18s; }
 .swatches [data-color="white"] i { background: #ffffff; }
 .swatches [data-color="black"] i { background: #191f28; }
-.swatches [data-color="yellow"] i { background: #ffd84a; }
+.swatches [data-color="yellow"] i { background: #f4d77a; }
 .swatches [aria-checked="true"] i { box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .16), 0 0 0 2px #ffffff, 0 0 0 4px var(--blue); }
 .swatches.is-off { opacity: .3; pointer-events: none; }
 .ed-time {
@@ -614,3 +614,25 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 }
 .today-go svg { width: 22px; height: 22px; }
 .today-card.is-done .today-go { background: var(--blue-soft); color: var(--blue-ink); box-shadow: none; }
+
+/* ── 스탬프 화면 아래 패널, 차분하게: 상자는 식사 하나만, 나머지는 글자와 점 ──
+   순서: 스탬프 칩 → 식사 → 촬영 시각 · 글자색 → 저장 · 보내기 (먹색) */
+.ed-panel { gap: 14px; padding: 14px 16px calc(10px + var(--sb)); box-shadow: 0 -.5px 0 rgba(109, 134, 164, .16); }
+.st-chips { gap: 2px; }
+.st-chip { height: 38px; padding: 0 13px; border-radius: 19px; background: transparent; color: var(--ink3); font-weight: 600; }
+.st-chip.is-char { padding-left: 5px; }
+.st-chip[aria-checked="true"] { background: rgba(25, 31, 40, .06); color: var(--ink); font-weight: 700; }
+.ed-meal { background: rgba(25, 31, 40, .045); }
+.ed-meal [aria-pressed="true"] { box-shadow: 0 1px 3px rgba(22, 42, 66, .08); }
+.ed-row { min-height: 40px; }
+.ed-time { height: 40px; padding: 0 6px 0 2px; margin-left: -2px; background: none; font-size: 15px; font-weight: 600; color: var(--ink); }
+.ed-time-ic { color: var(--ink3); }
+.ed-time:focus-within { box-shadow: none; text-decoration: underline; }
+.ed-time.is-guess::after { box-shadow: 0 0 0 2px #ffffff; top: 8px; left: 14px; }
+.swatches { margin: 0 -8px 0 0; }
+.swatches button { width: 36px; height: 40px; }
+.swatches i { width: 20px; height: 20px; }
+.swatches [aria-checked="true"] i { box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .16), 0 0 0 2px #ffffff, 0 0 0 3.5px var(--ink2); }
+.ed-actions { margin-top: 2px; }
+.ed-actions .btn.pri { min-height: 54px; border-radius: 16px; background: var(--ink); color: #ffffff; font-weight: 650; }
+.ed-actions .btn.pri:disabled { background: #c9ced6; }

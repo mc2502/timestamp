@@ -1,15 +1,15 @@
 // 정사각형 사진에 찍는 스탬프 7종. 로고는 넣지 않는다. 캐릭터 스탬프가 기본이다.
 // 모든 값은 1080px 정사각형 기준 단위(u)이고, 실제 크기에 비율로 맞춘다.
 //
-//  odung   오둥이   왼쪽 아래 둥근 도장(날짜 · 시각 · 끼니) + 오른쪽 위 여러 모습의 오둥이
-//  perpeng 퍼펭이   왼쪽 아래 둥근 도장(날짜 · 시각 · 끼니) + 오른쪽 위 여러 모습의 퍼펭이
+//  odung   오둥이   왼쪽 아래 모서리 가까이 둥근 도장(날짜 · 시각 · 끼니) + 바로 옆에 여러 모습의 오둥이
+//  perpeng 퍼펭이   왼쪽 아래 모서리 가까이 둥근 도장(날짜 · 시각 · 끼니) + 바로 옆에 여러 모습의 퍼펭이
 //  basic   기본     왼쪽 아래 두 줄: 2026년 11월 23일 (월) / 오전 7:46
 //  big     크게     가운데 큰 시각, 아래 한 줄 날짜
 //  film    필름     오른쪽 아래 주황 디지털 숫자 '26 11 23  7:46
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=27';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=28';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -27,7 +27,7 @@ export const STYLES = [
 export const COLORS = {
   white: { label: '흰색', fill: '#ffffff', shadow: 'rgba(0, 0, 0, 0.45)' },
   black: { label: '검정', fill: '#191f28', shadow: 'rgba(255, 255, 255, 0.6)' },
-  yellow: { label: '노랑', fill: '#ffd84a', shadow: 'rgba(0, 0, 0, 0.5)' },
+  yellow: { label: '노랑', fill: '#f4d77a', shadow: 'rgba(0, 0, 0, 0.45)' }, // 쨍한 원색 대신 버터색
 };
 
 // 필름 스탬프는 색을 고르지 않는다 (필름 카메라 날짜의 주황색)
@@ -211,31 +211,32 @@ const DRAW = {
    옆에 살짝 기울어진 둥근 도장에 날짜 · 시각 · 끼니가 찍힌다.
    글씨는 캐릭터 위에 얹지 않고 도장 안에만 쓴다 (PT Note: 마스코트 위에 글씨 금지). */
 
-const SEAL_AT = 40; // 도장이 사진 모서리에서 떨어진 거리(u)
+const SEAL_AT = 18; // 도장이 사진 모서리에서 떨어진 거리(u) — 모서리 가까이
 const SEAL = {
-  white: { disc: 'rgba(255, 255, 255, 0.96)', ink: '#1b64da', sub: '#4e5968', tag: '#1b64da', tagInk: '#ffffff' },
-  black: { disc: 'rgba(25, 31, 40, 0.92)', ink: '#ffffff', sub: '#c9d0d9', tag: '#ffd84a', tagInk: '#191f28' },
-  yellow: { disc: '#ffd84a', ink: '#191f28', sub: '#4a3d0a', tag: '#191f28', tagInk: '#ffd84a' },
+  // 원색을 덜어낸 색: 쨍한 파랑 대신 차분한 청색, 노랑은 버터색, 끼니 꼬리표는 옅은 바탕에 진한 글자
+  white: { disc: 'rgba(255, 255, 255, 0.95)', ink: '#4169a6', sub: '#5f6b7a', tag: '#e6edf7', tagInk: '#3a5f98' },
+  black: { disc: 'rgba(32, 37, 46, 0.88)', ink: '#f4f6f9', sub: '#c3cad4', tag: 'rgba(255, 255, 255, 0.16)', tagInk: '#f1dfa6' },
+  yellow: { disc: '#f4dc8c', ink: '#3a3426', sub: '#6a5c34', tag: 'rgba(58, 52, 38, 0.12)', tagInk: '#3a3426' },
 };
 
 function drawCharacter(ctx, side, u, { date, meal, chars }, c, who) {
   const img = chars?.[who];
   const scheme = SEAL[Object.keys(COLORS).find((k) => COLORS[k] === c) || 'white'];
-  // 도장은 왼쪽 아래, 캐릭터는 오른쪽 위 — 가운데(음식)는 비워 둔다
+  // 도장은 왼쪽 아래 모서리 가까이, 캐릭터는 그 바로 오른쪽에 발을 맞춰 선다 — 가운데(음식)는 비워 둔다
   const R = 158 * u; // 도장 반지름
   const cx = SEAL_AT * u + R;
   const cy = side - SEAL_AT * u - R;
-  const size = 270 * u; // 캐릭터
-  const left = side - 22 * u - size;
-  const top = 22 * u;
+  const size = 250 * u; // 캐릭터 (그림 둘레에 투명 여백이 있어 살짝 겹쳐도 붙어 보인다)
+  const left = cx + R * 0.78;
+  const top = side - SEAL_AT * u - size * 0.97;
 
   // 도장: 살짝 기울여 찍은 느낌
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(-0.1);
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-  ctx.shadowBlur = 22 * u;
-  ctx.shadowOffsetY = 6 * u;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.13)';
+  ctx.shadowBlur = 16 * u;
+  ctx.shadowOffsetY = 4 * u;
   ctx.fillStyle = scheme.disc;
   ctx.beginPath();
   ctx.arc(0, 0, R, 0, Math.PI * 2);
@@ -245,7 +246,7 @@ function drawCharacter(ctx, side, u, { date, meal, chars }, c, who) {
   ctx.shadowOffsetY = 0;
 
   ctx.strokeStyle = scheme.ink;
-  ctx.lineWidth = 6 * u;
+  ctx.lineWidth = 5 * u;
   ctx.beginPath();
   ctx.arc(0, 0, R - 12 * u, 0, Math.PI * 2);
   ctx.stroke();
@@ -289,12 +290,12 @@ function drawCharacter(ctx, side, u, { date, meal, chars }, c, who) {
   }
   ctx.restore();
 
-  // 캐릭터: 오른쪽 위 모서리
+  // 캐릭터: 도장 바로 옆
   if (img) {
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.18)';
-    ctx.shadowBlur = 16 * u;
-    ctx.shadowOffsetY = 5 * u;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+    ctx.shadowBlur = 10 * u;
+    ctx.shadowOffsetY = 3 * u;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, left, top, size, size);
     ctx.restore();
