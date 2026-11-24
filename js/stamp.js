@@ -9,7 +9,7 @@
 //  meal    혼합     왼쪽 위 끼니 라벨 + 시각 + 날짜 (여러 가지를 섞어 한 묶음으로)
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=43';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=44';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -38,10 +38,10 @@ const font = (weight, px) => `${weight} ${px}px ${FONT}`;
 /* ── 자간: 글자를 한 자씩 직접 놓는다 ──
    아이폰 Safari 캔버스는 letterSpacing을 무시할 수 있어서, 그대로 두면 글자와 띄어쓰기가 벌어져 보인다.
    em: 글자 크기 대비 자간(음수면 좁힘), space: 띄어쓰기 폭 비율 */
-const TRACK = {
-  text: { em: -0.04, space: 1.15 }, // 날짜 · 시각
-  big: { em: -0.065, space: 1 }, // 큰 숫자
-  label: { em: -0.02, space: 1 }, // 식사 라벨
+const TRACK = { // 자간: 살짝 좁게 (글자끼리 닿지 않는 선에서)
+  text: { em: -0.055, space: 1.1 }, // 날짜 · 시각
+  big: { em: -0.08, space: 1 }, // 큰 숫자
+  label: { em: -0.035, space: 1 }, // 식사 라벨 · 오전오후
 };
 
 function advance(ctx, ch, space) {
