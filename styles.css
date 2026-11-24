@@ -612,16 +612,10 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
   transition: transform .2s;
 }
 .today-card:active { transform: scale(.98); }
-.today-hero { flex: none; width: 92px; height: 92px; object-fit: contain; margin: -8px 0 -6px; }
+.today-hero { flex: none; width: 64px; height: 64px; object-fit: contain; margin: -4px 0; }
 .today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .today-text b { font-size: 17px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
 .today-text span { font-size: 13px; line-height: 18px; color: var(--ink3); }
-.today-go {
-  flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%;
-  background: var(--blue-ink); color: var(--on-ink);
-}
-.today-go svg { width: 22px; height: 22px; }
-.today-card.is-done .today-go { background: var(--blue-soft); color: var(--blue-ink); box-shadow: none; }
 
 /* ── 달력 탭: 스크롤 없이 한 화면에 ──
    카드 머리는 한 줄(달 · 기록 수 · 이전/다음), 날짜 칸은 낮게(숫자 + 작은 얼굴 스탬프),

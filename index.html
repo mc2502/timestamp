@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=52">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=52">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=52">
+<link rel="manifest" href="manifest.webmanifest?v=53">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=53">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=53">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=52">
+<link rel="stylesheet" href="styles.css?v=53">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=52"></script>
+<script type="module" src="js/app.js?v=53"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -61,9 +61,8 @@
 
       <!-- 오늘 카드: 첫 화면의 그날 캐릭터가 사진이 생긴 뒤에도 여기 남는다. 누르면 바로 카메라 -->
       <button class="today-card" type="button" id="today-card" data-add hidden>
-        <img class="today-hero" data-art="hero" alt="" aria-hidden="true" width="92" height="92">
+        <img class="today-hero" data-art="hero" alt="" aria-hidden="true" width="64" height="64">
         <span class="today-text"><b id="today-t"></b><span id="today-s"></span></span>
-        <span class="today-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg></span>
       </button>
 
       <!-- 사진이 하나도 없을 때 -->
@@ -191,7 +190,7 @@
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=52" alt="" aria-hidden="true" width="40" height="40">
+          <img class="about-icon" src="assets/icons/icon-192.png?v=53" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
