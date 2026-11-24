@@ -23,7 +23,7 @@ func save(_ img: CGImage, _ name: String) {
   CGImageDestinationFinalize(dest)
 }
 
-/// fill: how much of the icon height the character takes
+/// fill: how much of the icon height the character takes (0.72 leaves ~14% above and below inside the iOS mask)
 func make(_ size: Int, _ name: String, fill: CGFloat) {
   let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
                       space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
@@ -52,9 +52,9 @@ func make(_ size: Int, _ name: String, fill: CGFloat) {
   save(ctx.makeImage()!, name)
 }
 
-make(1024, "icon-1024.png", fill: 0.8)
-make(180, "apple-touch-icon.png", fill: 0.8)
-make(192, "icon-192.png", fill: 0.8)
-make(512, "icon-512.png", fill: 0.8)
-make(512, "icon-maskable-512.png", fill: 0.66)
+make(1024, "icon-1024.png", fill: 0.72)
+make(180, "apple-touch-icon.png", fill: 0.72)
+make(192, "icon-192.png", fill: 0.72)
+make(512, "icon-512.png", fill: 0.72)
+make(512, "icon-maskable-512.png", fill: 0.6)
 print("ok")
