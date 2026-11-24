@@ -2,7 +2,7 @@
 // GitHub Pages는 파일을 10분씩 캐시하게 해서, 배포 직후 예전 파일과 새 파일이 섞일 수 있다.
 // 그래서 매번 서버에 바뀌었는지 물어보고(no-cache, 안 바뀌었으면 304로 가볍게), 끊겼을 때만 저장본을 쓴다.
 // 버전 숫자는 scripts/bump-version.sh 가 올린다.
-const VERSION = '50';
+const VERSION = '51';
 const CACHE = `timestamp-v${VERSION}`;
 const SHELL = [
   './',
