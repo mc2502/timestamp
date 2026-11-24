@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=12';
-import { readExifDate } from './exif.js?v=12';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=12';
-import * as db from './db.js?v=12';
+} from './format.js?v=13';
+import { readExifDate } from './exif.js?v=13';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=13';
+import * as db from './db.js?v=13';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '12';
+const APP_VERSION = '13';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -450,7 +450,8 @@ function bindEvents() {
     if (tab) { showView(tab.dataset.view); return; }
     const filter = e.target.closest('[data-filter]');
     if (filter) { setFilter(filter.dataset.filter); return; }
-    if (e.target.closest('[data-add]')) { openInput('#input-photo'); return; }
+    if (e.target.closest('[data-add]')) { openInput('#input-camera'); return; }
+    if (e.target.closest('[data-pick]')) { openInput('#input-photo'); return; }
     const photo = e.target.closest('[data-id]');
     if (photo) { openViewer(photo.dataset.id); return; }
     const day = e.target.closest('[data-day]');
@@ -461,9 +462,10 @@ function bindEvents() {
     }
   });
 
-  $('#add').addEventListener('click', () => openInput('#input-photo'));
+  // 가운데 카메라는 바로 촬영. 앨범에서 고르기는 앨범 탭 위 버튼으로 (자주 쓰지 않으니까)
+  $('#add').addEventListener('click', () => openInput('#input-camera'));
   $('#input-photo').addEventListener('change', (e) => handleFile(e.target.files?.[0]));
-  $('#input-camera').addEventListener('change', (e) => handleFile(e.target.files?.[0]));
+  $('#input-camera').addEventListener('change', (e) => handleFile(e.target.files?.[0], { camera: true }));
 
   $('#launch-shoot').addEventListener('click', () => { closeSheet($('#launch')); openInput('#input-camera'); });
   $('#launch-album').addEventListener('click', () => { closeSheet($('#launch')); openInput('#input-photo'); });
@@ -493,7 +495,7 @@ function bindEvents() {
   }
 }
 
-// #input-photo: 아이폰이 ‘사진 보관함 · 사진 찍기 · 파일 선택’ 메뉴를 띄운다
+// #input-photo: 사진 보관함에서 고른다
 // #input-camera: 기본 카메라를 바로 연다
 function openInput(sel) {
   const input = $(sel);
@@ -501,10 +503,10 @@ function openInput(sel) {
   input.click();
 }
 
-function handleFile(file) {
+function handleFile(file, { camera = false } = {}) {
   if (!file) return;
   if (settings.instantSave) quickSave(file);
-  else startEdit(file);
+  else startEdit(file, { camera });
 }
 
 function showView(view, { keepScroll = false } = {}) {
@@ -704,8 +706,11 @@ function renderAlbum() {
 
   const counts = { all: state.records.length };
   for (const r of state.records) if (r.meal) counts[r.meal] = (counts[r.meal] || 0) + 1;
-  $('#filters').innerHTML = FILTERS.map(([id, label]) =>
-    `<button class="chip" type="button" data-filter="${id}" aria-pressed="${state.filter === id}" aria-label="${label} ${counts[id] || 0}장">${label}<small>${counts[id] || 0}</small></button>`).join('');
+  // 끼니 거르기: 하나의 세그먼트, 흰 손잡이가 미끄러져 옮겨 간다
+  const filters = $('#filters');
+  filters.style.setProperty('--i', String(Math.max(0, FILTERS.findIndex(([id]) => id === state.filter))));
+  filters.innerHTML = FILTERS.map(([id, label]) =>
+    `<button type="button" data-filter="${id}" aria-pressed="${state.filter === id}" aria-label="${label} ${counts[id] || 0}장">${label}</button>`).join('');
 
   const list = state.records.filter((r) => state.filter === 'all' || r.meal === state.filter);
   const byDay = new Map();
@@ -725,7 +730,7 @@ function renderAlbum() {
     const badge = rel === '오늘' || rel === '어제' ? `<em>${rel}</em>` : '';
     const count = items.length ? `<b>${items.length}</b>장` : '아직 없어요';
     const tiles = items.length ? items.map((r) => tileHtml(r, animate)).join('')
-      : `<button class="tile tile-add" type="button" data-add aria-label="오늘 사진 찍거나 고르기">${CAMERA_SVG}</button>`;
+      : `<button class="tile tile-add" type="button" data-add aria-label="오늘 사진 찍기">${CAMERA_SVG}</button>`;
     return `<section aria-label="${monthDay(d)}"><div class="grid-day${key === todayKey ? ' is-today' : ''}"><h2>${monthDay(d)}${badge}</h2><span>${count}</span></div>`
       + `<div class="grid">${tiles}</div></section>`;
   }).join('');
@@ -823,14 +828,56 @@ function canvasBlob(canvas, type, quality) {
   });
 }
 
-async function renderStamped(img, rect, info, look) {
+// 원본 좌표의 정사각형 r을 S×S에 그린다. 사진을 줄여 전체가 보일 때는 남는 곳을 같은 사진을 흐리게 깔아 채운다.
+function drawCrop(ctx, src, k, r, S, W0, H0, backdrop) {
+  ctx.imageSmoothingQuality = 'high';
+  const e = 1e-6;
+  if (r.x >= -e && r.y >= -e && r.x + r.side <= W0 + e && r.y + r.side <= H0 + e) {
+    const side = Math.min(r.side, W0, H0);
+    const x = clamp(r.x, 0, W0 - side);
+    const y = clamp(r.y, 0, H0 - side);
+    ctx.drawImage(src, x * k, y * k, side * k, side * k, 0, 0, S, S);
+    return;
+  }
+  if (backdrop) ctx.drawImage(backdrop, 0, 0, S, S);
+  else { ctx.fillStyle = '#eef3f9'; ctx.fillRect(0, 0, S, S); }
+  const s = S / r.side;
+  ctx.drawImage(src, -r.x * s, -r.y * s, W0 * s, H0 * s);
+}
+
+// 흐린 바탕: 아주 작게 줄였다가 여러 번 나눠 키우면 어느 브라우저에서나 부드럽게 번진다
+function makeBackdrop(src) {
+  const w = src.width;
+  const h = src.height;
+  const m = Math.min(w, h);
+  let prev = document.createElement('canvas');
+  prev.width = prev.height = 20;
+  const p0 = prev.getContext('2d');
+  p0.imageSmoothingQuality = 'high';
+  p0.drawImage(src, (w - m) / 2, (h - m) / 2, m, m, 0, 0, 20, 20);
+  for (const size of [60, 180, 400]) {
+    const next = document.createElement('canvas');
+    next.width = next.height = size;
+    const nctx = next.getContext('2d');
+    nctx.imageSmoothingQuality = 'high';
+    nctx.drawImage(prev, 0, 0, size, size);
+    prev = next;
+  }
+  const ctx = prev.getContext('2d');
+  ctx.fillStyle = 'rgba(25, 31, 40, 0.14)';
+  ctx.fillRect(0, 0, prev.width, prev.height);
+  return prev;
+}
+
+const minZoom = (e) => Math.min(e.W0, e.H0) / Math.max(e.W0, e.H0); // 이만큼 줄이면 사진 전체가 들어온다
+
+async function renderStamped(img, rect, info, look, frame = {}) {
   const S = clamp(Math.round(rect.side), OUT_MIN, OUT_MAX);
   const c = document.createElement('canvas');
   c.width = S;
   c.height = S;
   const ctx = c.getContext('2d');
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, rect.x, rect.y, rect.side, rect.side, 0, 0, S, S);
+  drawCrop(ctx, img, 1, rect, S, frame.W0 ?? img.naturalWidth ?? img.width, frame.H0 ?? img.naturalHeight ?? img.height, frame.backdrop);
   drawStamp(ctx, S, info, look);
   const blob = await canvasBlob(c, 'image/jpeg', JPEG_QUALITY);
 
@@ -945,6 +992,7 @@ const E = {
   canvas: $('#preview-canvas'),
   hint: $('#ed-hint'),
   reset: $('#crop-reset'),
+  fit: $('#ed-fit'),
   strip: $('#style-strip'),
   swatches: $('#swatches'),
   time: $('#ed-time'),
@@ -964,7 +1012,7 @@ const TIME_NOTES = {
 const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: poseImages(e.pose) });
 const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
-async function startEdit(file) {
+async function startEdit(file, { camera = false } = {}) {
   const mine = {
     id: uid(), createdAt: Date.now(), version: 0, job: null, timer: 0, source: file,
     file: null, thumb: null, savedAt: null, sentAt: null, persistedVersion: null,
@@ -990,6 +1038,8 @@ async function startEdit(file) {
     const photo = await readPhoto(file);
     if (ed !== mine) { URL.revokeObjectURL(photo.url); return; }
     Object.assign(mine, photo);
+    // 방금 카메라로 찍은 사진이면 지금 시각이 곧 찍은 시각이다
+    if (camera && mine.timeSource !== 'exif') mine.timeSource = 'camera';
     mine.meal = mealFor(mine.takenAt);
     mine.crop = { cx: mine.W0 / 2, cy: mine.H0 / 2, z: 1 };
 
@@ -1002,7 +1052,6 @@ async function startEdit(file) {
     E.send.disabled = false;
     fillFields();
     stampIn();
-    drawThumbs();
     markDirty();
     if (TIME_NOTES[mine.timeSource]) showToast(TIME_NOTES[mine.timeSource]);
     setTimeout(() => { if (ed === mine) E.hint.classList.add('gone'); }, 2600);
@@ -1013,40 +1062,27 @@ async function startEdit(file) {
   }
 }
 
-const SHUFFLE_BADGE = '<span class="pose-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M18 4l3 3l-3 3"/><path d="M18 20l3 -3l-3 -3"/><path d="M3 7h3a5 5 0 0 1 5 5a5 5 0 0 0 5 5h5"/><path d="M21 7h-5a4.978 4.978 0 0 0 -3 1m-4 8a4.984 4.984 0 0 1 -3 1h-3"/></svg></span>';
+const SHUFFLE_SVG = '<svg class="st-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 4l3 3l-3 3"/><path d="M18 20l3 -3l-3 -3"/><path d="M3 7h3a5 5 0 0 1 5 5a5 5 0 0 0 5 5h5"/><path d="M21 7h-5a4.978 4.978 0 0 0 -3 1m-4 8a4.984 4.984 0 0 1 -3 1h-3"/></svg>';
 
-// 스탬프 모양 고르기: 내 사진으로 그린 작은 미리보기 6개
+// 스탬프 고르기: 이름 칩. 결과는 위의 큰 사진에서 바로 보인다.
+// 캐릭터 칩은 얼굴과 함께, 고른 캐릭터를 한 번 더 누르면 다른 포즈
 function buildStrip() {
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
-  const px = Math.round(64 * dpr);
   E.strip.innerHTML = STYLES.map((s) =>
-    `<button class="style-btn${s.character ? ' is-char' : ''}" type="button" role="radio" data-style="${s.id}" aria-checked="${s.id === ed.style}"${s.character ? ' aria-description="고른 뒤 한 번 더 누르면 다른 포즈"' : ''}>`
-    + `<span class="style-thumb"><canvas width="${px}" height="${px}" aria-hidden="true"></canvas>${s.character ? SHUFFLE_BADGE : ''}</span>`
-    + `<span class="style-name">${s.character ? `<img src="${ART[s.id].face}" alt="" aria-hidden="true">` : ''}${s.label}</span></button>`).join('');
-}
-
-let thumbTimer = 0;
-function drawThumbs() {
-  clearTimeout(thumbTimer);
-  thumbTimer = setTimeout(() => {
-    if (!ed?.base) return;
-    const r = cropRect(ed);
-    const k = ed.baseK;
-    for (const btn of $$('.style-btn', E.strip)) {
-      const c = btn.querySelector('canvas');
-      const ctx = c.getContext('2d');
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(ed.base, r.x * k, r.y * k, r.side * k, r.side * k, 0, 0, c.width, c.height);
-      drawStamp(ctx, c.width, infoOf(ed), { style: btn.dataset.style, color: ed.color });
-    }
-  }, 60);
+    `<button class="st-chip${s.character ? ' is-char' : ''}" type="button" role="radio" data-style="${s.id}" aria-checked="${s.id === ed.style}"${s.character ? ' aria-description="한 번 더 누르면 다른 포즈"' : ''}>`
+    + (s.character ? `<img src="${ART[s.id].face}" alt="" aria-hidden="true">` : '')
+    + `<span>${s.label}</span>${s.character ? SHUFFLE_SVG : ''}</button>`).join('');
 }
 
 function fillLook() {
-  for (const b of $$('.style-btn', E.strip)) {
+  for (const b of $$('[data-style]', E.strip)) {
     const on = b.dataset.style === ed.style;
     b.setAttribute('aria-checked', String(on));
-    if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (on) {
+      const l = b.offsetLeft - 16;
+      const r = b.offsetLeft + b.offsetWidth + 16 - E.strip.clientWidth;
+      if (E.strip.scrollLeft > l) E.strip.scrollLeft = l;
+      else if (E.strip.scrollLeft < r) E.strip.scrollLeft = r;
+    }
   }
   for (const b of $$('[data-color]', E.swatches)) b.setAttribute('aria-checked', String(b.dataset.color === ed.color));
   E.swatches.classList.toggle('is-off', !styleUsesColor(ed.style));
@@ -1056,15 +1092,20 @@ function fillLook() {
 function shufflePose() {
   if (!ed?.ready || !POSES[ed.style]) return;
   ed.pose = { ...ed.pose, [ed.style]: randomPose(ed.style, ed.pose[ed.style]) };
+  const icon = $(`[data-style="${ed.style}"] .st-shuffle`, E.strip);
+  if (icon) {
+    icon.classList.toggle('spin', false);
+    void icon.getBoundingClientRect();
+    icon.classList.toggle('spin', true);
+  }
   stampIn();
-  drawThumbs();
   markDirty();
 }
 
 function fillFields() {
   const d = ed.takenAt;
   const [ampm, hm] = fmtClock(d).split(' ');
-  E.timeText.innerHTML = `${d.getMonth() + 1}월 ${d.getDate()}일 <small>${ampm}</small> ${hm}`;
+  E.timeText.innerHTML = `${monthDay(d)} <small>${ampm}</small> ${hm}`;
   E.time.setAttribute('aria-label', `촬영 시각 ${monthDay(d)} ${fmtClock(d)}`);
   E.time.value = toLocalInput(d);
   E.time.max = toLocalInput(new Date(Date.now() + 60000));
@@ -1114,14 +1155,52 @@ function buildPreview(e) {
   bctx.drawImage(e.img, 0, 0, base.width, base.height);
   e.base = base;
   e.baseK = base.width / e.W0;
+  e.backdrop = makeBackdrop(base);
 }
 
-// 원본 좌표의 정사각형 자르기 영역. 사진 밖으로 나가지 않게 가운데를 붙잡는다.
+// 원본 좌표의 정사각형 자르기 영역.
+// 채울 때(z ≥ 1)는 사진 밖으로 나가지 않게, 줄였을 때(z < 1)는 사진이 정사각형 밖으로 나가지 않게 붙잡는다.
+const keepIn = (c, side, dim) => (side <= dim ? clamp(c, side / 2, dim - side / 2) : clamp(c, dim - side / 2, side / 2));
 function cropRect(e) {
+  e.crop.z = clamp(e.crop.z, minZoom(e), MAX_ZOOM);
   const side = Math.min(e.W0, e.H0) / e.crop.z;
-  e.crop.cx = clamp(e.crop.cx, side / 2, e.W0 - side / 2);
-  e.crop.cy = clamp(e.crop.cy, side / 2, e.H0 - side / 2);
+  e.crop.cx = keepIn(e.crop.cx, side, e.W0);
+  e.crop.cy = keepIn(e.crop.cy, side, e.H0);
   return { x: e.crop.cx - side / 2, y: e.crop.cy - side / 2, side };
+}
+
+// 사진이 정사각형이 아니면 ‘전체 보기’ 버튼을 보인다
+const isFit = (e) => e.crop.z <= minZoom(e) + 0.001;
+function fillFit() {
+  const can = ed?.ready && minZoom(ed) < 0.995;
+  E.fit.hidden = !can;
+  if (!can) return;
+  const fit = isFit(ed);
+  E.fit.classList.toggle('is-fit', fit);
+  E.fit.setAttribute('aria-label', fit ? '꽉 채우기' : '사진 전체 보기');
+}
+
+function toggleFit() {
+  if (!ed?.ready || minZoom(ed) >= 0.995) return;
+  const from = { ...ed.crop };
+  const to = isFit(ed) ? { cx: ed.W0 / 2, cy: ed.H0 / 2, z: 1 } : { cx: ed.W0 / 2, cy: ed.H0 / 2, z: minZoom(ed) };
+  ed.cropMoved = to.z !== 1;
+  const mine = ed;
+  const done = () => { if (ed !== mine) return; ed.crop = to; changed(); };
+  if (!settings.effects || reducedMotion()) { done(); return; }
+  const start = performance.now();
+  const dur = 260;
+  const step = (now) => {
+    if (ed !== mine) return;
+    const p = Math.min(1, (now - start) / dur);
+    if (p >= 1) { done(); return; }
+    const q = 1 - (1 - p) ** 3;
+    ed.crop = { cx: from.cx + (to.cx - from.cx) * q, cy: from.cy + (to.cy - from.cy) * q, z: from.z * (to.z / from.z) ** q };
+    drawPreview();
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  setTimeout(() => { if (ed === mine && ed.crop !== to && performance.now() - start > dur + 100) done(); }, dur + 160);
 }
 
 let frame = 0;
@@ -1135,17 +1214,15 @@ function drawPreview(pop = null) {
   const c = E.canvas;
   const ctx = c.getContext('2d');
   const r = cropRect(ed);
-  const k = ed.baseK;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(ed.base, r.x * k, r.y * k, r.side * k, r.side * k, 0, 0, c.width, c.height);
+  drawCrop(ctx, ed.base, ed.baseK, r, c.width, ed.W0, ed.H0, ed.backdrop);
   drawStamp(ctx, c.width, infoOf(ed), lookOf(ed, pop));
   E.reset.hidden = !ed.cropMoved;
+  fillFit();
 }
 
 // 스탬프·시각·식사·위치가 바뀌면 저장본을 다시 만든다
-function changed({ thumbs = true } = {}) {
+function changed() {
   drawPreview();
-  if (thumbs) drawThumbs();
   markDirty();
 }
 
@@ -1160,7 +1237,7 @@ function markDirty() {
 
 function exportFor(e, v) {
   if (e.job && e.job.v === v) return e.job.p;
-  const p = renderStamped(e.img, cropRect(e), infoOf(e), lookOf(e)).then((out) => {
+  const p = renderStamped(e.img, cropRect(e), infoOf(e), lookOf(e), { W0: e.W0, H0: e.H0, backdrop: e.backdrop }).then((out) => {
     if (e.version !== v) return null;
     e.file = out.file;
     e.thumb = out.thumb;
@@ -1298,6 +1375,8 @@ function bindEditor() {
     changed();
   });
 
+  E.fit.addEventListener('click', toggleFit);
+
   E.reset.addEventListener('click', () => {
     if (!ed?.ready) return;
     ed.crop = { cx: ed.W0 / 2, cy: ed.H0 / 2, z: 1 };
@@ -1305,9 +1384,10 @@ function bindEditor() {
     changed();
   });
 
-  // 한 손가락: 옮기기, 두 손가락: 확대
+  // 한 손가락: 옮기기, 두 손가락: 키우기 · 줄이기
   const pointers = new Map();
   let gesture = null;
+  let lastTap = 0;
   const center = (pts) => ({ x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length });
   const spread = (pts) => (pts.length > 1 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0);
 
@@ -1320,7 +1400,7 @@ function bindEditor() {
   };
 
   E.preview.addEventListener('pointerdown', (e) => {
-    if (!ed?.ready) return;
+    if (!ed?.ready || e.target.closest('button')) return;
     e.preventDefault();
     E.preview.setPointerCapture(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1337,7 +1417,7 @@ function bindEditor() {
     if (pts.length !== gesture.n) { beginGesture(); return; }
     const c = center(pts);
     let z = gesture.z;
-    if (pts.length > 1 && gesture.d > 0) z = clamp(gesture.z * (spread(pts) / gesture.d), 1, MAX_ZOOM);
+    if (pts.length > 1 && gesture.d > 0) z = clamp(gesture.z * (spread(pts) / gesture.d), minZoom(ed), MAX_ZOOM);
     const cssSize = E.canvas.getBoundingClientRect().width || 1;
     const k = Math.min(ed.W0, ed.H0) / z / cssSize;
     ed.crop = { z, cx: gesture.cx - (c.x - gesture.p.x) * k, cy: gesture.cy - (c.y - gesture.p.y) * k };
@@ -1355,9 +1435,14 @@ function bindEditor() {
     if (!ed?.ready) return;
     ed.gesturing = false;
     if (moved) {
+      lastTap = 0;
       ed.cropMoved = true;
       changed();
+      return;
     }
+    // 두 번 톡: 꽉 채우기 ↔ 사진 전체
+    const now = performance.now();
+    if (now - lastTap < 320) { lastTap = 0; toggleFit(); } else lastTap = now;
   };
   E.preview.addEventListener('pointerup', endPointer);
   E.preview.addEventListener('pointercancel', endPointer);
@@ -1366,10 +1451,9 @@ function bindEditor() {
   E.preview.addEventListener('wheel', (e) => {
     if (!ed?.ready) return;
     e.preventDefault();
-    ed.crop.z = clamp(ed.crop.z * Math.exp(-e.deltaY * 0.0015), 1, MAX_ZOOM);
+    ed.crop.z = clamp(ed.crop.z * Math.exp(-e.deltaY * 0.0015), minZoom(ed), MAX_ZOOM);
     ed.cropMoved = true;
     schedulePreview();
-    drawThumbs();
     markDirty();
   }, { passive: false });
 }

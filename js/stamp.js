@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=12';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=13';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
