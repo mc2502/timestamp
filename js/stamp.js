@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=28';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=29';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -99,7 +99,7 @@ function anchor(style, side, u) {
     case 'film': return [side - 220 * u, side - 110 * u];
     case 'meal': return [58 * u, 150 * u];
     case 'odung':
-    case 'perpeng': return [SEAL_AT * u + 158 * u, side - SEAL_AT * u - 158 * u];
+    case 'perpeng': { const g = sealGeom(side, u); return [g.tx, g.ty]; }
     default: return [60 * u, side - 140 * u];
   }
 }
@@ -211,7 +211,17 @@ const DRAW = {
    옆에 살짝 기울어진 둥근 도장에 날짜 · 시각 · 끼니가 찍힌다.
    글씨는 캐릭터 위에 얹지 않고 도장 안에만 쓴다 (PT Note: 마스코트 위에 글씨 금지). */
 
-const SEAL_AT = 18; // 도장이 사진 모서리에서 떨어진 거리(u) — 모서리 가까이
+// 도장이 사진 왼쪽 아래 모서리에 걸쳐 찍힌다: 원의 일부는 사진 밖으로 잘려 나가고,
+// 글씨는 보이는 쪽(오른쪽 위)으로 옮겨 다 읽히게 한다.
+//   r: 반지름, bleed: 사진 밖으로 나간 길이, shift: 글씨를 보이는 쪽으로 옮기는 길이 (모두 u)
+export const SEAL_EDGE = { r: 210, bleed: 100, shift: 22 };
+function sealGeom(side, u, edge = SEAL_EDGE) {
+  const R = edge.r * u;
+  const cx = (edge.r - edge.bleed) * u; // 원 중심: 왼쪽 · 아래 가장자리에서 r - bleed
+  const cy = side - cx;
+  const sh = edge.shift * u;
+  return { R, cx, cy, sh, tx: cx + sh, ty: cy - sh };
+}
 const SEAL = {
   // 원색을 덜어낸 색: 쨍한 파랑 대신 차분한 청색, 노랑은 버터색, 끼니 꼬리표는 옅은 바탕에 진한 글자
   white: { disc: 'rgba(255, 255, 255, 0.95)', ink: '#4169a6', sub: '#5f6b7a', tag: '#e6edf7', tagInk: '#3a5f98' },
@@ -219,16 +229,14 @@ const SEAL = {
   yellow: { disc: '#f4dc8c', ink: '#3a3426', sub: '#6a5c34', tag: 'rgba(58, 52, 38, 0.12)', tagInk: '#3a3426' },
 };
 
-function drawCharacter(ctx, side, u, { date, meal, chars }, c, who) {
+function drawCharacter(ctx, side, u, { date, meal, chars }, c, who, edge) {
   const img = chars?.[who];
   const scheme = SEAL[Object.keys(COLORS).find((k) => COLORS[k] === c) || 'white'];
-  // 도장은 왼쪽 아래 모서리 가까이, 캐릭터는 그 바로 오른쪽에 발을 맞춰 선다 — 가운데(음식)는 비워 둔다
-  const R = 158 * u; // 도장 반지름
-  const cx = SEAL_AT * u + R;
-  const cy = side - SEAL_AT * u - R;
+  // 도장은 왼쪽 아래 모서리에 걸쳐, 캐릭터는 보이는 도장 바로 오른쪽에 발을 맞춰 선다 — 가운데(음식)는 비워 둔다
+  const { R, cx, cy, sh } = sealGeom(side, u, edge);
   const size = 250 * u; // 캐릭터 (그림 둘레에 투명 여백이 있어 살짝 겹쳐도 붙어 보인다)
-  const left = cx + R * 0.78;
-  const top = side - SEAL_AT * u - size * 0.97;
+  const left = cx + R * 0.8;
+  const top = side - 18 * u - size * 0.97;
 
   // 도장: 살짝 기울여 찍은 느낌
   ctx.save();
@@ -257,7 +265,8 @@ function drawCharacter(ctx, side, u, { date, meal, chars }, c, who) {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // 도장 안: 날짜 / 오전·오후 / 큰 시각 / 끼니 꼬리표 — 모두 가운데, 안쪽 고리 안에 들어가게
+  // 도장 안: 날짜 / 오전·오후 / 큰 시각 / 끼니 꼬리표 — 보이는 쪽(오른쪽 위)으로 옮겨, 안쪽 고리 안에
+  ctx.translate(sh, -sh);
   const [ampm, hm] = fmtClock(date).split(' ');
   ctx.textBaseline = 'alphabetic';
   const dp = 28 * u;

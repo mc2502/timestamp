@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=28';
-import { readExifDate } from './exif.js?v=28';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=28';
-import * as db from './db.js?v=28';
+} from './format.js?v=29';
+import { readExifDate } from './exif.js?v=29';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=29';
+import * as db from './db.js?v=29';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '28';
+const APP_VERSION = '29';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1102,8 +1102,8 @@ function fillLook() {
     const on = b.dataset.style === ed.style;
     b.setAttribute('aria-checked', String(on));
     if (on) {
-      const l = b.offsetLeft - 16;
-      const r = b.offsetLeft + b.offsetWidth + 16 - E.strip.clientWidth;
+      const l = b.offsetLeft - 3;
+      const r = b.offsetLeft + b.offsetWidth + 30 - E.strip.clientWidth;
       if (E.strip.scrollLeft > l) E.strip.scrollLeft = l;
       else if (E.strip.scrollLeft < r) E.strip.scrollLeft = r;
     }

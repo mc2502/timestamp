@@ -373,60 +373,73 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .ed-fit .i-grow, .ed-fit.is-fit .i-shrink { display: none; }
 .ed-fit.is-fit .i-grow { display: block; }
 
-/* 아래 패널: 흰 바탕 하나에 고르기 → 버튼 순서 */
-.ed-panel {
-  flex: none; display: flex; flex-direction: column; gap: 12px;
-  padding: 16px 16px calc(10px + var(--sb)); border-radius: 28px 28px 0 0;
-  background: #ffffff; box-shadow: 0 -1px 0 rgba(109, 134, 164, .1), 0 -10px 30px rgba(29, 54, 86, .07);
+/* ── 스탬프 화면 조작부: 앨범 캡슐 · 탭바와 같은 리퀴드 글라스 알약 한 벌 ──
+   흰 판 없이 배경 위에 알약 네 줄: 스탬프 → 식사 → 촬영 시각 · 글자색 → 저장 · 보내기
+   모든 알약은 높이 44 · 둥근 끝, 고른 것은 같은 회색 렌즈 하나로만 표시 */
+.ed-panel { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 2px 16px calc(10px + var(--sb)); }
+.st-pill, .ed-meal, .ed-time, .swatches {
+  height: 44px; border-radius: 22px; background: var(--glass-fill); box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
 }
 
-/* 스탬프 칩: 이름만 또렷하게. 캐릭터는 얼굴과 함께 */
+/* 스탬프: 알약 안에서 옆으로 넘긴다 (오른쪽 끝은 살짝 흐려져 더 있다는 걸 알려 준다) */
+.st-pill { position: relative; overflow: hidden; }
 .st-chips {
-  display: flex; gap: 8px; margin: 0 -16px; padding: 2px 16px; overflow-x: auto; scrollbar-width: none; scroll-padding-inline: 16px;
+  display: flex; align-items: center; height: 100%; padding: 0 3px; overflow-x: auto; scrollbar-width: none; scroll-padding-inline: 3px;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
 }
 .st-chips::-webkit-scrollbar { display: none; }
 .st-chip {
-  flex: none; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 15px; border-radius: 20px;
-  background: var(--control-fill); color: var(--ink2); font-size: 14px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap;
-  transition: background-color .18s, color .18s, box-shadow .18s, transform .2s;
+  flex: none; display: inline-flex; align-items: center; gap: 5px; height: 38px; padding: 0 13px; border-radius: 19px;
+  color: var(--ink2); font-size: 14px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap;
+  transition: background-color .15s, color .15s, transform .2s;
 }
+.st-chip:last-child { margin-right: 22px; }
 .st-chip:active { transform: scale(.96); }
-.st-chip.is-char { padding-left: 6px; }
+.st-chip.is-char { padding-left: 5px; }
 .st-chip img { width: 28px; height: 28px; border-radius: 50%; background: #ffffff; }
-.st-chip[aria-checked="true"] { background: var(--blue-soft); color: var(--blue-ink); font-weight: 700; }
-.st-shuffle { display: none; width: 16px; height: 16px; margin-right: -3px; }
+.st-chip[aria-checked="true"] { background: var(--glass-lens); color: var(--ink); font-weight: 700; }
+.st-shuffle { display: none; width: 16px; height: 16px; margin-right: -3px; color: var(--ink2); }
 .st-chip[aria-checked="true"] .st-shuffle { display: block; }
 .st-shuffle.spin { animation: st-spin .4s cubic-bezier(.34, 1.56, .64, 1); }
 @keyframes st-spin { from { transform: rotate(-180deg) scale(.6); } to { transform: none; } }
 
-/* 글자색 점 셋 · 촬영 시각 */
-.ed-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.swatches { display: flex; margin-left: -6px; transition: opacity .2s; }
-.swatches button { width: 40px; height: 44px; display: grid; place-items: center; }
-.swatches i { width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .16); transition: box-shadow .18s; }
-.swatches [data-color="white"] i { background: #ffffff; }
-.swatches [data-color="black"] i { background: #191f28; }
-.swatches [data-color="yellow"] i { background: #f4d77a; }
-.swatches [aria-checked="true"] i { box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .16), 0 0 0 2px #ffffff, 0 0 0 4px var(--blue); }
-.swatches.is-off { opacity: .3; pointer-events: none; }
+/* 식사: 앨범의 끼니 알약과 똑같이 */
+.ed-meal { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 3px; }
+.ed-meal button { height: 38px; border-radius: 19px; font-size: 14px; font-weight: 600; color: var(--ink2); text-align: center; transition: background-color .15s, color .15s; }
+.ed-meal [aria-pressed="true"] { background: var(--glass-lens); color: var(--ink); font-weight: 700; }
+
+/* 촬영 시각 알약(넓게) · 글자색 알약(점 셋) */
+.ed-row { display: flex; align-items: center; gap: 10px; }
 .ed-time {
-  position: relative; display: inline-flex; align-items: center; gap: 6px; min-width: 0; height: 40px; padding: 0 12px 0 11px; border-radius: var(--radius-control);
-  background: var(--control-fill); font-size: 15px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); white-space: nowrap;
+  position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 13px; overflow: hidden;
+  font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); white-space: nowrap;
 }
+#ed-time-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ed-time-ic { width: 17px; height: 17px; flex: none; color: var(--ink3); }
 .ed-time small { font-size: 13px; font-weight: 500; color: var(--ink2); }
 .ed-time input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
-.ed-time:focus-within { box-shadow: inset 0 0 0 2px var(--blue-ink); }
-.ed-time.is-guess .ed-time-ic { color: var(--blue-ink); }
-.ed-time.is-guess::after { content: ''; position: absolute; top: 7px; left: 24px; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 2px var(--control-fill); }
-.chev-d { width: 7px; height: 7px; border-right: 1.8px solid var(--ink3); border-bottom: 1.8px solid var(--ink3); transform: rotate(45deg); margin: -3px 0 0 2px; }
+.ed-time:focus-within { box-shadow: var(--glass-shadow), inset 0 0 0 1.5px rgba(44, 95, 174, .5); }
+.ed-time.is-guess .ed-time-ic { color: #2c5fae; }
+.ed-time.is-guess::after { content: ''; position: absolute; top: 9px; left: 25px; width: 6px; height: 6px; border-radius: 50%; background: #4a7fd0; box-shadow: 0 0 0 1.5px #ffffff; }
+.chev-d { flex: none; width: 7px; height: 7px; border-right: 1.8px solid var(--ink3); border-bottom: 1.8px solid var(--ink3); transform: rotate(45deg); margin: -3px 0 0 auto; }
+.swatches { flex: none; display: flex; align-items: center; padding: 0 4px; transition: opacity .2s; }
+.swatches button { width: 32px; height: 44px; display: grid; place-items: center; }
+.swatches i { width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .16); transition: box-shadow .15s; }
+.swatches [data-color="white"] i { background: #ffffff; }
+.swatches [data-color="black"] i { background: #262b33; }
+.swatches [data-color="yellow"] i { background: #f4d77a; }
+.swatches [aria-checked="true"] i { box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .16), 0 0 0 2px rgba(255, 255, 255, .95), 0 0 0 3.5px var(--ink2); }
+.swatches.is-off { opacity: .35; pointer-events: none; }
 
-/* 식사: PT Note 세그먼트 */
-.ed-meal { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; padding: 4px; border-radius: var(--radius-segment); background: var(--control-fill); }
-.ed-meal button { min-height: 40px; border-radius: 11px; font-size: 14px; color: var(--ink2); text-align: center; }
-.ed-meal [aria-pressed="true"] { background: var(--bg); color: var(--ink); font-weight: 650; box-shadow: var(--shadow-segment-on); }
-
-.ed-actions { display: flex; gap: 8px; margin-top: 4px; }
+/* 저장 · 보내기: 같은 알약 모양, 도장과 같은 청색을 옅게 */
+.ed-actions { display: flex; margin-top: 2px; }
+.ed-actions .btn.pri {
+  min-height: 52px; border-radius: 26px; background: #d5e4fa; color: #24569f; font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 0 0 .5px rgba(44, 95, 174, .12); transition: background-color .15s, transform .2s;
+}
+.ed-actions .btn.pri:active { background: #c6daf8; }
+.ed-actions .btn.pri:disabled { background: rgba(255, 255, 255, .5); color: #a9b3c0; box-shadow: var(--glass-shadow); }
 .vw-more { display: flex; justify-content: center; gap: 8px; }
 
 /* ── 즉시 저장 알림 ── */
@@ -614,25 +627,3 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 }
 .today-go svg { width: 22px; height: 22px; }
 .today-card.is-done .today-go { background: var(--blue-soft); color: var(--blue-ink); box-shadow: none; }
-
-/* ── 스탬프 화면 아래 패널, 차분하게: 상자는 식사 하나만, 나머지는 글자와 점 ──
-   순서: 스탬프 칩 → 식사 → 촬영 시각 · 글자색 → 저장 · 보내기 (먹색) */
-.ed-panel { gap: 14px; padding: 14px 16px calc(10px + var(--sb)); box-shadow: 0 -.5px 0 rgba(109, 134, 164, .16); }
-.st-chips { gap: 2px; }
-.st-chip { height: 38px; padding: 0 13px; border-radius: 19px; background: transparent; color: var(--ink3); font-weight: 600; }
-.st-chip.is-char { padding-left: 5px; }
-.st-chip[aria-checked="true"] { background: rgba(25, 31, 40, .06); color: var(--ink); font-weight: 700; }
-.ed-meal { background: rgba(25, 31, 40, .045); }
-.ed-meal [aria-pressed="true"] { box-shadow: 0 1px 3px rgba(22, 42, 66, .08); }
-.ed-row { min-height: 40px; }
-.ed-time { height: 40px; padding: 0 6px 0 2px; margin-left: -2px; background: none; font-size: 15px; font-weight: 600; color: var(--ink); }
-.ed-time-ic { color: var(--ink3); }
-.ed-time:focus-within { box-shadow: none; text-decoration: underline; }
-.ed-time.is-guess::after { box-shadow: 0 0 0 2px #ffffff; top: 8px; left: 14px; }
-.swatches { margin: 0 -8px 0 0; }
-.swatches button { width: 36px; height: 40px; }
-.swatches i { width: 20px; height: 20px; }
-.swatches [aria-checked="true"] i { box-shadow: inset 0 0 0 1px rgba(25, 31, 40, .16), 0 0 0 2px #ffffff, 0 0 0 3.5px var(--ink2); }
-.ed-actions { margin-top: 2px; }
-.ed-actions .btn.pri { min-height: 54px; border-radius: 16px; background: var(--ink); color: #ffffff; font-weight: 650; }
-.ed-actions .btn.pri:disabled { background: #c9ced6; }
