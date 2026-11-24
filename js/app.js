@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=14';
-import { readExifDate } from './exif.js?v=14';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=14';
-import * as db from './db.js?v=14';
+} from './format.js?v=15';
+import { readExifDate } from './exif.js?v=15';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=15';
+import * as db from './db.js?v=15';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '14';
+const APP_VERSION = '15';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
