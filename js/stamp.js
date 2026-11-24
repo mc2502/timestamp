@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=36';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=37';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -215,6 +215,27 @@ const DRAW = {
 // 글씨는 보이는 쪽(오른쪽 위)으로 옮겨 다 읽히게 한다.
 //   r: 반지름, bleed: 사진 밖으로 나간 길이, shift: 글씨를 보이는 쪽으로 옮기는 길이 (모두 u)
 export const SEAL_EDGE = { r: 140, bleed: 15, shift: 0 }; // 글씨는 줄이지 않고 원래 크기 — 고리가 글씨를 바짝 감싼다
+// 도장 고리 그림: 앱이 불러와 넣어 준다(없으면 가는 선 고리). 검정 한 색 그림을 글자색으로 칠해 쓰고, 칠한 것은 기억해 둔다
+export const SEAL_RING = { img: null }; // 앱은 고무 도장 고리(assets/art/seal-ring-b.png)를 넣는다
+const ringCache = new Map();
+function tintedRing(img, color, px) {
+  const key = `${img.src}|${color}|${px}`;
+  let c = ringCache.get(key);
+  if (!c) {
+    if (ringCache.size > 12) ringCache.clear();
+    c = document.createElement('canvas');
+    c.width = c.height = px;
+    const x = c.getContext('2d');
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(img, 0, 0, px, px);
+    x.globalCompositeOperation = 'source-in';
+    x.fillStyle = color;
+    x.fillRect(0, 0, px, px);
+    ringCache.set(key, c);
+  }
+  return c;
+}
+
 // 캐릭터 자리 (사진 좌표). 기본은 도장 오른쪽에 살짝 겹쳐 붙고, info.charPos(0–1, 가운데 기준)가 있으면 그 자리.
 // 편집 화면에서 손가락으로 캐릭터를 집었는지 알아볼 때도 쓴다.
 const CHAR_SIZE = 215;
@@ -264,37 +285,44 @@ function drawCharacter(ctx, side, u, { date, meal, chars, charPos }, c, who, edg
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
-  ctx.strokeStyle = scheme.ink;
-  ctx.lineWidth = 3.5 * u;
-  ctx.beginPath();
-  ctx.arc(0, 0, R - 11 * u, 0, Math.PI * 2);
-  ctx.stroke();
+  if (SEAL_RING.img) {
+    // 그려 받은 고리 그림(검정 한 색)을 글자색에 맞춰 칠해 원판 가장자리에 딱 맞게 얹는다
+    const D = (2 * R) / 0.985;
+    ctx.drawImage(tintedRing(SEAL_RING.img, scheme.ink, Math.round(D)), -D / 2, -D / 2, D, D);
+  } else {
+    ctx.strokeStyle = scheme.ink;
+    ctx.lineWidth = 3.5 * u;
+    ctx.beginPath();
+    ctx.arc(0, 0, R - 11 * u, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   // 도장 안: 날짜 / 오전·오후 / 큰 시각 / 끼니 — 보이는 쪽(오른쪽 위)으로 옮겨, 고리 안에
   ctx.translate(sh, -sh);
   const [ampm, hm] = fmtClock(date).split(' ');
   ctx.textBaseline = 'alphabetic';
-  const dp = 28 * u;
-  ctx.font = font(650, dp);
+  // 글씨는 덜 무겁게: 시각 76u · 700, 나머지는 600
+  const dp = 26 * u;
+  ctx.font = font(600, dp);
   ctx.fillStyle = scheme.sub;
-  fillTracked(ctx, monthDay(date), 0, -62 * u, dp, TRACK.text, 'center');
+  fillTracked(ctx, monthDay(date), 0, -56 * u, dp, TRACK.text, 'center');
 
-  const ap = 26 * u;
-  ctx.font = font(700, ap);
+  const ap = 24 * u;
+  ctx.font = font(600, ap);
   ctx.fillStyle = scheme.ink;
-  fillTracked(ctx, ampm, 0, -24 * u, ap, TRACK.label, 'center');
+  fillTracked(ctx, ampm, 0, -22 * u, ap, TRACK.label, 'center');
 
-  const tp = 84 * u;
-  ctx.font = font(800, tp);
-  fillTracked(ctx, hm, 0, 50 * u, tp, TRACK.big, 'center');
+  const tp = 76 * u;
+  ctx.font = font(700, tp);
+  fillTracked(ctx, hm, 0, 44 * u, tp, TRACK.big, 'center');
 
   // 끼니: 꼬리표 없이 작은 글자로
   const label = mealLabel(meal);
   if (label) {
-    const lp = 26 * u;
-    ctx.font = font(700, lp);
+    const lp = 24 * u;
+    ctx.font = font(600, lp);
     ctx.fillStyle = scheme.sub;
-    fillTracked(ctx, label, 0, 96 * u, lp, TRACK.label, 'center');
+    fillTracked(ctx, label, 0, 86 * u, lp, TRACK.label, 'center');
   }
   ctx.restore();
 

@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=36';
-import { readExifDate } from './exif.js?v=36';
-import { drawStamp, characterBox, STYLES, COLORS, styleUsesColor } from './stamp.js?v=36';
-import * as db from './db.js?v=36';
+} from './format.js?v=37';
+import { readExifDate } from './exif.js?v=37';
+import { drawStamp, characterBox, SEAL_RING, STYLES, COLORS, styleUsesColor } from './stamp.js?v=37';
+import * as db from './db.js?v=37';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '36';
+const APP_VERSION = '37';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -186,12 +186,18 @@ async function checkForUpdate() {
 let charsLoading = null;
 function charsReady() {
   if (!charsLoading) {
-    charsLoading = Promise.all(Object.entries(POSES).flatMap(([who, list]) => list.map((src, i) => new Promise((resolve) => {
+    const ring = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { SEAL_RING.img = img; resolve(); };
+      img.onerror = () => resolve(); // 못 받으면 가는 선 고리로
+      img.src = 'assets/art/seal-ring-b.png';
+    });
+    charsLoading = Promise.all([ring, ...Object.entries(POSES).flatMap(([who, list]) => list.map((src, i) => new Promise((resolve) => {
       const img = new Image();
       img.onload = () => { (state.chars[who] ||= [])[i] = img; resolve(); };
       img.onerror = () => resolve();
       img.src = src;
-    }))));
+    })))]);
   }
   return charsLoading;
 }
