@@ -1,5 +1,5 @@
-// TimeStamp app icon: swiftc -O -o /tmp/mk scripts/make-icons.swift && /tmp/mk assets/astro/odung-hero.png assets/astro/stamp-clock.png <out-dir>
-// a round clock stamp in the lower right for "time". Art comes from Astro (transparent 1024px PNGs).
+// TimeStamp app icon: the whole 오둥이 holding a camera (Astro's odung-hero art), uncropped, on PT Note's light canvas.
+// Build: swiftc -O -o /tmp/mk scripts/make-icons.swift && /tmp/mk assets/astro/odung-hero.png assets/icons
 import Foundation
 import CoreGraphics
 import ImageIO
@@ -7,19 +7,14 @@ import UniformTypeIdentifiers
 
 let args = CommandLine.arguments
 let heroPath = args[1]
-let clockPath = args[2]
-let outDir = args[3]
+let outDir = args[2]
 let cs = CGColorSpace(name: CGColorSpace.sRGB)!
 
-func load(_ p: String) -> CGImage {
-  let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: p) as CFURL, nil)!
-  return CGImageSourceCreateImageAtIndex(src, 0, nil)!
-}
-let hero = load(heroPath)
-let clock = load(clockPath)
+let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: heroPath) as CFURL, nil)!
+let hero = CGImageSourceCreateImageAtIndex(src, 0, nil)!
 
-// hero opaque box (top-left coords, 1024 art): x 175-861, y 83-948
-let heroBox = (x0: 175.0, x1: 861.0, y0: 83.0)
+// opaque box of the art (top-left coords, 1024px): x 175-861, y 83-948
+let box = (x0: 175.0, x1: 861.0, y0: 83.0, y1: 948.0)
 
 func save(_ img: CGImage, _ name: String) {
   let url = URL(fileURLWithPath: outDir).appendingPathComponent(name)
@@ -28,62 +23,38 @@ func save(_ img: CGImage, _ name: String) {
   CGImageDestinationFinalize(dest)
 }
 
-/// content: 1 = full icon composition, < 1 shrinks the art toward the centre (maskable safe zone)
-func make(_ size: Int, _ name: String, content: CGFloat) {
+/// fill: how much of the icon height the character takes
+func make(_ size: Int, _ name: String, fill: CGFloat) {
   let ctx = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
                       space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
   let s = CGFloat(size)
-  let k = s / 1024 // work in a 1024 design grid, top-left origin
   ctx.interpolationQuality = .high
 
-  // ground: PT Note blue, lighter at the top-left
+  // light canvas: PT Note #eef3f9, a touch brighter at the top, soft sky glow behind the character
   let ground = CGGradient(colorsSpace: cs, colors: [
-    CGColor(srgbRed: 0x6b / 255, green: 0xab / 255, blue: 0xff / 255, alpha: 1),
-    CGColor(srgbRed: 0x2c / 255, green: 0x70 / 255, blue: 0xe8 / 255, alpha: 1),
+    CGColor(srgbRed: 0xf5 / 255, green: 0xf8 / 255, blue: 0xfc / 255, alpha: 1),
+    CGColor(srgbRed: 0xe4 / 255, green: 0xec / 255, blue: 0xf7 / 255, alpha: 1),
   ] as CFArray, locations: [0, 1])!
-  ctx.drawLinearGradient(ground, start: CGPoint(x: 0, y: s), end: CGPoint(x: s, y: 0), options: [])
+  ctx.drawLinearGradient(ground, start: CGPoint(x: 0, y: s), end: CGPoint(x: 0, y: 0), options: [])
   let glow = CGGradient(colorsSpace: cs, colors: [
-    CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.32),
-    CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0),
+    CGColor(srgbRed: 0.75, green: 0.86, blue: 0.99, alpha: 0.55),
+    CGColor(srgbRed: 0.75, green: 0.86, blue: 0.99, alpha: 0),
   ] as CFArray, locations: [0, 1])!
-  ctx.drawRadialGradient(glow, startCenter: CGPoint(x: s * 0.28, y: s * 0.78), startRadius: 0,
-                         endCenter: CGPoint(x: s * 0.28, y: s * 0.78), endRadius: s * 0.62, options: [])
+  ctx.drawRadialGradient(glow, startCenter: CGPoint(x: s * 0.5, y: s * 0.46), startRadius: 0,
+                         endCenter: CGPoint(x: s * 0.5, y: s * 0.46), endRadius: s * 0.5, options: [])
 
-  // design-grid rect (top-left origin) → CG rect (bottom-left origin), shrunk toward centre by `content`
-  func rect(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
-    let cx = 512 + (x - 512) * content, cy = 512 + (y - 512) * content
-    return CGRect(x: cx * k, y: s - (cy + h * content) * k, width: w * content * k, height: h * content * k)
-  }
-
-  // 오둥이: scale 1.22, centred on its body, head top 128 from the top, feet run off the bottom edge
-  let hs: CGFloat = 1.22
-  let heroCenter = (heroBox.x0 + heroBox.x1) / 2
-  let hx = 512 - heroCenter * hs - 34
-  let hy = 128 - heroBox.y0 * hs
-  ctx.saveGState()
-  ctx.setShadow(offset: CGSize(width: 0, height: -14 * k * content), blur: 34 * k * content,
-                color: CGColor(srgbRed: 0.04, green: 0.16, blue: 0.42, alpha: 0.35))
-  ctx.draw(hero, in: rect(hx, hy, 1024 * hs, 1024 * hs))
-  ctx.restoreGState()
-
-  // clock stamp: lower right, tilted like a stamp
-  let d: CGFloat = 380 // drawn art size (the clock disc is ~78% of it)
-  let cx: CGFloat = 792, cy: CGFloat = 790
-  ctx.saveGState()
-  let r = rect(cx - d / 2, cy - d / 2, d, d)
-  ctx.translateBy(x: r.midX, y: r.midY)
-  ctx.rotate(by: 0.16)
-  ctx.setShadow(offset: CGSize(width: 0, height: -8 * k * content), blur: 22 * k * content,
-                color: CGColor(srgbRed: 0.04, green: 0.16, blue: 0.42, alpha: 0.35))
-  ctx.draw(clock, in: CGRect(x: -r.width / 2, y: -r.height / 2, width: r.width, height: r.height))
-  ctx.restoreGState()
-
+  // whole character, centred on its own box
+  let k = (s * fill) / CGFloat(box.y1 - box.y0)
+  let cx = CGFloat(box.x0 + box.x1) / 2, cy = CGFloat(box.y0 + box.y1) / 2
+  let x = s / 2 - cx * k
+  let yTop = s / 2 - cy * k // top-left coords
+  ctx.draw(hero, in: CGRect(x: x, y: s - (yTop + 1024 * k), width: 1024 * k, height: 1024 * k))
   save(ctx.makeImage()!, name)
 }
 
-make(1024, "icon-1024.png", content: 1)
-make(180, "apple-touch-icon.png", content: 1)
-make(192, "icon-192.png", content: 1)
-make(512, "icon-512.png", content: 1)
-make(512, "icon-maskable-512.png", content: 0.8)
+make(1024, "icon-1024.png", fill: 0.8)
+make(180, "apple-touch-icon.png", fill: 0.8)
+make(192, "icon-192.png", fill: 0.8)
+make(512, "icon-512.png", fill: 0.8)
+make(512, "icon-maskable-512.png", fill: 0.66)
 print("ok")
