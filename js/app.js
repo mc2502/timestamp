@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=57';
-import { readExifDate } from './exif.js?v=57';
-import { drawStamp, characterBox, SEAL_RING, STYLES, COLORS, styleUsesColor } from './stamp.js?v=57';
-import * as db from './db.js?v=57';
+} from './format.js?v=58';
+import { readExifDate } from './exif.js?v=58';
+import { drawStamp, characterBox, SEAL_RING, STYLES, COLORS, styleUsesColor } from './stamp.js?v=58';
+import * as db from './db.js?v=58';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '57';
+const APP_VERSION = '58';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -726,6 +726,12 @@ function renderTodayCard(has, todayKey) {
   card.classList.toggle('is-done', done);
 }
 
+// 날짜 머리글: 오늘 · 어제는 그 말이 제목이고 날짜는 옆에 작게, 그 밖의 날은 날짜만
+function dayHeading(d) {
+  const rel = relDay(d);
+  return rel === '오늘' || rel === '어제' ? `${rel}<small>${monthDay(d)}</small>` : monthDay(d);
+}
+
 function tileHtml(r, animate) {
   const t = new Date(r.takenAt);
   const label = `${monthDay(t)} ${mealLabel(r.meal) || ''} ${fmtClock(t)} 사진 보기`.replace(/\s+/g, ' ');
@@ -763,12 +769,10 @@ function renderAlbum() {
   $('#album-grid').innerHTML = keys.map((key) => {
     const items = (byDay.get(key) || []).sort((a, b) => b.takenAt - a.takenAt);
     const d = fromDayKey(key);
-    const rel = relDay(d);
-    const badge = rel === '오늘' || rel === '어제' ? `<em>${rel}</em>` : '';
     const count = items.length ? `<b>${items.length}</b>장` : '아직 없어요';
     const tiles = items.length ? items.map((r) => tileHtml(r, animate)).join('')
       : `<button class="tile tile-add" type="button" data-add aria-label="오늘 사진 찍기">${CAMERA_SVG}</button>`;
-    return `<section aria-label="${monthDay(d)}"><div class="grid-day${key === todayKey ? ' is-today' : ''}"><h2>${monthDay(d)}${badge}</h2><span>${count}</span></div>`
+    return `<section aria-label="${monthDay(d)}"><div class="grid-day${key === todayKey ? ' is-today' : ''}"><h2>${dayHeading(d)}</h2><span>${count}</span></div>`
       + `<div class="grid">${tiles}</div></section>`;
   }).join('');
 
@@ -818,8 +822,7 @@ function renderCalendar() {
 function renderDay() {
   const d = fromDayKey(state.selectedDay);
   const list = recordsOn(state.selectedDay);
-  const rel = relDay(d);
-  $('#day-title').innerHTML = `${monthDay(d)}${rel === '오늘' || rel === '어제' ? `<em>${rel}</em>` : ''}`;
+  $('#day-title').innerHTML = dayHeading(d);
   $('#day-count').innerHTML = list.length ? `<b>${list.length}</b>장` : '';
   $('#day-empty').hidden = list.length > 0;
   $('#day-grid').innerHTML = list.map((r) => tileHtml(r, false)).join('');
