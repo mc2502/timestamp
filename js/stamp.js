@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=29';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=30';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -214,7 +214,7 @@ const DRAW = {
 // 도장이 사진 왼쪽 아래 모서리에 걸쳐 찍힌다: 원의 일부는 사진 밖으로 잘려 나가고,
 // 글씨는 보이는 쪽(오른쪽 위)으로 옮겨 다 읽히게 한다.
 //   r: 반지름, bleed: 사진 밖으로 나간 길이, shift: 글씨를 보이는 쪽으로 옮기는 길이 (모두 u)
-export const SEAL_EDGE = { r: 210, bleed: 100, shift: 22 };
+export const SEAL_EDGE = { r: 175, bleed: 80, shift: 15 };
 function sealGeom(side, u, edge = SEAL_EDGE) {
   const R = edge.r * u;
   const cx = (edge.r - edge.bleed) * u; // 원 중심: 왼쪽 · 아래 가장자리에서 r - bleed
@@ -234,7 +234,7 @@ function drawCharacter(ctx, side, u, { date, meal, chars }, c, who, edge) {
   const scheme = SEAL[Object.keys(COLORS).find((k) => COLORS[k] === c) || 'white'];
   // 도장은 왼쪽 아래 모서리에 걸쳐, 캐릭터는 보이는 도장 바로 오른쪽에 발을 맞춰 선다 — 가운데(음식)는 비워 둔다
   const { R, cx, cy, sh } = sealGeom(side, u, edge);
-  const size = 250 * u; // 캐릭터 (그림 둘레에 투명 여백이 있어 살짝 겹쳐도 붙어 보인다)
+  const size = 230 * u; // 캐릭터 (그림 둘레에 투명 여백이 있어 살짝 겹쳐도 붙어 보인다)
   const left = cx + R * 0.8;
   const top = side - 18 * u - size * 0.97;
 
@@ -267,6 +267,8 @@ function drawCharacter(ctx, side, u, { date, meal, chars }, c, who, edge) {
 
   // 도장 안: 날짜 / 오전·오후 / 큰 시각 / 끼니 꼬리표 — 보이는 쪽(오른쪽 위)으로 옮겨, 안쪽 고리 안에
   ctx.translate(sh, -sh);
+  const k = R / (210 * u); // 글씨는 반지름 210 기준으로 짰다 — 도장 크기에 맞춰 함께 줄인다
+  ctx.scale(k, k);
   const [ampm, hm] = fmtClock(date).split(' ');
   ctx.textBaseline = 'alphabetic';
   const dp = 28 * u;

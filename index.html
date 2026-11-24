@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=29">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=29">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=29">
+<link rel="manifest" href="manifest.webmanifest?v=30">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=30">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=30">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=29">
+<link rel="stylesheet" href="styles.css?v=30">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=29"></script>
+<script type="module" src="js/app.js?v=30"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -191,7 +191,7 @@
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=29" alt="" aria-hidden="true" width="40" height="40">
+          <img class="about-icon" src="assets/icons/icon-192.png?v=30" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
@@ -222,17 +222,10 @@
     </div>
 
     <section class="ed-panel" aria-label="스탬프 꾸미기">
-      <div class="st-pill"><div class="st-chips" id="style-strip" role="radiogroup" aria-label="스탬프"></div></div>
-
-      <div class="ed-meal" id="meal-seg" role="group" aria-label="식사">
-        <button type="button" data-meal="breakfast" aria-pressed="false">아침</button>
-        <button type="button" data-meal="lunch" aria-pressed="false">점심</button>
-        <button type="button" data-meal="dinner" aria-pressed="false">저녁</button>
-        <button type="button" data-meal="snack" aria-pressed="false">간식</button>
-        <button type="button" data-meal="none" aria-pressed="false">없음</button>
-      </div>
+      <div class="st-tabs" id="style-strip" role="radiogroup" aria-label="스탬프"></div>
 
       <div class="ed-row">
+        <label class="ed-pick" id="ed-meal-pick"><span id="ed-meal-text"></span><i class="chev-d" aria-hidden="true"></i><select id="ed-meal" aria-label="식사"><option value="breakfast">아침</option><option value="lunch">점심</option><option value="dinner">저녁</option><option value="snack">간식</option><option value="none">끼니 없음</option></select></label>
         <span class="ed-time" id="ed-time-pill"><svg class="ed-time-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></svg><span id="ed-time-text"></span><i class="chev-d" aria-hidden="true"></i><input type="datetime-local" id="ed-time" aria-label="촬영 시각"></span>
         <div class="swatches" id="swatches" role="radiogroup" aria-label="글자색">
           <button type="button" role="radio" data-color="white" aria-label="흰색" aria-checked="true"><i></i></button>
