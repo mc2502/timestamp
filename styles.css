@@ -157,9 +157,9 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
   padding: 24px var(--gr) 10px var(--gl);
 }
 #album-grid > section:first-child .grid-day { padding-top: 8px; }
-.grid-day h2, .day-head h3 { display: flex; align-items: baseline; gap: 7px; font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: -.035em; }
+.grid-day h2, .day-head h3 { display: flex; align-items: baseline; gap: 7px; font-size: 16px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; } /* PT Note 기록 제목(.row-t)과 같은 글꼴 */
 .grid-day.is-today h2 { font-size: 20px; line-height: 28px; font-weight: 800; letter-spacing: -.03em; }
-.grid-day h2 small, .day-head h3 small { font-size: 13px; font-weight: 500; letter-spacing: -.02em; color: var(--ink3); } /* 오늘 · 어제 옆 날짜 */
+.grid-day h2 small, .day-head h3 small { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--ink2); } /* 오늘 · 어제 옆 날짜 — PT Note ‘54회차’와 같은 글꼴 */
 .grid-day > span, .day-head > span { font-size: 12px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
 .grid-day > span b, .day-head > span b { font-size: 14px; font-weight: 650; color: var(--ink2); margin-right: 1px; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 12px; }
@@ -568,7 +568,7 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .page-t { font-size: 30px; line-height: 38px; font-weight: 800; letter-spacing: -.035em; color: var(--ink); }
 .page-meta { font-size: 15px; line-height: 22px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
 .view > .topbar { min-height: 56px; padding-top: calc(var(--st) + 6px); }
-.grid-day.is-today h2 { font-size: 17px; line-height: 24px; font-weight: 500; letter-spacing: -.035em; } /* 날짜 머리글은 굵게 하지 않는다 */
+.grid-day.is-today h2 { font-size: 16px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; }
 
 /* ── PT Note 카드: 흰 유리 판, 머리에 제목 · 요약 · 이전/다음 ── */
 .pt-card {
