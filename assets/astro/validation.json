@@ -1,0 +1,82 @@
+[
+  {
+    "bytes" : 589109,
+    "cornerAlpha" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "file" : "odung-hero.png",
+    "hasAlpha" : true,
+    "height" : 1024,
+    "outerEdgeMaximumAlpha" : 0.0039215686274509803,
+    "passed" : true,
+    "resamplingAlphaTolerance" : 0.0039225686274509805,
+    "width" : 1024
+  },
+  {
+    "bytes" : 536507,
+    "cornerAlpha" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "file" : "perpeng-hero.png",
+    "hasAlpha" : true,
+    "height" : 1024,
+    "outerEdgeMaximumAlpha" : 0.0039215686274509803,
+    "passed" : true,
+    "resamplingAlphaTolerance" : 0.0039225686274509805,
+    "width" : 1024
+  },
+  {
+    "bytes" : 654782,
+    "cornerAlpha" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "file" : "stamp-clock.png",
+    "hasAlpha" : true,
+    "height" : 1024,
+    "outerEdgeMaximumAlpha" : 0.0039215686274509803,
+    "passed" : true,
+    "resamplingAlphaTolerance" : 0.0039225686274509805,
+    "width" : 1024
+  },
+  {
+    "bytes" : 513987,
+    "cornerAlpha" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "file" : "odung-empty.png",
+    "hasAlpha" : true,
+    "height" : 1024,
+    "outerEdgeMaximumAlpha" : 0,
+    "passed" : true,
+    "resamplingAlphaTolerance" : 0.0039225686274509805,
+    "width" : 1024
+  },
+  {
+    "bytes" : 571176,
+    "cornerAlpha" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "file" : "perpeng-empty.png",
+    "hasAlpha" : true,
+    "height" : 1024,
+    "outerEdgeMaximumAlpha" : 0,
+    "passed" : true,
+    "resamplingAlphaTolerance" : 0.0039225686274509805,
+    "width" : 1024
+  }
+]

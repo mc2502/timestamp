@@ -1,0 +1,58 @@
+[
+  {
+    "alpha" : true,
+    "corners" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "edgeAlpha" : 0,
+    "file" : "odung-hero.png",
+    "height" : 1024,
+    "passed" : true,
+    "width" : 1024
+  },
+  {
+    "alpha" : true,
+    "corners" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "edgeAlpha" : 0.0039215686274509803,
+    "file" : "perpeng-hero.png",
+    "height" : 1024,
+    "passed" : true,
+    "width" : 1024
+  },
+  {
+    "alpha" : true,
+    "corners" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "edgeAlpha" : 0,
+    "file" : "odung-empty.png",
+    "height" : 1024,
+    "passed" : true,
+    "width" : 1024
+  },
+  {
+    "alpha" : true,
+    "corners" : [
+      0,
+      0,
+      0,
+      0
+    ],
+    "edgeAlpha" : 0.0039215686274509803,
+    "file" : "perpeng-empty.png",
+    "height" : 1024,
+    "passed" : true,
+    "width" : 1024
+  }
+]

@@ -554,3 +554,36 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
     background: var(--bg); box-shadow: 0 0 0 1px var(--hc-border); -webkit-backdrop-filter: none; backdrop-filter: none;
   }
 }
+
+/* ── PT Note 머리: 큰 제목(왼쪽) + 회색 요약(오른쪽). 끼니 줄은 그 아래에서 위에 붙는다 ── */
+.page-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: calc(var(--st) + 28px) var(--gr) 8px var(--gl);
+}
+.page-t { font-size: 30px; line-height: 38px; font-weight: 800; letter-spacing: -.035em; color: var(--ink); }
+.page-meta { font-size: 15px; line-height: 22px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
+.view > .topbar { min-height: 56px; padding-top: calc(var(--st) + 6px); }
+.grid-day.is-today h2 { font-size: 17px; line-height: 24px; font-weight: 800; letter-spacing: -.02em; }
+
+/* ── PT Note 카드: 흰 유리 판, 머리에 제목 · 요약 · 이전/다음 ── */
+.pt-card {
+  margin: 10px 12px 0; padding: 22px 16px 14px; border-radius: 28px;
+  background: rgba(255, 255, 255, .9); box-shadow: 0 0 0 1px rgba(255, 255, 255, .7), 0 12px 32px -16px rgba(29, 54, 86, .18);
+}
+.pt-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 0 4px 0 8px; }
+.pt-card-title { min-width: 0; }
+.pt-card-title h2 { font-size: 20px; line-height: 28px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); }
+.pt-card-title p { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 14px; line-height: 20px; color: var(--ink3); white-space: nowrap; }
+.pt-card-title p b { font-weight: 700; color: var(--ink2); }
+.pt-badge { font-style: normal; padding: 3px 8px; border-radius: 8px; background: var(--blue-soft); color: var(--blue-ink); font-size: 13px; line-height: 18px; font-weight: 700; }
+.pt-nav { flex: none; display: flex; gap: 8px; }
+.pt-nav button {
+  width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%;
+  background: #eef1f5; transition: transform .2s, background-color .2s;
+}
+.pt-nav button:active:not(:disabled) { transform: scale(.94); }
+.pt-nav button:disabled { background: #f5f7fa; cursor: default; }
+.pt-nav i { width: 10px; height: 10px; border-left: 2.2px solid var(--ink); border-bottom: 2.2px solid var(--ink); transform: rotate(45deg); margin-left: 4px; }
+.pt-nav button:last-child i { transform: rotate(-135deg); margin-left: -4px; }
+.pt-nav button:disabled i { border-color: #c3cad4; }
+.cal-card .cal { padding: 18px 0 0; }

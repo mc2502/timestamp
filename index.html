@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=15">
+<link rel="stylesheet" href="styles.css?v=16">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,21 +38,26 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=15"></script>
+<script type="module" src="js/app.js?v=16"></script>
 </head>
 <body>
 <div id="app" class="app">
   <main id="main">
     <!-- 앨범: 사진이 주인공 -->
-    <section class="view" id="view-album" aria-label="앨범">
-      <!-- 제목 없이 끼니 칩과 설정만. 평소엔 투명, 사진이 밑으로 지나가면 유리 + 가는 선 -->
-      <header class="topbar topbar-tools">
+    <section class="view" id="view-album" aria-labelledby="album-t">
+      <!-- PT Note 머리: 큰 제목 + 오른쪽 회색 요약. 스크롤하면 위로 올라간다 -->
+      <header class="page-head">
+        <h1 class="page-t" id="album-t">앨범</h1>
+        <span class="page-meta" id="album-meta"></span>
+      </header>
+      <!-- 끼니 세그먼트 + 사진 고르기 · 설정: 위에 붙어 따라오고, 사진이 밑으로 지나가면 유리 + 가는 선 -->
+      <div class="topbar topbar-tools">
         <div class="seg-filter" id="filters" role="group" aria-label="끼니로 거르기"></div>
         <div class="btn-pill">
           <button type="button" id="pick-photo" data-pick aria-label="앨범에서 사진 고르기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 8h.01"/><path d="M12.5 21h-6.5a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v6.5"/><path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l3.5 3.5"/><path d="M16 19h6"/><path d="M19 16v6"/></svg></button>
           <button type="button" id="open-settings" aria-label="설정" aria-haspopup="dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg></button>
         </div>
-      </header>
+      </div>
 
       <!-- 사진이 하나도 없을 때 -->
       <div class="intro" id="album-intro" hidden>
@@ -66,14 +71,26 @@
     </section>
 
     <!-- 달력 -->
-    <section class="view" id="view-calendar" aria-labelledby="mon-t" hidden>
-      <header class="topbar">
-        <p class="topbar-text"><b id="mon-t"></b><span id="mon-sum"></span></p>
-        <div class="mon-n btn-pill"><button type="button" id="mon-prev" aria-label="이전 달"><i></i></button><button type="button" id="mon-next" aria-label="다음 달"><i></i></button></div>
+    <section class="view" id="view-calendar" aria-labelledby="cal-t" hidden>
+      <header class="page-head">
+        <h1 class="page-t" id="cal-t">달력</h1>
+        <span class="page-meta" id="cal-meta"></span>
       </header>
 
-      <!-- 사진을 남긴 날에는 마스코트 얼굴 스탬프가 찍힌다 -->
-      <div class="cal" id="cal"></div>
+      <!-- PT Note 카드: 머리에 달과 이전 · 다음, 사진을 남긴 날에는 마스코트 얼굴 스탬프 -->
+      <section class="pt-card cal-card" aria-labelledby="mon-t">
+        <div class="pt-card-head">
+          <div class="pt-card-title">
+            <h2 id="mon-t"></h2>
+            <p id="mon-sum"></p>
+          </div>
+          <div class="pt-nav">
+            <button type="button" id="mon-prev" aria-label="이전 달"><i></i></button>
+            <button type="button" id="mon-next" aria-label="다음 달"><i></i></button>
+          </div>
+        </div>
+        <div class="cal" id="cal"></div>
+      </section>
 
       <div class="day-head"><h3 id="day-title"></h3><span id="day-count"></span></div>
       <div class="grid" id="day-grid"></div>

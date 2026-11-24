@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=15';
-import { readExifDate } from './exif.js?v=15';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=15';
-import * as db from './db.js?v=15';
+} from './format.js?v=16';
+import { readExifDate } from './exif.js?v=16';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=16';
+import * as db from './db.js?v=16';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -339,7 +339,11 @@ function hidePillSoon() {
 function bindScrollState() {
   const root = document.documentElement;
   let queued = false;
-  const update = () => { queued = false; root.classList.toggle('is-scrolled', window.scrollY > 2); };
+  const update = () => {
+    queued = false;
+    const head = $('.view:not([hidden]) .page-head');
+    root.classList.toggle('is-scrolled', window.scrollY > (head ? head.offsetHeight - 2 : 2));
+  };
   window.addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(update); } }, { passive: true });
   update();
 }
@@ -709,6 +713,7 @@ function renderAlbum() {
   const has = state.records.length > 0;
   $('#album-intro').hidden = has;
   $('#filters').hidden = !has;
+  $('#album-meta').textContent = has ? `총 ${state.records.length}장` : '';
 
   const counts = { all: state.records.length };
   for (const r of state.records) if (r.meal) counts[r.meal] = (counts[r.meal] || 0) + 1;
@@ -754,13 +759,16 @@ function renderCalendar() {
   const mo = m.getMonth();
   const now = new Date();
   const prefix = `${y}-${String(mo + 1).padStart(2, '0')}`;
-  $('#mon-t').textContent = y === now.getFullYear() ? `${mo + 1}월` : `${y}년 ${mo + 1}월`;
+  $('#mon-t').textContent = `${y}년 ${mo + 1}월`;
   $('#mon-next').disabled = y === now.getFullYear() && mo === now.getMonth();
 
   const counts = new Map();
   for (const r of state.records) counts.set(r.day, (counts.get(r.day) || 0) + 1);
   const monthDays = [...counts.keys()].filter((k) => k.startsWith(prefix)).length;
-  $('#mon-sum').innerHTML = monthDays ? `<b>${monthDays}</b>일 남겼어요` : '아직 기록이 없어요';
+  const thisMonth = y === now.getFullYear() && mo === now.getMonth();
+  const badge = thisMonth ? '<em class="pt-badge">이번 달</em>' : '';
+  $('#mon-sum').innerHTML = badge + (monthDays ? `<b>${monthDays}일</b> 사진을 남겼어요` : '아직 남긴 사진이 없어요');
+  $('#cal-meta').textContent = counts.size ? `총 ${counts.size}일` : '';
 
   const todayKey = dayKey(now);
   const first = new Date(y, mo, 1).getDay();
