@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=33';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=34';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -214,7 +214,7 @@ const DRAW = {
 // 도장이 사진 왼쪽 아래 모서리에 걸쳐 찍힌다: 원의 일부는 사진 밖으로 잘려 나가고,
 // 글씨는 보이는 쪽(오른쪽 위)으로 옮겨 다 읽히게 한다.
 //   r: 반지름, bleed: 사진 밖으로 나간 길이, shift: 글씨를 보이는 쪽으로 옮기는 길이 (모두 u)
-export const SEAL_EDGE = { r: 140, bleed: 63, shift: 12 };
+export const SEAL_EDGE = { r: 140, bleed: 15, shift: 0 }; // 글씨는 줄이지 않고 원래 크기 — 고리가 글씨를 바짝 감싼다
 // 캐릭터 자리 (사진 좌표). 기본은 도장 오른쪽에 살짝 겹쳐 붙고, info.charPos(0–1, 가운데 기준)가 있으면 그 자리.
 // 편집 화면에서 손가락으로 캐릭터를 집었는지 알아볼 때도 쓴다.
 const CHAR_SIZE = 215;
@@ -272,8 +272,6 @@ function drawCharacter(ctx, side, u, { date, meal, chars, charPos }, c, who, edg
 
   // 도장 안: 날짜 / 오전·오후 / 큰 시각 / 끼니 — 보이는 쪽(오른쪽 위)으로 옮겨, 고리 안에
   ctx.translate(sh, -sh);
-  const k = R / (210 * u); // 글씨는 반지름 210 기준으로 짰다 — 도장 크기에 맞춰 함께 줄인다
-  ctx.scale(k, k);
   const [ampm, hm] = fmtClock(date).split(' ');
   ctx.textBaseline = 'alphabetic';
   const dp = 28 * u;
