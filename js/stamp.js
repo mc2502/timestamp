@@ -9,7 +9,7 @@
 //  meal    식단     왼쪽 위 끼니 라벨 + 시각 + 날짜
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=39';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=40';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -214,7 +214,7 @@ const DRAW = {
 // 도장이 사진 왼쪽 아래 모서리에 걸쳐 찍힌다: 원의 일부는 사진 밖으로 잘려 나가고,
 // 글씨는 보이는 쪽(오른쪽 위)으로 옮겨 다 읽히게 한다.
 //   r: 반지름, bleed: 사진 밖으로 나간 길이, shift: 글씨를 보이는 쪽으로 옮기는 길이 (모두 u)
-export const SEAL_EDGE = { r: 140, bleed: 15, shift: 0 }; // 글씨는 줄이지 않고 원래 크기 — 고리가 글씨를 바짝 감싼다
+export const SEAL_EDGE = { r: 132, bleed: 25, shift: 2 }; // 글씨 크기는 그대로, 원은 글씨를 바짝 감싸고 모서리 밖으로 살짝 걸친다
 // 도장 고리 그림: 앱이 불러와 넣어 준다(없으면 가는 선 고리). 검정 한 색 그림을 글자색으로 칠해 쓰고, 칠한 것은 기억해 둔다
 export const SEAL_RING = { img: null }; // 앱은 고무 도장 고리(assets/art/seal-ring-b.png)를 넣는다
 const ringCache = new Map();
