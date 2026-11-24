@@ -638,5 +638,6 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 #day-grid { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 0 12px; scroll-padding-inline: 12px; }
 #day-grid::-webkit-scrollbar { display: none; }
 #day-grid .tile { flex: none; width: calc((min(100vw, 430px) - 36px) / 3); }
-#view-calendar .empty { flex-direction: row; justify-content: center; gap: 10px; padding: 6px 0; }
-#view-calendar .empty img { width: 56px; height: 56px; }
+/* 사진 없는 날: 달력이 작아진 만큼 빈 접시 캐릭터를 크게, 가운데에 */
+#view-calendar .empty { flex-direction: column; justify-content: center; gap: 6px; padding: 4px 0 0; }
+#view-calendar .empty img { width: 132px; height: 132px; }
