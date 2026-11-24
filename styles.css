@@ -617,3 +617,26 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 }
 .today-go svg { width: 22px; height: 22px; }
 .today-card.is-done .today-go { background: var(--blue-soft); color: var(--blue-ink); box-shadow: none; }
+
+/* ── 달력 탭: 스크롤 없이 한 화면에 ──
+   카드 머리는 한 줄(달 · 기록 수 · 이전/다음), 날짜 칸은 낮게(숫자 + 작은 얼굴 스탬프),
+   고른 날 사진은 세로로 쌓지 않고 옆으로 넘기는 한 줄 */
+#view-calendar .page-head { padding-top: calc(var(--st) + 20px); padding-bottom: 2px; }
+.cal-card { padding: 12px 12px 6px; }
+.cal-card .pt-card-head { align-items: center; padding: 0 0 0 6px; }
+.cal-card .pt-card-title { display: flex; align-items: baseline; gap: 8px; }
+.cal-card .pt-card-title h2 { font-size: 18px; line-height: 26px; }
+.cal-card .pt-card-title p { margin-top: 0; font-size: 13px; }
+.cal-card .pt-nav { gap: 4px; }
+.cal-card .pt-nav button { width: 40px; height: 40px; }
+.cal-card .cal { padding: 6px 0 0; row-gap: 0; }
+.cal-card .cal .hd { padding: 0 0 2px; font-size: 11px; }
+.cal-card .day { height: 44px; gap: 1px; padding-top: 3px; border-radius: 12px; }
+.cal-card .num { height: 20px; font-size: 13px; border-radius: 10px; }
+.cal-card .day-stamp { width: 19px; height: 19px; }
+#view-calendar .day-head { padding: 14px var(--gr) 8px var(--gl); }
+#day-grid { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 0 12px; scroll-padding-inline: 12px; }
+#day-grid::-webkit-scrollbar { display: none; }
+#day-grid .tile { flex: none; width: calc((min(100vw, 430px) - 36px) / 3); }
+#view-calendar .empty { flex-direction: row; justify-content: center; gap: 10px; padding: 6px 0; }
+#view-calendar .empty img { width: 56px; height: 56px; }

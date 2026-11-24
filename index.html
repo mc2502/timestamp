@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=31">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=31">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=31">
+<link rel="manifest" href="manifest.webmanifest?v=32">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=32">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=32">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=31">
+<link rel="stylesheet" href="styles.css?v=32">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=31"></script>
+<script type="module" src="js/app.js?v=32"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -121,7 +121,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite" hidden>
   <img class="toast-face" data-art="face" alt="" aria-hidden="true" width="28" height="28">
   <span class="toast-text" id="toast-text"></span>
-  <button class="toast-btn" type="button" id="toast-send" hidden>저장 · 보내기</button>
+  <button class="toast-btn" type="button" id="toast-send" hidden>앨범에 저장</button>
 </div>
 
 <!-- 당겨서 새로고침: 다음에 올 마스코트 얼굴이 굴러 들어온다 (PT Note) -->
@@ -167,7 +167,7 @@
           <span class="switch"><input type="checkbox" role="switch" data-setting="instantSave" aria-describedby="d-instant"><i aria-hidden="true"></i></span>
         </label>
         <label class="set-row">
-          <span class="set-m"><b>원본 사진도 저장</b><span id="d-original">‘저장 · 보내기’를 마치면 스탬프 없는 원본도 저장할 수 있게 버튼을 띄워요. 카카오톡에는 스탬프 사진만 가요.</span></span>
+          <span class="set-m"><b>원본 사진도 저장</b><span id="d-original">‘앨범에 저장하기’를 마치면 스탬프 없는 원본도 저장할 수 있게 버튼을 띄워요. 카카오톡에는 스탬프 사진만 가요.</span></span>
           <span class="switch"><input type="checkbox" role="switch" data-setting="saveOriginal" aria-describedby="d-original"><i aria-hidden="true"></i></span>
         </label>
         <label class="set-row">
@@ -191,7 +191,7 @@
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=31" alt="" aria-hidden="true" width="40" height="40">
+          <img class="about-icon" src="assets/icons/icon-192.png?v=32" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
@@ -236,7 +236,7 @@
       </div>
 
       <div class="ed-actions">
-        <button class="btn pri" type="button" id="ed-share" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1"/><path d="M12 14v-11"/><path d="M9 6l3 -3l3 3"/></svg>저장 · 보내기</button>
+        <button class="btn pri" type="button" id="ed-share" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장하기</button>
       </div>
     </section>
   </div>
@@ -258,7 +258,7 @@
       </div>
     </div>
     <div class="sheet-f">
-      <button class="btn pri" type="button" id="vw-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1"/><path d="M12 14v-11"/><path d="M9 6l3 -3l3 3"/></svg>저장 · 보내기</button>
+      <button class="btn pri" type="button" id="vw-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장하기</button>
     </div>
   </div>
 </div>

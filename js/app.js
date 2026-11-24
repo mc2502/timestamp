@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=31';
-import { readExifDate } from './exif.js?v=31';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=31';
-import * as db from './db.js?v=31';
+} from './format.js?v=32';
+import { readExifDate } from './exif.js?v=32';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=32';
+import * as db from './db.js?v=32';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '31';
+const APP_VERSION = '32';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -605,7 +605,7 @@ let toastRecordId = null;
 let toastMark = true;
 
 // file이 있으면 오른쪽에 공유 버튼(label). mark: 공유를 마치면 그 사진을 ‘공유했어요’로 표시
-function showToast(text, { file = null, recordId = null, label = '저장 · 보내기', mark = true, pop = false, stay = false } = {}) {
+function showToast(text, { file = null, recordId = null, label = '앨범에 저장', mark = true, pop = false, stay = false } = {}) {
   const el = $('#toast');
   clearTimeout(toastTimer);
   $('#toast-text').textContent = text;
@@ -786,9 +786,7 @@ function renderCalendar() {
   const counts = new Map();
   for (const r of state.records) counts.set(r.day, (counts.get(r.day) || 0) + 1);
   const monthDays = [...counts.keys()].filter((k) => k.startsWith(prefix)).length;
-  const thisMonth = y === now.getFullYear() && mo === now.getMonth();
-  const badge = thisMonth ? '<em class="pt-badge">이번 달</em>' : '';
-  $('#mon-sum').innerHTML = badge + (monthDays ? `<b>${monthDays}일</b> 사진을 남겼어요` : '아직 남긴 사진이 없어요');
+  $('#mon-sum').innerHTML = monthDays ? `<b>${monthDays}일</b> 기록` : '기록 없음';
   $('#cal-meta').textContent = counts.size ? `총 ${counts.size}일` : '';
 
   const todayKey = dayKey(now);
@@ -1278,7 +1276,7 @@ async function readyFile() {
   return ed.file;
 }
 
-// 저장 · 보내기: 아이폰 공유 화면 하나에서 ‘이미지 저장’이나 카카오톡을 고른다
+// 앨범에 저장하기: 아이폰 공유 화면에서 ‘이미지 저장’(또는 카카오톡)을 고른다
 async function editorShare() {
   if (!ed?.ready) return;
   const mine = ed;
