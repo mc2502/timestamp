@@ -506,17 +506,16 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .tab .nav-glyph { width: 25px; height: 25px; }
 
 
-/* ── 버튼: 흰 유리 조약돌 (밝은 윗선 + 옅은 테두리 + 아래로 번지는 그림자) ──
+/* ── 버튼: 리퀴드 글라스 (뒤가 은은히 비치는 유리 + 밝은 테두리, 그림자는 아주 옅게) ──
    둥근 버튼 하나, 버튼 두 개를 묶은 캡슐, 끼니 세그먼트, 탭바가 모두 같은 재질 */
 :root {
-  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, .95) 0%, rgba(255, 255, 255, .74) 100%);
+  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, .62) 0%, rgba(255, 255, 255, .42) 100%);
   --glass-shadow:
-    inset 0 1px 0 #ffffff,
-    inset 0 -1px 0 rgba(255, 255, 255, .45),
-    0 0 0 1px rgba(109, 134, 164, .15),
-    0 10px 24px -10px rgba(29, 54, 86, .24),
-    0 2px 6px rgba(29, 54, 86, .06);
-  --glass-blur: blur(18px) saturate(170%);
+    inset 0 1px 0 rgba(255, 255, 255, .9),
+    inset 0 0 0 1px rgba(255, 255, 255, .55),
+    0 0 0 .5px rgba(109, 134, 164, .14),
+    0 2px 8px -4px rgba(29, 54, 86, .08);
+  --glass-blur: blur(22px) saturate(180%);
   --glass-press: rgba(25, 31, 40, .06);
   --glass-lens: rgba(25, 31, 40, .07);
 }
@@ -543,7 +542,7 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .seg-filter::before { background: var(--glass-lens); box-shadow: none; }
 .seg-filter button { color: var(--ink2); }
 .tabs-in::before { background: var(--glass-lens); }
-.tabs-in { box-shadow: var(--glass-shadow), 0 16px 32px -14px rgba(29, 54, 86, .22); }
+.tabs-in { box-shadow: var(--glass-shadow), 0 8px 20px -12px rgba(29, 54, 86, .12); }
 
 /* 흰 시트 위 닫기: 옅은 회색 동그라미 */
 .sheet-x { background: rgba(25, 31, 40, .05); color: var(--ink2); transition: transform .2s; }
@@ -599,3 +598,22 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .about-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; box-shadow: 0 0 0 1px rgba(109, 134, 164, .16); }
 /* 사진이 하나도 없을 때(끼니 세그먼트가 없을 때): 사진 고르기 · 설정 캡슐을 제목 줄 오른쪽으로 */
 .topbar-tools:has(#filters[hidden]) { margin-top: -55px; }
+
+/* ── 오늘 카드: 그날의 오둥이 · 퍼펭이 + 지금 끼니 한 줄. 누르면 카메라 ── */
+.today-card {
+  display: flex; align-items: center; gap: 10px; width: calc(100% - 24px); margin: 8px 12px 0; padding: 10px 14px 10px 8px;
+  border-radius: 24px; text-align: left; background: rgba(255, 255, 255, .86);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7), 0 0 0 .5px rgba(109, 134, 164, .12), 0 6px 18px -12px rgba(29, 54, 86, .14);
+  transition: transform .2s;
+}
+.today-card:active { transform: scale(.98); }
+.today-hero { flex: none; width: 92px; height: 92px; object-fit: contain; margin: -8px 0 -6px; transform-origin: 50% 90%; animation: hero-bob 3.2s ease-in-out infinite; }
+.today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.today-text b { font-size: 17px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
+.today-text span { font-size: 13px; line-height: 18px; color: var(--ink3); }
+.today-go {
+  flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--blue-ink); color: var(--on-ink); box-shadow: 0 4px 10px -4px rgba(27, 100, 218, .5);
+}
+.today-go svg { width: 22px; height: 22px; }
+.today-card.is-done .today-go { background: var(--blue-soft); color: var(--blue-ink); box-shadow: none; }

@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=25';
-import { readExifDate } from './exif.js?v=25';
-import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=25';
-import * as db from './db.js?v=25';
+} from './format.js?v=26';
+import { readExifDate } from './exif.js?v=26';
+import { drawStamp, STYLES, COLORS, styleUsesColor } from './stamp.js?v=26';
+import * as db from './db.js?v=26';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '25';
+const APP_VERSION = '26';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -246,6 +246,7 @@ function tick() {
     state.todayKey = key;
     renderAll();
   }
+  renderTodayCard(state.records.length > 0, state.todayKey); // 끼니가 바뀌면 오늘 카드 문구도
 }
 
 /* ── 셔터 소리 · 스탬프 효과 ── */
@@ -703,6 +704,23 @@ function renderAll() {
   renderDay();
 }
 
+// 오늘 카드: 지금 끼니를 아직 안 찍었으면 권하고, 찍었으면 칭찬한다. 사진이 있고 ‘전체’를 볼 때만
+function renderTodayCard(has, todayKey) {
+  const card = $('#today-card');
+  card.hidden = !has || state.filter !== 'all';
+  if (card.hidden) return;
+  const now = new Date();
+  const meal = mealFor(now);
+  const today = recordsOn(todayKey);
+  const done = today.some((r) => r.meal === meal);
+  const title = done ? `${mealLabel(meal)} 사진까지 남겼어요` : `${mealLabel(meal)} 사진을 찍어 볼까요?`;
+  const sub = today.length ? `오늘 ${today.length}장 남겼어요` : '찍는 순간의 날짜와 시각이 함께 남아요';
+  $('#today-t').textContent = title;
+  $('#today-s').textContent = sub;
+  card.classList.toggle('is-done', done);
+  card.setAttribute('aria-label', `${title}. ${sub}. 카메라 열기`);
+}
+
 function tileHtml(r, animate) {
   const t = new Date(r.takenAt);
   const label = `${monthDay(t)} ${mealLabel(r.meal) || ''} ${fmtClock(t)} 사진 보기`.replace(/\s+/g, ' ');
@@ -735,8 +753,7 @@ function renderAlbum() {
   }
   const todayKey = dayKey(new Date());
   const keys = [...byDay.keys()].sort().reverse();
-  // 오늘 아직 없으면 오늘 묶음에 ‘찍기’ 칸 하나
-  if (has && state.filter === 'all' && !byDay.has(todayKey)) keys.unshift(todayKey);
+  renderTodayCard(has, todayKey);
   const animate = settings.effects && !reducedMotion();
   $('#album-grid').innerHTML = keys.map((key) => {
     const items = (byDay.get(key) || []).sort((a, b) => b.takenAt - a.takenAt);
