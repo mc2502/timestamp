@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=64';
-import { readExifDate } from './exif.js?v=64';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=64';
-import * as db from './db.js?v=64';
+} from './format.js?v=65';
+import { readExifDate } from './exif.js?v=65';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=65';
+import * as db from './db.js?v=65';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '64';
+const APP_VERSION = '65';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1140,6 +1140,8 @@ const E = {
   timeText: $('#ed-time-text'),
   timePill: $('#ed-time-pill'),
   seg: $('#meal-seg'),
+  track: $('#meal-track'),
+  mealName: $('#meal-name'),
   share: $('#ed-share'),
 };
 
@@ -1252,11 +1254,27 @@ function fillFields() {
   E.time.value = toLocalInput(d);
   E.time.max = toLocalInput(new Date(Date.now() + 60000));
   E.timePill.classList.toggle('is-guess', Boolean(TIME_NOTES[ed.timeSource]));
-  for (const b of $$('button', E.seg)) {
-    const id = b.dataset.meal === 'none' ? null : b.dataset.meal;
-    b.setAttribute('aria-pressed', String(id === ed.meal));
-  }
+  paintMeal(MEAL_STOPS.indexOf(ed.meal ?? null));
   fillLook();
+}
+
+// 끼니 막대: 다섯 칸(아침 · 점심 · 저녁 · 간식 · 끼니 없음). 손잡이를 끌면 손가락을 따라가고, 놓으면 가까운 칸에 붙는다
+const MEAL_STOPS = ['breakfast', 'lunch', 'dinner', 'snack', null];
+const stopLabel = (m) => mealLabel(m) || '끼니 없음';
+function paintMeal(p) {
+  const i = clamp(Math.round(p), 0, MEAL_STOPS.length - 1);
+  E.track.style.setProperty('--p', String(p / (MEAL_STOPS.length - 1)));
+  $$('i', E.track).forEach((dot, k) => dot.classList.toggle('on', k <= p + 0.01));
+  E.mealName.textContent = stopLabel(MEAL_STOPS[i]);
+  E.track.setAttribute('aria-valuenow', String(i));
+  E.track.setAttribute('aria-valuetext', stopLabel(MEAL_STOPS[i]));
+}
+function pickMealStop(i) {
+  const meal = MEAL_STOPS[i];
+  if (!ed?.ready || meal === (ed.meal ?? null)) return;
+  ed.meal = meal;
+  ed.mealAuto = false;
+  changed(); // 혼합 스탬프 · 도장에는 끼니가 찍힌다
 }
 
 // 스탬프 효과: 글씨가 크게 내려앉았다가 제자리에 멈춘다
@@ -1500,13 +1518,45 @@ function bindEditor() {
     changed();
   });
 
-  E.seg.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-meal]');
-    if (!b || !ed?.ready) return;
-    ed.meal = b.dataset.meal === 'none' ? null : b.dataset.meal;
-    ed.mealAuto = false;
-    fillFields();
-    changed(); // 혼합 스탬프 · 도장에는 끼니가 찍힌다
+  // 끼니 막대: 끌기 · 누르기 · 화살표 키
+  let mealDrag = null;
+  const mealAt = (e) => {
+    const r = E.track.getBoundingClientRect();
+    return clamp((e.clientX - r.left - 22) / Math.max(1, r.width - 44), 0, 1) * (MEAL_STOPS.length - 1);
+  };
+  const mealMove = (e) => {
+    const p = mealAt(e);
+    paintMeal(p);
+    pickMealStop(Math.round(p));
+  };
+  E.track.addEventListener('pointerdown', (e) => {
+    if (!ed?.ready) return;
+    e.preventDefault();
+    e.stopPropagation();
+    try { E.track.setPointerCapture(e.pointerId); } catch { /* 잡지 못해도 움직임은 받는다 */ }
+    mealDrag = e.pointerId;
+    E.track.classList.add('is-dragging');
+    mealMove(e);
+  });
+  E.track.addEventListener('pointermove', (e) => { if (mealDrag === e.pointerId) mealMove(e); });
+  const mealEnd = (e) => {
+    if (mealDrag !== e.pointerId) return;
+    mealDrag = null;
+    E.track.classList.remove('is-dragging');
+    if (ed) paintMeal(MEAL_STOPS.indexOf(ed.meal ?? null)); // 가까운 칸에 붙는다
+  };
+  E.track.addEventListener('pointerup', mealEnd);
+  E.track.addEventListener('pointercancel', mealEnd);
+  E.track.addEventListener('keydown', (e) => {
+    if (!ed?.ready) return;
+    const now = MEAL_STOPS.indexOf(ed.meal ?? null);
+    const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
+    let next = step ? now + step : e.key === 'Home' ? 0 : e.key === 'End' ? MEAL_STOPS.length - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    next = clamp(next, 0, MEAL_STOPS.length - 1);
+    pickMealStop(next);
+    paintMeal(next);
   });
 
   E.time.addEventListener('change', () => {
