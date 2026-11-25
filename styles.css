@@ -242,19 +242,14 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 @keyframes add-ring { from { transform: scale(1); opacity: 1; } to { transform: scale(1.45); opacity: 0; } }
 /* 카메라를 길게 누르면 바로 위에 뜨는 ‘앨범에서 고르기’ (탭바와 같은 유리) */
 .add-pop { position: fixed; z-index: 25; left: 0; right: 0; bottom: calc(var(--nav-bottom) + var(--nav-height) + 10px); display: flex; justify-content: center; pointer-events: none; }
-/* 글씨 대신 그날의 캐릭터가 든 동그란 버튼 + 오른쪽 아래 작은 사진 표시 */
+/* 글씨 대신 앨범을 든 그날의 캐릭터(오둥이 · 퍼펭이)가 든 동그란 버튼 */
 .add-pop button {
   position: relative; pointer-events: auto; display: grid; place-items: center; width: 64px; height: 64px; padding: 0; border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, .78); background: rgba(255, 255, 255, .86); box-shadow: var(--shadow-nav);
   -webkit-backdrop-filter: var(--backdrop-nav); backdrop-filter: var(--backdrop-nav);
   transform-origin: 50% 100%; animation: add-pop-in .24s cubic-bezier(.34, 1.56, .64, 1); transition: background-color .12s, transform .12s;
 }
-.add-pop .add-album-art { width: 48px; height: 48px; object-fit: contain; pointer-events: none; }
-.add-album-badge {
-  position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
-  background: var(--blue-ink); color: #fff; box-shadow: 0 0 0 2px #fff; pointer-events: none;
-}
-.add-album-badge svg { width: 14px; height: 14px; }
+.add-pop .add-album-art { width: 54px; height: 54px; object-fit: contain; pointer-events: none; }
 .add-pop button.is-over, .add-pop button:active { background: #e3edfb; transform: scale(1.06); }
 @keyframes add-pop-in { from { transform: translateY(10px) scale(.86); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .add-pop button, .add.is-held, .add.is-held::after { animation: none; } }

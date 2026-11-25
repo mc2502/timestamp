@@ -1,6 +1,7 @@
 // 아스트로가 그린 달력 · 도장 그림(1024px)을 앱에 쓸 크기로 만든다.
 // Build: swiftc -O -o /tmp/mkcal scripts/make-calendar-art.swift && /tmp/mkcal assets/astro/calendar assets/art
 //  - 밥상 캐릭터 8장 → art/meal/{who}-{breakfast,lunch,dinner,full}.png (288px, 거의 불투명한 곳은 완전히 불투명하게)
+//  - 앨범 든 캐릭터 2장 → art/album/{odung,perpeng}.png (192px, 카메라 길게 누르기 버튼)
 //  - 빈 끼니 칸 그림 3장 → art/slot/{breakfast,lunch,dinner}.png (168px)
 //  - 달력 도장 6장 → art/stamp/{who}-{smile,yum,wink}.png (120px, 오둥이 하늘 잉크 · 퍼펭이 민트 잉크로 칠함)
 //  - 사진 도장 고리 → art/seal-ring-rough.png (512px, 검정) + 고리 바깥선으로 만든 원판 art/seal-disc-rough.png
@@ -88,6 +89,26 @@ for who in ["odung", "perpeng"] {
     }
     save(b.image, "meal/\(who)-\(meal).png")
   }
+}
+
+// ── 1-1. 앨범 든 캐릭터(카메라를 길게 누르면 뜨는 동그란 버튼): 두 장을 같은 키로, 가운데에 192px ──
+for who in ["odung", "perpeng"] {
+  let img = load("album-\(who).png")
+  let bb = bbox(Bitmap(img), thr: 40) // 메모리 좌표: y=0이 위
+  let W = CGFloat(img.width)
+  let side = CGFloat(bb.y1 - bb.y0 + 1) / 0.92 // 그림 내용이 프레임 키의 92%
+  let cx = CGFloat(bb.x0 + bb.x1 + 1) / 2
+  let cyTop = CGFloat(bb.y0 + bb.y1 + 1) / 2 // 위에서 잰 가운데
+  let crop = CGRect(x: cx - side / 2, y: W - (cyTop + side / 2), width: side, height: side)
+  let b = resample(img, crop: crop, size: 192)
+  for i in stride(from: 0, to: b.w * b.h * 4, by: 4) {
+    let a = Int(b.p[i + 3])
+    if a >= 228 && a < 255 {
+      for c in 0..<3 { b.p[i + c] = UInt8(min(255, Int(b.p[i + c]) * 255 / a)) }
+      b.p[i + 3] = 255
+    }
+  }
+  save(b.image, "album/\(who).png")
 }
 
 // ── 1-2. 빈 끼니 칸 그림(빈 그릇): 프레임 그대로 168px (칸 안에 44px로 들어간다) ──
