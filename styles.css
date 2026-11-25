@@ -278,7 +278,8 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .sheet-x { flex: none; width: 44px; height: 44px; display: grid; place-items: center; color: var(--ink3); border-radius: 50%; }
 .sheet-x svg { width: 22px; height: 22px; }
 .sheet-b { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 20px 12px; }
-.sheet-f { display: flex; gap: 8px; padding: 8px 20px 16px; flex: none; }
+.sheet-f { display: flex; align-items: center; gap: 8px; padding: 8px 20px 16px; flex: none; }
+#viewer .sheet-f .btn { height: 52px; } /* 지우기 아이콘과 저장 버튼을 같은 높이 · 같은 선에 */
 .sheet :where(button, input, summary):focus-visible { outline: 2px solid var(--control-ink); outline-offset: 2px; }
 
 .msg { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 13px; border-radius: 12px; font-size: 12.5px; font-weight: 700; line-height: 1.5; }
@@ -295,7 +296,6 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 #viewer .sheet-h span { margin-top: 3px; font-size: 13px; line-height: 18px; }
 .viewer-img { display: flex; justify-content: center; border-radius: 18px; overflow: hidden; background: var(--surface-inset); }
 .viewer-img img { width: 100%; max-height: min(60dvh, 560px); object-fit: contain; }
-#vw-del { margin-top: 6px; }
 
 /* 설정 */
 .set-group { margin-bottom: 12px; padding: 2px 16px; border-radius: 18px; background: var(--surface-inset); }
