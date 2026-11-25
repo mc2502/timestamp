@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=74';
-import { readExifDate } from './exif.js?v=74';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=74';
-import * as db from './db.js?v=74';
+} from './format.js?v=75';
+import { readExifDate } from './exif.js?v=75';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=75';
+import * as db from './db.js?v=75';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '74';
+const APP_VERSION = '75';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -718,7 +718,7 @@ async function toastSend() {
 
 /* ── 기록 데이터 ── */
 
-const recordsOn = (key) => state.records.filter((r) => r.day === key).sort((a, b) => b.takenAt - a.takenAt);
+const recordsOn = (key) => state.records.filter((r) => r.day === key).sort((a, b) => a.takenAt - b.takenAt); // 이른 사진부터
 
 function thumbUrl(rec) {
   let url = state.thumbUrls.get(rec.id);
@@ -862,7 +862,7 @@ function renderAlbum() {
   renderTodayCard(has, todayKey);
   const animate = settings.effects && !reducedMotion();
   $('#album-grid').innerHTML = keys.map((key) => {
-    const items = (byDay.get(key) || []).sort((a, b) => b.takenAt - a.takenAt);
+    const items = (byDay.get(key) || []).sort((a, b) => a.takenAt - b.takenAt); // 하루 안에서는 아침 → 점심 → 저녁 순
     const d = fromDayKey(key);
     const count = items.length ? `<b>${items.length}</b>장` : '아직 없어요';
     const tiles = items.length ? items.map((r) => tileHtml(r, animate)).join('')
@@ -973,7 +973,7 @@ function daySay(got, isToday) {
 function renderDay() {
   const key = state.selectedDay;
   const d = fromDayKey(key);
-  const list = recordsOn(key).reverse(); // 이른 사진부터
+  const list = recordsOn(key); // 이른 사진부터
   const isToday = key === dayKey(new Date());
   const main = list.filter((r) => MAIN_MEALS.includes(r.meal));
   const got = new Set(main.map((r) => r.meal));
@@ -1813,7 +1813,8 @@ const V = {
 
 function viewerTitles(rec) {
   const d = new Date(rec.takenAt);
-  V.title.textContent = monthDay(d); // 끼니는 아래 막대에
+  // 끼니는 바꿀 수 없고 제목에 붙여 보여 준다 (끼니는 찍을 때 스탬프 화면에서 정한다)
+  V.title.textContent = rec.meal ? `${monthDay(d)} ${mealLabel(rec.meal)}` : monthDay(d);
   const status = statusText(rec);
   V.sub.textContent = `${fmtClock(d)}${status ? ` · ${status}` : ''}`;
 }
@@ -1828,7 +1829,6 @@ function openViewer(id) {
     file: new File([rec.blob], stampedName(d), { type: 'image/jpeg', lastModified: rec.takenAt }),
   };
   viewerTitles(rec);
-  vwMealBar.show();
   $('#vw-more').hidden = !rec.original;
   V.img.src = vw.url;
   V.img.alt = `${monthDay(d)} ${fmtClock(d)}에 찍은 ${mealLabel(rec.meal) || ''} 사진`.replace(/\s+/g, ' ');
@@ -1836,45 +1836,6 @@ function openViewer(id) {
   openSheet(V.sheet);
 }
 
-// 사진에 찍힌 끼니 글씨(캐릭터 · 혼합 스탬프)는 그대로고, 기록과 달력 체크만 바뀐다
-const MEAL_ON_PHOTO = new Set(['odung', 'perpeng', 'meal']);
-async function viewerMeal(meal) {
-  if (!vw) return;
-  const mine = vw;
-  const before = mine.rec;
-  // 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 두 사진의 끼니를 서로 바꿀지 묻는다
-  const other = mealTaken(before.day, meal, before.id);
-  if (other && !window.confirm(`이날 ${mealLabel(meal)} 사진이 이미 있어요.\n두 사진의 끼니를 서로 바꿀까요?`)) {
-    vwMealBar.show();
-    return;
-  }
-  mine.rec = { ...before, meal }; // 막대는 바로 새 칸에 둔다
-  // 먼저 다른 사진을 이 사진의 원래 끼니로 옮겨 자리를 비운다
-  if (other && !(await updateRecord({ ...other, meal: before.meal ?? null }))) {
-    mine.rec = before;
-    if (vw === mine) { vwMealBar.show(); showMsg(V.msg, 'err', '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'); }
-    return;
-  }
-  const saved = await updateRecord(mine.rec);
-  if (!saved) {
-    mine.rec = before; // 못 바꿨으면 원래 칸으로
-    if (vw === mine) { vwMealBar.show(); showMsg(V.msg, 'err', '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'); }
-    return;
-  }
-  if (vw !== mine) return;
-  mine.rec = saved;
-  viewerTitles(saved);
-  const note = MEAL_ON_PHOTO.has(saved.style) ? ' 사진 속 글씨는 그대로예요.' : '';
-  showMsg(V.msg, 'ok', other
-    ? `${mealLabel(meal)} 사진과 끼니를 서로 바꿨어요.${note}`
-    : `끼니를 바꿨어요.${note}`);
-}
-const vwMealBar = mealBar($('#vw-meal'), {
-  current: () => vw?.rec.meal,
-  ready: () => Boolean(vw),
-  live: false, // 놓을 때 한 번만 저장
-  choose: (meal) => viewerMeal(meal),
-});
 
 function closeViewer() {
   if (vw) URL.revokeObjectURL(vw.url);
