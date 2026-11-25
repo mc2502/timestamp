@@ -233,6 +233,20 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
   display: flex; align-items: center; justify-content: center; transition: transform .2s;
 }
 .add svg { width: 25px; height: 25px; }
+.add { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; } /* 길게 눌러도 아이폰 메뉴 · 선택이 뜨지 않게 */
+/* 카메라를 길게 누르면 바로 위에 뜨는 ‘앨범에서 고르기’ (탭바와 같은 유리) */
+.add-pop { position: fixed; z-index: 25; left: 0; right: 0; bottom: calc(var(--nav-bottom) + var(--nav-height) + 10px); display: flex; justify-content: center; pointer-events: none; }
+.add-pop button {
+  pointer-events: auto; display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 18px 0 15px; border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, .78); background: rgba(255, 255, 255, .86); box-shadow: var(--shadow-nav);
+  -webkit-backdrop-filter: var(--backdrop-nav); backdrop-filter: var(--backdrop-nav);
+  font-size: 15px; font-weight: 650; letter-spacing: -.01em; color: var(--ink);
+  transform-origin: 50% 100%; animation: add-pop-in .24s cubic-bezier(.34, 1.56, .64, 1); transition: background-color .12s;
+}
+.add-pop svg { width: 22px; height: 22px; color: var(--blue-ink); }
+.add-pop button.is-over, .add-pop button:active { background: #e3edfb; }
+@keyframes add-pop-in { from { transform: translateY(10px) scale(.86); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .add-pop button { animation: none; } }
 .tab:active, .add:active { transform: scale(.94); }
 
 /* ── 버튼 ── */

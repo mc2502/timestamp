@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=71';
-import { readExifDate } from './exif.js?v=71';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=71';
-import * as db from './db.js?v=71';
+} from './format.js?v=72';
+import { readExifDate } from './exif.js?v=72';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=72';
+import * as db from './db.js?v=72';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '71';
+const APP_VERSION = '72';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -32,6 +32,7 @@ const SETTINGS_KEY = 'timestamp:settings';
 const settings = {
   launchCamera: false,
   instantSave: false,
+  photoTime: true, // 사진에 남은 촬영 시각(EXIF)을 쓴다. 끄면 지금 시각
   saveOriginal: false,
   effects: true,
   stampStyle: null, // 마지막에 쓴 스탬프 (즉시 저장도 이걸로). 처음엔 그날의 캐릭터
@@ -468,7 +469,6 @@ function bindEvents() {
     const filter = e.target.closest('[data-filter]');
     if (filter) { setFilter(filter.dataset.filter); return; }
     if (e.target.closest('[data-add]')) { openInput('#input-camera'); return; }
-    if (e.target.closest('[data-pick]')) { openInput('#input-photo'); return; }
     const photo = e.target.closest('[data-id]');
     if (photo) { openViewer(photo.dataset.id); return; }
     const day = e.target.closest('[data-day]');
@@ -480,7 +480,7 @@ function bindEvents() {
   });
 
   // 가운데 카메라는 바로 촬영. 앨범에서 고르기는 앨범 탭 위 버튼으로 (자주 쓰지 않으니까)
-  $('#add').addEventListener('click', () => openInput('#input-camera'));
+  bindAddButton();
   $('#input-photo').addEventListener('change', (e) => handleFile(e.target.files?.[0]));
   $('#input-camera').addEventListener('change', (e) => handleFile(e.target.files?.[0], { camera: true }));
 
@@ -510,6 +510,71 @@ function bindEvents() {
       if (e.key === 'Escape') { e.preventDefault(); requestClose(sheet); }
     });
   }
+}
+
+// 가운데 카메라: 누르면 바로 촬영. 길게 누르면 살짝 진동한 뒤 바로 위에 ‘앨범에서 고르기’가 뜬다.
+// 누른 채 그 버튼으로 올려 놓아도 되고, 손을 뗀 뒤 눌러도 된다. 바깥을 누르면 닫힌다
+const HOLD_MS = 420;
+function bindAddButton() {
+  const add = $('#add');
+  const pop = $('#add-pop');
+  const album = $('#add-album');
+  let timer = 0;
+  let held = false;
+  let start = null;
+  const overAlbum = (e) => Boolean(document.elementFromPoint(e.clientX, e.clientY)?.closest('#add-album'));
+  const openPop = () => {
+    pop.hidden = false;
+    add.setAttribute('aria-expanded', 'true');
+  };
+  const closePop = () => {
+    pop.hidden = true;
+    album.classList.remove('is-over');
+    add.setAttribute('aria-expanded', 'false');
+  };
+  add.addEventListener('pointerdown', (e) => {
+    held = false;
+    start = { x: e.clientX, y: e.clientY };
+    clearTimeout(timer);
+    timer = setTimeout(() => { held = true; haptic(); openPop(); }, HOLD_MS);
+  });
+  add.addEventListener('pointermove', (e) => {
+    if (!held && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 12) clearTimeout(timer); // 끌면 길게 누르기 취소
+    if (held) album.classList.toggle('is-over', overAlbum(e));
+  });
+  add.addEventListener('pointerup', (e) => {
+    clearTimeout(timer);
+    start = null;
+    if (held && overAlbum(e)) { closePop(); openInput('#input-photo'); } // 누른 채 올려서 놓기
+  });
+  add.addEventListener('pointercancel', () => { clearTimeout(timer); start = null; });
+  add.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!held) { held = true; openPop(); } }); // 마우스 오른쪽 · 키보드 메뉴 키
+  add.addEventListener('click', (e) => {
+    if (held) { e.preventDefault(); held = false; return; } // 길게 누른 뒤의 클릭은 촬영이 아니다
+    if (!pop.hidden) { closePop(); return; }
+    openInput('#input-camera');
+  });
+  album.addEventListener('click', () => { closePop(); openInput('#input-photo'); });
+  document.addEventListener('pointerdown', (e) => {
+    if (!pop.hidden && !e.target.closest('#add-pop, #add')) closePop();
+  }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) closePop(); });
+}
+
+// 살짝 진동: 안드로이드는 vibrate, 아이폰 사파리(iOS 18 이상)는 스위치 체크박스를 누를 때의 햅틱을 빌린다
+let hapticSwitch = null;
+function haptic() {
+  try { navigator.vibrate?.(12); } catch { /* 진동이 없는 기기 */ }
+  try {
+    if (!hapticSwitch) {
+      hapticSwitch = document.createElement('label');
+      hapticSwitch.className = 'vh';
+      hapticSwitch.setAttribute('aria-hidden', 'true');
+      hapticSwitch.innerHTML = '<input type="checkbox" switch tabindex="-1">';
+      document.body.append(hapticSwitch);
+    }
+    hapticSwitch.click();
+  } catch { /* 햅틱을 못 내도 동작에는 지장 없음 */ }
 }
 
 // #input-photo: 사진 보관함에서 고른다
@@ -932,10 +997,12 @@ function loadPhoto(file) {
 
 // 촬영 시각: EXIF → 파일 시각(1분 넘게 차이 날 때만) → 지금
 async function readPhoto(file) {
-  const [{ img, url }, exifDate] = await Promise.all([loadPhoto(file), readExifDate(file), fontsReady(), charsReady()]);
+  const useTime = settings.photoTime !== false; // 설정에서 끄면 사진의 시각은 보지 않는다
+  const [{ img, url }, exifDate] = await Promise.all([loadPhoto(file), useTime ? readExifDate(file) : null, fontsReady(), charsReady()]);
   let takenAt;
   let timeSource;
-  if (exifDate) { takenAt = exifDate; timeSource = 'exif'; }
+  if (!useTime) { takenAt = new Date(); timeSource = 'set'; } // 지금 시각 (스탬프 화면에서 바꿀 수 있다)
+  else if (exifDate) { takenAt = exifDate; timeSource = 'exif'; }
   else if (file.lastModified && Math.abs(Date.now() - file.lastModified) > 60000) { takenAt = new Date(file.lastModified); timeSource = 'file'; }
   else { takenAt = new Date(); timeSource = 'now'; }
   return { img, url, takenAt, timeSource, W0: img.naturalWidth, H0: img.naturalHeight };
