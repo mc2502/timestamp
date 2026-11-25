@@ -716,7 +716,9 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .mc-head h3 small { font-size: 12px; font-weight: 500; letter-spacing: -.03em; color: var(--ink2); }
 .mc-head > span { font-size: 12px; font-weight: 600; color: var(--ink3); white-space: nowrap; }
 .mc-body { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; margin-top: 10px; }
-.mc-char { width: 84px; height: 84px; margin: -6px 0 0 -6px; object-fit: contain; pointer-events: none; user-select: none; }
+/* 캐릭터 발이 사진 칸 아랫선에 서도록: 칸 밑 이름 줄(6 + 18)에서 그림 아래 투명 여백(84 × 9.4% ≈ 8)을 뺀 만큼 띄운다.
+   사진 칸 크기가 화면 너비 따라 바뀌어도 발은 늘 같은 선. 위쪽 -24px은 작은 화면에서 캐릭터가 카드 높이를 늘리지 않게 */
+.mc-char { width: 84px; height: 84px; align-self: end; margin: -24px 0 16px -6px; object-fit: contain; pointer-events: none; user-select: none; }
 .mc-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .slot { min-width: 0; }
 .slot-ph { position: relative; display: block; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); transition: transform .2s; }
