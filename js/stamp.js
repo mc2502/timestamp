@@ -9,7 +9,7 @@
 //  meal    혼합     왼쪽 위 끼니 라벨 + 시각 + 날짜 (여러 가지를 섞어 한 묶음으로)
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=63';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=64';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -216,7 +216,8 @@ const DRAW = {
 //   r: 반지름, bleed: 사진 밖으로 나간 길이, shift: 글씨를 보이는 쪽으로 옮기는 길이 (모두 u)
 export const SEAL_EDGE = { r: 158, bleed: 66, shift: 12 }; // 글씨 크기는 그대로, 원은 조금 크게 왼쪽 아래 모서리 밖으로 더 걸치고 글씨는 보이는 쪽으로
 // 도장 고리 그림: 앱이 불러와 넣어 준다(없으면 가는 선 고리). 검정 한 색 그림을 글자색으로 칠해 쓰고, 칠한 것은 기억해 둔다
-export const SEAL_RING = { img: null }; // 앱은 고무 도장 고리(assets/art/seal-ring-b.png)를 넣는다
+export const SEAL_RING = { img: null }; // 앱은 고무 도장 고리(assets/art/seal-ring-rough.png)를 넣는다
+export const SEAL_DISC = { img: null }; // 고리 바깥선을 따라 만든 원판 모양(assets/art/seal-disc-rough.png)
 const ringCache = new Map();
 function tintedRing(img, color, px) {
   const key = `${img.src}|${color}|${px}`;
@@ -273,22 +274,26 @@ function drawCharacter(ctx, side, u, { date, meal, chars, charPos }, c, who, edg
   const left = box.x;
   const top = box.y;
 
-  // 도장: 흰 원판 + 가는 고리 하나 (기울임 · 점선 없이)
+  // 도장: 고무 도장처럼 가장자리가 살짝 울퉁불퉁한 원판 + 고리 (기울임 · 점선 없이)
   ctx.save();
   ctx.translate(cx, cy);
   ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
   ctx.shadowBlur = 12 * u;
   ctx.shadowOffsetY = 3 * u;
-  ctx.fillStyle = scheme.disc;
-  ctx.beginPath();
-  ctx.arc(0, 0, R, 0, Math.PI * 2);
-  ctx.fill();
+  const D = (2 * R) / 0.985; // 고리 · 원판 그림은 바깥 지름이 그림 폭의 98.5%
+  if (SEAL_DISC.img) {
+    ctx.drawImage(tintedRing(SEAL_DISC.img, scheme.disc, Math.round(D)), -D / 2, -D / 2, D, D);
+  } else {
+    ctx.fillStyle = scheme.disc;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
   if (SEAL_RING.img) {
     // 그려 받은 고리 그림(검정 한 색)을 글자색에 맞춰 칠해 원판 가장자리에 딱 맞게 얹는다
-    const D = (2 * R) / 0.985;
     ctx.drawImage(tintedRing(SEAL_RING.img, scheme.ink, Math.round(D)), -D / 2, -D / 2, D, D);
   } else {
     ctx.strokeStyle = scheme.ink;

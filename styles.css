@@ -202,7 +202,6 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .num.off { color: #adb5bd; }
 /* 고른 날은 옅은 바탕만, 오늘은 파란 글자만. 진한 채움 · 테두리 없이 */
 .num.selected { background: rgba(25, 31, 40, .07); font-weight: 700; }
-.day-stamp { width: 30px; height: 30px; object-fit: contain; pointer-events: none; user-select: none; }
 
 /* ── 탭바 ── */
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; pointer-events: none; padding: 8px var(--gr) var(--nav-bottom) var(--gl); }
@@ -630,13 +629,41 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .cal-card .pt-nav button { width: 40px; height: 40px; }
 .cal-card .cal { padding: 12px 0 0; row-gap: 2px; }
 .cal-card .cal .hd { padding: 0 0 6px; font-size: 11px; }
-.cal-card .day { height: 45px; gap: 1px; padding-top: 3px; border-radius: 12px; }
+.cal-card .day { height: 52px; gap: 2px; padding-top: 3px; border-radius: 12px; }
 .cal-card .num { height: 20px; font-size: 13px; border-radius: 10px; }
-.cal-card .day-stamp { width: 19px; height: 19px; }
-#view-calendar .day-head { padding: 16px var(--gr) 8px var(--gl); }
-#day-grid { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 0 var(--gr) 0 var(--gl); scroll-padding-inline: var(--gl); }
-#day-grid::-webkit-scrollbar { display: none; }
-#day-grid .tile { flex: none; width: calc((min(100vw, 430px) - 48px) / 3); }
-/* 사진 없는 날: 달력이 작아진 만큼 빈 접시 캐릭터를 크게, 가운데에 */
-#view-calendar .empty { flex-direction: column; justify-content: center; gap: 6px; padding: 4px 0 0; }
-#view-calendar .empty img { width: 132px; height: 132px; }
+/* 세 끼를 다 채운 날: 고무 도장을 꾹 찍은 듯한 캐릭터 얼굴 (날짜마다 살짝 다르게 기울어) */
+.day-seal { width: 30px; height: 30px; transform: rotate(var(--tilt, 0deg)); opacity: .92; pointer-events: none; user-select: none; }
+/* 끼니 체크: 달력 칸의 점 세 개 (아침 · 점심 · 저녁 순), 남긴 끼니만 하늘색 */
+.day-dots { display: flex; align-items: center; gap: 3px; height: 30px; }
+.day-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(25, 31, 40, .14); }
+.day-dots i.on { background: var(--calendar-solo-ring); }
+/* 고른 날의 밥상: 달력 아래 유리 카드. 왼쪽 캐릭터 + 사진 칸 셋, 아래에 체크 + 끼니 */
+.meal-card {
+  margin: 12px var(--gr) 0 var(--gl); padding: 14px 16px; border-radius: 24px;
+  background: var(--glass-fill); box-shadow: var(--glass-shadow); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.mc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mc-head h3 { display: flex; align-items: baseline; gap: 7px; min-width: 0; font-size: 16px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.mc-head h3 small { font-size: 12px; font-weight: 500; letter-spacing: -.03em; color: var(--ink2); }
+.mc-head > span { font-size: 12px; font-weight: 600; color: var(--ink3); white-space: nowrap; }
+.mc-body { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+.mc-char { width: 84px; height: 84px; margin: -6px 0 0 -6px; object-fit: contain; pointer-events: none; user-select: none; }
+.mc-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.slot { min-width: 0; }
+.slot-ph { position: relative; display: block; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); transition: transform .2s; }
+.slot-ph img { width: 100%; height: 100%; object-fit: cover; }
+.slot-ph:active { transform: scale(.96); }
+.slot-ph.is-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: rgba(255, 255, 255, .45); border: 1.5px dashed rgba(109, 134, 164, .3); color: var(--ink3); font-size: 12px; font-weight: 650;
+}
+.slot-ph.is-empty.is-today { border-color: rgba(49, 130, 246, .4); color: var(--blue-ink); background: rgba(255, 255, 255, .5); }
+.slot-ph.is-empty svg { width: 22px; height: 22px; }
+.slot-more { position: absolute; right: 6px; bottom: 6px; padding: 1px 7px; border-radius: 9px; background: rgba(25, 31, 40, .5); color: #fff; font-size: 11px; font-weight: 650; line-height: 18px; }
+.slot-lb { display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 6px; font-size: 13px; line-height: 18px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.slot-lb svg { flex: none; width: 13px; height: 13px; color: var(--calendar-solo-ring); }
+.slot-lb.is-wait { color: var(--ink3); font-weight: 600; }
+/* 사진 보기: 끼니 바꾸기 (아이폰 기본 고르기 창) */
+.vw-meal { position: relative; display: inline-flex; align-items: center; }
+.vw-meal select { position: absolute; inset: 0; width: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
+

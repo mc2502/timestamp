@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=63';
-import { readExifDate } from './exif.js?v=63';
-import { drawStamp, characterBox, SEAL_RING, STYLES, COLORS, styleUsesColor } from './stamp.js?v=63';
-import * as db from './db.js?v=63';
+} from './format.js?v=64';
+import { readExifDate } from './exif.js?v=64';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=64';
+import * as db from './db.js?v=64';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '63';
+const APP_VERSION = '64';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -83,6 +83,7 @@ const state = {
   filter: FILTERS.some(([id]) => id === local.get('timestamp:filter')) ? local.get('timestamp:filter') : 'all',
   month: null,
   selectedDay: null,
+  preset: null,
   todayKey: dayKey(new Date()),
   hiddenAt: 0,
 };
@@ -186,13 +187,15 @@ async function checkForUpdate() {
 let charsLoading = null;
 function charsReady() {
   if (!charsLoading) {
-    const ring = new Promise((resolve) => {
+    // 고무 도장 고리와, 그 바깥선을 따라 만든 원판 (못 받으면 반듯한 원 + 가는 선 고리로)
+    const sealPart = (holder, src) => new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => { SEAL_RING.img = img; resolve(); };
-      img.onerror = () => resolve(); // 못 받으면 가는 선 고리로
-      img.src = 'assets/art/seal-ring-b.png';
+      img.onload = () => { holder.img = img; resolve(); };
+      img.onerror = () => resolve();
+      img.src = src;
     });
-    charsLoading = Promise.all([ring, ...Object.entries(POSES).flatMap(([who, list]) => list.map((src, i) => new Promise((resolve) => {
+    const seal = [sealPart(SEAL_RING, 'assets/art/seal-ring-rough.png'), sealPart(SEAL_DISC, 'assets/art/seal-disc-rough.png')];
+    charsLoading = Promise.all([...seal, ...Object.entries(POSES).flatMap(([who, list]) => list.map((src, i) => new Promise((resolve) => {
       const img = new Image();
       img.onload = () => { (state.chars[who] ||= [])[i] = img; resolve(); };
       img.onerror = () => resolve();
@@ -469,6 +472,8 @@ function bindEvents() {
     if (e.target.closest('[data-pick]')) { openInput('#input-photo'); return; }
     const photo = e.target.closest('[data-id]');
     if (photo) { openViewer(photo.dataset.id); return; }
+    const slot = e.target.closest('[data-slot]');
+    if (slot) { fillSlot(slot.dataset.slot); return; }
     const day = e.target.closest('[data-day]');
     if (day && !day.disabled) {
       state.selectedDay = day.dataset.day;
@@ -512,16 +517,38 @@ function bindEvents() {
 
 // #input-photo: 사진 보관함에서 고른다
 // #input-camera: 기본 카메라를 바로 연다
-function openInput(sel) {
+function openInput(sel, preset = null) {
+  state.preset = preset; // 끼니 칸에서 열었으면 { meal, day }, 아니면 비운다
   const input = $(sel);
   input.value = '';
   input.click();
 }
 
 function handleFile(file, { camera = false } = {}) {
+  const preset = state.preset;
+  state.preset = null;
   if (!file) return;
-  if (settings.instantSave) quickSave(file);
-  else startEdit(file, { camera });
+  if (settings.instantSave) quickSave(file, preset);
+  else startEdit(file, { camera, preset });
+}
+
+// 달력의 빈 끼니 칸: 오늘은 바로 카메라, 지난날은 사진 보관함. 끼니는 그 칸으로 정해 둔다
+function fillSlot(meal) {
+  const day = state.selectedDay;
+  openInput(day === dayKey(new Date()) ? '#input-camera' : '#input-photo', { meal, day });
+}
+
+// 끼니 칸에서 고른 사진: 끼니는 칸을 따르고, 시각 정보가 아예 없으면 그날 그 끼니 무렵으로 둔다
+const SLOT_HOUR = { breakfast: [8, 0], lunch: [12, 30], dinner: [18, 30] };
+function applyPreset(photo, preset) {
+  if (!preset) return mealFor(photo.takenAt);
+  if (photo.timeSource === 'now' && preset.day !== dayKey(photo.takenAt)) {
+    const d = fromDayKey(preset.day);
+    d.setHours(...(SLOT_HOUR[preset.meal] || [12, 0]));
+    photo.takenAt = d;
+    photo.timeSource = 'slot';
+  }
+  return preset.meal;
 }
 
 function showView(view, { keepScroll = false } = {}) {
@@ -782,7 +809,47 @@ function renderAlbum() {
   state.fresh.clear();
 }
 
-// 달력: 사진을 남긴 날에는 마스코트 얼굴 스탬프 (PT Note 주간 스탬프처럼)
+// 끼니 체크: 아침 · 점심 · 저녁 세 칸. 간식과 끼니 없는 사진은 체크에 들어가지 않는다
+const MAIN_MEALS = ['breakfast', 'lunch', 'dinner'];
+
+// 세 끼를 다 채운 날의 잉크 도장 6종 (오둥이 하늘 잉크 · 퍼펭이 민트 잉크). 날짜마다 정해진 하나가 살짝 기울어 찍힌다
+const DAY_STAMPS = ['odung', 'perpeng'].flatMap((who) => ['smile', 'yum', 'wink'].map((f) => `assets/art/stamp/${who}-${f}.png`));
+function dayHash(key) {
+  let h = 2166136261;
+  for (const ch of key) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13;
+  return (h >>> 0) / 4294967296;
+}
+const dayStamp = (key) => ({
+  src: DAY_STAMPS[Math.floor(dayHash(key) * DAY_STAMPS.length)],
+  tilt: Math.round((dayHash(`${key}~`) - 0.5) * 26), // -13° ~ 13°
+});
+// 밥상 카드의 캐릭터: 아직 안 먹은 날은 빈 그릇, 먹은 끼니가 있으면 마지막 끼니를 먹는 모습, 세 끼 다면 배부른 모습
+const mealArt = (pose) => (pose ? `assets/art/meal/${state.family}-${pose}.png` : art.empty);
+const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12l5 5l10 -10"/></svg>';
+const PLUS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
+
+// 날마다 남긴 끼니 (day → Set). 사진은 있는데 세 끼가 하나도 없는 날도 빈 Set으로 들어간다
+function mealsByDay() {
+  const map = new Map();
+  for (const r of state.records) {
+    if (!map.has(r.day)) map.set(r.day, new Set());
+    if (MAIN_MEALS.includes(r.meal)) map.get(r.day).add(r.meal);
+  }
+  return map;
+}
+
+// 세 끼를 다 채운 날이 며칠 이어졌는지 (오늘을 아직 못 채웠으면 어제부터 센다)
+function fullStreak(meals) {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  if (meals.get(dayKey(d))?.size !== 3) d.setDate(d.getDate() - 1);
+  let n = 0;
+  while (meals.get(dayKey(d))?.size === 3) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+// 달력: 남긴 끼니만큼 점이 차고(아침 · 점심 · 저녁 순), 세 끼를 다 채운 날엔 마스코트 얼굴 도장
 function renderCalendar() {
   const m = state.month;
   const y = m.getFullYear();
@@ -792,11 +859,12 @@ function renderCalendar() {
   $('#mon-t').textContent = `${y}년 ${mo + 1}월`;
   $('#mon-next').disabled = y === now.getFullYear() && mo === now.getMonth();
 
-  const counts = new Map();
-  for (const r of state.records) counts.set(r.day, (counts.get(r.day) || 0) + 1);
-  const monthDays = [...counts.keys()].filter((k) => k.startsWith(prefix)).length;
-  $('#mon-sum').innerHTML = monthDays ? `<b>${monthDays}일</b> 기록` : '기록 없음';
-  $('#cal-meta').textContent = counts.size ? `총 ${counts.size}일` : '';
+  const meals = mealsByDay();
+  const monthKeys = [...meals.keys()].filter((k) => k.startsWith(prefix));
+  const monthFull = monthKeys.filter((k) => meals.get(k).size === 3).length;
+  $('#mon-sum').innerHTML = monthKeys.length ? `<span>도장 <b>${monthFull}개</b></span>` : '기록 없음';
+  const streak = fullStreak(meals);
+  $('#cal-meta').textContent = streak >= 2 ? `${streak}일 연속` : '';
 
   const todayKey = dayKey(now);
   const first = new Date(y, mo, 1).getDay();
@@ -806,26 +874,61 @@ function renderCalendar() {
   for (let i = 0; i < first; i++) html += '<div aria-hidden="true"></div>';
   for (let d = 1; d <= last; d++) {
     const key = dayKey(new Date(y, mo, d));
-    const n = counts.get(key) || 0;
+    const got = meals.get(key);
+    const full = got?.size === 3;
     const future = key > todayKey;
     const selected = key === state.selectedDay;
-    const cls = ['num', key === todayKey && 'today', selected && 'selected', future && 'off', n && 'has'].filter(Boolean).join(' ');
-    const label = `${mo + 1}월 ${d}일${n ? `, 사진 ${n}장` : ''}`;
-    html += `<button class="day" type="button" data-day="${key}" aria-pressed="${selected}" aria-label="${label}"${future ? ' disabled' : ''}>`
-      + `<span class="${cls}">${d}</span>`
-      + (n ? `<img class="day-stamp" src="${art.face}" alt="" aria-hidden="true">` : '')
-      + '</button>';
+    const cls = ['num', key === todayKey && 'today', selected && 'selected', future && 'off', got && 'has'].filter(Boolean).join(' ');
+    const said = full ? ', 세 끼 다 남김'
+      : got?.size ? `, ${MAIN_MEALS.filter((m) => got.has(m)).map(mealLabel).join(' · ')} 남김`
+        : got ? ', 간식만 남김' : '';
+    const st = full && dayStamp(key);
+    const mark = full ? `<img class="day-seal" src="${st.src}" style="--tilt:${st.tilt}deg" alt="" aria-hidden="true">`
+      : got ? `<span class="day-dots" aria-hidden="true">${MAIN_MEALS.map((m) => `<i${got.has(m) ? ' class="on"' : ''}></i>`).join('')}</span>` : '';
+    html += `<button class="day" type="button" data-day="${key}" aria-pressed="${selected}" aria-label="${mo + 1}월 ${d}일${said}"${future ? ' disabled' : ''}>`
+      + `<span class="${cls}">${d}</span>${mark}</button>`;
   }
   $('#cal').innerHTML = html;
 }
 
+// 밥상 카드 오른쪽 위 한 줄 (아침 · 점심 · 저녁은 모두 받침이 있어 ‘이 · 을’)
+function daySay(got, isToday) {
+  if (got.size === 3) return '세 끼 다 채웠어요';
+  if (!got.size) return isToday ? '첫 끼를 찍어 볼까요?' : '남긴 끼니가 없어요';
+  if (isToday) {
+    const left = MAIN_MEALS.filter((m) => !got.has(m)).map(mealLabel);
+    return `${left.join(' · ')}${left.length === 1 ? '만' : '이'} 남았어요`;
+  }
+  return `${MAIN_MEALS.filter((m) => got.has(m)).map(mealLabel).join(' · ')}을 남겼어요`;
+}
+
+// 고른 날의 밥상: 캐릭터 + 세 칸. 사진이 있으면 그 사진과 체크, 없으면 빈 칸(오늘은 찍기, 지난날은 추가)
 function renderDay() {
-  const d = fromDayKey(state.selectedDay);
-  const list = recordsOn(state.selectedDay);
+  const key = state.selectedDay;
+  const d = fromDayKey(key);
+  const list = recordsOn(key).reverse(); // 이른 사진부터
+  const isToday = key === dayKey(new Date());
+  const main = list.filter((r) => MAIN_MEALS.includes(r.meal));
+  const got = new Set(main.map((r) => r.meal));
   $('#day-title').innerHTML = dayHeading(d);
-  $('#day-count').innerHTML = list.length ? `<b>${list.length}</b>장` : '';
-  $('#day-empty').hidden = list.length > 0;
-  $('#day-grid').innerHTML = list.map((r) => tileHtml(r, false)).join('');
+  $('#day-say').textContent = daySay(got, isToday);
+  const pose = got.size === 3 ? 'full' : main.length ? main[main.length - 1].meal : null;
+  const char = $('#day-char');
+  const src = mealArt(pose);
+  if (char.getAttribute('src') !== src) char.src = src;
+  $('#day-slots').innerHTML = MAIN_MEALS.map((m) => {
+    const label = mealLabel(m);
+    const items = list.filter((r) => r.meal === m);
+    if (items.length) {
+      const r = items[0];
+      const t = fmtClock(new Date(r.takenAt));
+      const more = items.length > 1 ? `<span class="slot-more">+${items.length - 1}</span>` : '';
+      return `<div class="slot"><button class="slot-ph" type="button" data-id="${r.id}" aria-label="${label} ${t} 사진 보기"><img src="${thumbUrl(r)}" alt="">${more}</button>`
+        + `<p class="slot-lb">${CHECK_SVG}${label}</p></div>`;
+    }
+    return `<div class="slot"><button class="slot-ph is-empty${isToday ? ' is-today' : ''}" type="button" data-slot="${m}" aria-label="${label} 사진 ${isToday ? '찍기' : '추가하기'}">${isToday ? CAMERA_SVG : PLUS_SVG}<span>${isToday ? '찍기' : '추가'}</span></button>`
+      + `<p class="slot-lb is-wait">${label}</p></div>`;
+  }).join('');
 }
 
 async function renderStorageNote() {
@@ -967,14 +1070,14 @@ function shareText(result) {
 
 /* ── 즉시 저장: 스탬프 화면 없이, 가운데를 정사각형으로, 마지막에 쓴 스탬프로 ── */
 
-async function quickSave(file) {
+async function quickSave(file, preset = null) {
   showToast('사진을 남기고 있어요', { stay: true });
   let photo;
   try {
     photo = await readPhoto(file);
     const side = Math.min(photo.W0, photo.H0);
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
-    const meal = mealFor(photo.takenAt);
+    const meal = applyPreset(photo, preset);
     const look = { style: settings.stampStyle, color: settings.stampColor };
     const pick = { odung: randomPose('odung'), perpeng: randomPose('perpeng') };
     const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, chars: poseImages(pick) }, look);
@@ -1000,10 +1103,15 @@ async function quickSave(file) {
     if (kept) {
       upsertRecord(rec);
       state.fresh.add(rec.id);
-      if (state.view !== 'album') showView('album');
-      if (state.filter !== 'all' && state.filter !== meal) state.filter = 'all';
-      renderAll();
-      window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
+      if (preset) {
+        state.selectedDay = rec.day;
+        renderAll();
+      } else {
+        if (state.view !== 'album') showView('album');
+        if (state.filter !== 'all' && state.filter !== meal) state.filter = 'all';
+        renderAll();
+        window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
+      }
     }
     playStampSound();
     showToast(kept ? `${fmtClock(photo.takenAt)} 사진을 남겼어요` : '이 기기에는 남기지 못했어요', { file: out.file, recordId: kept ? rec.id : null, pop: true });
@@ -1039,12 +1147,13 @@ const E = {
 const TIME_NOTES = {
   file: '파일에 남은 시각이에요. 맞는지 확인해 주세요',
   now: '촬영 시각이 없어 지금 시각을 넣었어요',
+  slot: '촬영 시각이 없어 고른 날로 넣었어요. 시각을 확인해 주세요',
 };
 
 const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: poseImages(e.pose), charPos: e.charPos });
 const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
-async function startEdit(file, { camera = false } = {}) {
+async function startEdit(file, { camera = false, preset = null } = {}) {
   const mine = {
     id: uid(), createdAt: Date.now(), version: 0, job: null, timer: 0, source: file,
     file: null, thumb: null, savedAt: null, sentAt: null, persistedVersion: null,
@@ -1074,7 +1183,8 @@ async function startEdit(file, { camera = false } = {}) {
     Object.assign(mine, photo);
     // 방금 카메라로 찍은 사진이면 지금 시각이 곧 찍은 시각이다
     if (camera && mine.timeSource !== 'exif') mine.timeSource = 'camera';
-    mine.meal = mealFor(mine.takenAt);
+    mine.meal = applyPreset(mine, preset);
+    if (preset) mine.mealAuto = false;
     mine.crop = { cx: mine.W0 / 2, cy: mine.H0 / 2, z: 1 };
 
     buildPreview(mine);
@@ -1569,11 +1679,34 @@ function openViewer(id) {
     file: new File([rec.blob], stampedName(d), { type: 'image/jpeg', lastModified: rec.takenAt }),
   };
   viewerTitles(rec);
+  fillViewerMeal(rec);
   $('#vw-orig').hidden = !rec.original;
   V.img.src = vw.url;
   V.img.alt = `${monthDay(d)} ${fmtClock(d)}에 찍은 ${mealLabel(rec.meal) || ''} 사진`.replace(/\s+/g, ' ');
   showMsg(V.msg, '', '');
   openSheet(V.sheet);
+}
+
+function fillViewerMeal(rec) {
+  $('#vw-meal').value = rec.meal || 'none';
+  $('#vw-meal-t').textContent = rec.meal ? `${mealLabel(rec.meal)} → 끼니 바꾸기` : '끼니 정하기';
+}
+
+// 사진에 찍힌 끼니 글씨(캐릭터 · 혼합 스탬프)는 그대로고, 기록과 달력 체크만 바뀐다
+const MEAL_ON_PHOTO = new Set(['odung', 'perpeng', 'meal']);
+async function viewerMeal() {
+  if (!vw) return;
+  const mine = vw;
+  const value = $('#vw-meal').value;
+  const meal = value === 'none' ? null : value;
+  if (meal === (mine.rec.meal || null)) return;
+  const rec = { ...mine.rec, meal };
+  if (!(await updateRecord(rec))) { showMsg(V.msg, 'err', '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'); fillViewerMeal(mine.rec); return; }
+  if (vw !== mine) return;
+  mine.rec = rec;
+  viewerTitles(rec);
+  fillViewerMeal(rec);
+  showMsg(V.msg, 'ok', MEAL_ON_PHOTO.has(rec.style) ? '끼니를 바꿨어요. 사진 속 글씨는 그대로예요.' : '끼니를 바꿨어요.');
 }
 
 function closeViewer() {
@@ -1629,6 +1762,7 @@ function bindViewer() {
   $('#vw-share').addEventListener('click', viewerShare);
   $('#vw-orig').addEventListener('click', viewerOriginal);
   $('#vw-del').addEventListener('click', viewerDelete);
+  $('#vw-meal').addEventListener('change', viewerMeal);
 }
 
 init();

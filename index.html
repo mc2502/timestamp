@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=63">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=63">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=63">
+<link rel="manifest" href="manifest.webmanifest?v=64">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=64">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=64">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=63">
+<link rel="stylesheet" href="styles.css?v=64">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=63"></script>
+<script type="module" src="js/app.js?v=64"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -98,9 +98,15 @@
         <div class="cal" id="cal"></div>
       </section>
 
-      <div class="day-head"><h3 id="day-title"></h3><span id="day-count"></span></div>
-      <div class="grid" id="day-grid"></div>
-      <div class="empty" id="day-empty" hidden><img data-art="empty" alt="" aria-hidden="true" width="104" height="104"><span>이 날에는 남긴 사진이 없어요.</span></div>
+      <!-- 고른 날의 밥상: 그날 남긴 끼니에 따라 바뀌는 캐릭터 + 아침 · 점심 · 저녁 세 칸.
+           사진이 있으면 체크, 빈 칸을 누르면 그 끼니로 바로 찍기(오늘) · 고르기(지난날) -->
+      <section class="meal-card" aria-labelledby="day-title">
+        <div class="mc-head"><h3 id="day-title"></h3><span id="day-say"></span></div>
+        <div class="mc-body">
+          <img class="mc-char" id="day-char" alt="" aria-hidden="true" width="84" height="84">
+          <div class="mc-slots" id="day-slots"></div>
+        </div>
+      </section>
     </section>
   </main>
 
@@ -190,7 +196,7 @@
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=63" alt="" aria-hidden="true" width="40" height="40">
+          <img class="about-icon" src="assets/icons/icon-192.png?v=64" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
@@ -252,6 +258,9 @@
       <div class="viewer-img"><img id="vw-img" alt=""></div>
       <div class="msg-slot" id="vw-msg" aria-live="polite"></div>
       <div class="vw-more">
+        <label class="pt-text-button vw-meal"><span id="vw-meal-t"></span><select id="vw-meal" aria-label="끼니 바꾸기">
+          <option value="breakfast">아침</option><option value="lunch">점심</option><option value="dinner">저녁</option><option value="snack">간식</option><option value="none">끼니 없음</option>
+        </select></label>
         <button class="pt-text-button" type="button" id="vw-orig" hidden>원본 사진 저장</button>
         <button class="pt-text-button danger" type="button" id="vw-del">이 사진 지우기</button>
       </div>

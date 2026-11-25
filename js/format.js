@@ -58,7 +58,7 @@ export function mealFor(d) {
   const h = d.getHours();
   if (h >= 5 && h < 11) return 'breakfast';
   if (h >= 11 && h < 15) return 'lunch';
-  if (h >= 17 && h < 21) return 'dinner';
+  if (h >= 17 && h < 22) return 'dinner';
   return 'snack';
 }
 
