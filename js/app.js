@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=66';
-import { readExifDate } from './exif.js?v=66';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=66';
-import * as db from './db.js?v=66';
+} from './format.js?v=67';
+import { readExifDate } from './exif.js?v=67';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=67';
+import * as db from './db.js?v=67';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '66';
+const APP_VERSION = '67';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1140,7 +1140,6 @@ const E = {
   timeText: $('#ed-time-text'),
   timePill: $('#ed-time-pill'),
   seg: $('#meal-seg'),
-  track: $('#meal-track'),
   share: $('#ed-share'),
 };
 
@@ -1253,31 +1252,89 @@ function fillFields() {
   E.time.value = toLocalInput(d);
   E.time.max = toLocalInput(new Date(Date.now() + 60000));
   E.timePill.classList.toggle('is-guess', Boolean(TIME_NOTES[ed.timeSource]));
-  paintMeal(MEAL_STOPS.indexOf(ed.meal ?? null));
+  edMealBar.show();
   fillLook();
 }
 
 // 끼니 막대: 다섯 칸(아침 · 점심 · 저녁 · 간식 · 없음)의 이름이 막대 안에 있다.
-// 흰 손잡이를 끌면 손가락을 따라가고, 놓으면 가까운 칸에 붙는다. 손잡이 위 이름이 고른 끼니
+// 흰 손잡이를 끌면 손가락을 따라가고, 놓으면 가까운 칸에 붙는다. 손잡이 위 이름이 고른 끼니.
+// 스탬프 화면(끄는 동안 바로 바뀜)과 사진 보기(놓을 때 한 번 저장)에서 같이 쓴다
 const MEAL_STOPS = ['breakfast', 'lunch', 'dinner', 'snack', null];
 const stopLabel = (m) => mealLabel(m) || '끼니 없음';
-function paintMeal(p) {
-  const i = clamp(Math.round(p), 0, MEAL_STOPS.length - 1);
-  E.track.style.setProperty('--p', String(p / (MEAL_STOPS.length - 1)));
-  $$('.mp-labels > span', E.track).forEach((el, k) => {
-    el.classList.toggle('on', k === i);
-    el.classList.toggle('past', k < i);
+function mealBar(track, { current, choose, ready, live }) {
+  const n = MEAL_STOPS.length;
+  const labels = $$('.mp-labels > span', track);
+  const paint = (p) => {
+    const i = clamp(Math.round(p), 0, n - 1);
+    track.style.setProperty('--p', String(p / (n - 1)));
+    labels.forEach((el, k) => {
+      el.classList.toggle('on', k === i);
+      el.classList.toggle('past', k < i);
+    });
+    track.setAttribute('aria-valuenow', String(i));
+    track.setAttribute('aria-valuetext', stopLabel(MEAL_STOPS[i]));
+  };
+  const show = () => paint(MEAL_STOPS.indexOf(current() ?? null));
+  const pick = (i) => {
+    const meal = MEAL_STOPS[i];
+    if (ready() && meal !== (current() ?? null)) choose(meal);
+  };
+  const at = (e) => {
+    const r = track.getBoundingClientRect();
+    const w = (r.width - 8) / n; // 한 칸 너비 = 손잡이 너비
+    return clamp((e.clientX - r.left - 4 - w / 2) / Math.max(1, w * (n - 1)), 0, 1) * (n - 1);
+  };
+  let drag = null;
+  let last = 0;
+  track.addEventListener('pointerdown', (e) => {
+    if (!ready()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    try { track.setPointerCapture(e.pointerId); } catch { /* 잡지 못해도 움직임은 받는다 */ }
+    drag = e.pointerId;
+    track.classList.add('is-dragging');
+    last = at(e);
+    paint(last);
+    if (live) pick(Math.round(last));
   });
-  E.track.setAttribute('aria-valuenow', String(i));
-  E.track.setAttribute('aria-valuetext', stopLabel(MEAL_STOPS[i]));
+  track.addEventListener('pointermove', (e) => {
+    if (drag !== e.pointerId) return;
+    last = at(e);
+    paint(last);
+    if (live) pick(Math.round(last));
+  });
+  const end = (e) => {
+    if (drag !== e.pointerId) return;
+    drag = null;
+    track.classList.remove('is-dragging');
+    if (e.type === 'pointerup') pick(Math.round(last));
+    show(); // 가까운 칸에 붙는다 (못 바꿨으면 원래 칸으로)
+  };
+  track.addEventListener('pointerup', end);
+  track.addEventListener('pointercancel', end);
+  track.addEventListener('keydown', (e) => {
+    if (!ready()) return;
+    const now = MEAL_STOPS.indexOf(current() ?? null);
+    const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
+    const next = step ? now + step : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    pick(clamp(next, 0, n - 1));
+    show();
+  });
+  return { show };
 }
-function pickMealStop(i) {
-  const meal = MEAL_STOPS[i];
-  if (!ed?.ready || meal === (ed.meal ?? null)) return;
-  ed.meal = meal;
-  ed.mealAuto = false;
-  changed(); // 혼합 스탬프 · 도장에는 끼니가 찍힌다
-}
+
+const edMealBar = mealBar($('#meal-track'), {
+  current: () => ed?.meal,
+  ready: () => Boolean(ed?.ready),
+  live: true, // 끄는 동안 사진 속 도장 글씨도 바로 바뀐다
+  choose: (meal) => {
+    ed.meal = meal;
+    ed.mealAuto = false;
+    changed(); // 혼합 스탬프 · 도장에는 끼니가 찍힌다
+  },
+});
 
 // 스탬프 효과: 글씨가 크게 내려앉았다가 제자리에 멈춘다
 function stampIn() {
@@ -1520,48 +1577,6 @@ function bindEditor() {
     changed();
   });
 
-  // 끼니 막대: 끌기 · 누르기 · 화살표 키
-  let mealDrag = null;
-  const mealAt = (e) => {
-    const r = E.track.getBoundingClientRect();
-    const n = MEAL_STOPS.length;
-    const w = (r.width - 8) / n; // 한 칸 너비 = 손잡이 너비
-    return clamp((e.clientX - r.left - 4 - w / 2) / Math.max(1, w * (n - 1)), 0, 1) * (n - 1);
-  };
-  const mealMove = (e) => {
-    const p = mealAt(e);
-    paintMeal(p);
-    pickMealStop(Math.round(p));
-  };
-  E.track.addEventListener('pointerdown', (e) => {
-    if (!ed?.ready) return;
-    e.preventDefault();
-    e.stopPropagation();
-    try { E.track.setPointerCapture(e.pointerId); } catch { /* 잡지 못해도 움직임은 받는다 */ }
-    mealDrag = e.pointerId;
-    E.track.classList.add('is-dragging');
-    mealMove(e);
-  });
-  E.track.addEventListener('pointermove', (e) => { if (mealDrag === e.pointerId) mealMove(e); });
-  const mealEnd = (e) => {
-    if (mealDrag !== e.pointerId) return;
-    mealDrag = null;
-    E.track.classList.remove('is-dragging');
-    if (ed) paintMeal(MEAL_STOPS.indexOf(ed.meal ?? null)); // 가까운 칸에 붙는다
-  };
-  E.track.addEventListener('pointerup', mealEnd);
-  E.track.addEventListener('pointercancel', mealEnd);
-  E.track.addEventListener('keydown', (e) => {
-    if (!ed?.ready) return;
-    const now = MEAL_STOPS.indexOf(ed.meal ?? null);
-    const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
-    let next = step ? now + step : e.key === 'Home' ? 0 : e.key === 'End' ? MEAL_STOPS.length - 1 : null;
-    if (next === null) return;
-    e.preventDefault();
-    next = clamp(next, 0, MEAL_STOPS.length - 1);
-    pickMealStop(next);
-    paintMeal(next);
-  });
 
   E.time.addEventListener('change', () => {
     if (!ed?.ready) return;
@@ -1718,7 +1733,7 @@ const V = {
 
 function viewerTitles(rec) {
   const d = new Date(rec.takenAt);
-  V.title.textContent = `${monthDay(d)}${rec.meal ? ` ${mealLabel(rec.meal)}` : ''}`;
+  V.title.textContent = monthDay(d); // 끼니는 아래 막대에
   const status = statusText(rec);
   V.sub.textContent = `${fmtClock(d)}${status ? ` · ${status}` : ''}`;
 }
@@ -1733,35 +1748,37 @@ function openViewer(id) {
     file: new File([rec.blob], stampedName(d), { type: 'image/jpeg', lastModified: rec.takenAt }),
   };
   viewerTitles(rec);
-  fillViewerMeal(rec);
-  $('#vw-orig').hidden = !rec.original;
+  vwMealBar.show();
+  $('#vw-more').hidden = !rec.original;
   V.img.src = vw.url;
   V.img.alt = `${monthDay(d)} ${fmtClock(d)}에 찍은 ${mealLabel(rec.meal) || ''} 사진`.replace(/\s+/g, ' ');
   showMsg(V.msg, '', '');
   openSheet(V.sheet);
 }
 
-function fillViewerMeal(rec) {
-  $('#vw-meal').value = rec.meal || 'none';
-  $('#vw-meal-t').textContent = rec.meal ? `${mealLabel(rec.meal)} → 끼니 바꾸기` : '끼니 정하기';
-}
-
 // 사진에 찍힌 끼니 글씨(캐릭터 · 혼합 스탬프)는 그대로고, 기록과 달력 체크만 바뀐다
 const MEAL_ON_PHOTO = new Set(['odung', 'perpeng', 'meal']);
-async function viewerMeal() {
+async function viewerMeal(meal) {
   if (!vw) return;
   const mine = vw;
-  const value = $('#vw-meal').value;
-  const meal = value === 'none' ? null : value;
-  if (meal === (mine.rec.meal || null)) return;
-  const rec = { ...mine.rec, meal };
-  if (!(await updateRecord(rec))) { showMsg(V.msg, 'err', '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'); fillViewerMeal(mine.rec); return; }
+  const before = mine.rec;
+  const rec = { ...before, meal };
+  mine.rec = rec; // 막대는 바로 새 칸에 둔다
+  if (!(await updateRecord(rec))) {
+    mine.rec = before; // 못 바꿨으면 원래 칸으로
+    if (vw === mine) { vwMealBar.show(); showMsg(V.msg, 'err', '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'); }
+    return;
+  }
   if (vw !== mine) return;
-  mine.rec = rec;
   viewerTitles(rec);
-  fillViewerMeal(rec);
   showMsg(V.msg, 'ok', MEAL_ON_PHOTO.has(rec.style) ? '끼니를 바꿨어요. 사진 속 글씨는 그대로예요.' : '끼니를 바꿨어요.');
 }
+const vwMealBar = mealBar($('#vw-meal'), {
+  current: () => vw?.rec.meal,
+  ready: () => Boolean(vw),
+  live: false, // 놓을 때 한 번만 저장
+  choose: (meal) => viewerMeal(meal),
+});
 
 function closeViewer() {
   if (vw) URL.revokeObjectURL(vw.url);
@@ -1816,7 +1833,6 @@ function bindViewer() {
   $('#vw-share').addEventListener('click', viewerShare);
   $('#vw-orig').addEventListener('click', viewerOriginal);
   $('#vw-del').addEventListener('click', viewerDelete);
-  $('#vw-meal').addEventListener('change', viewerMeal);
 }
 
 init();

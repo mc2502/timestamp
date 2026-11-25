@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=66">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=66">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=66">
+<link rel="manifest" href="manifest.webmanifest?v=67">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=67">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=67">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=66">
+<link rel="stylesheet" href="styles.css?v=67">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=66"></script>
+<script type="module" src="js/app.js?v=67"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -196,7 +196,7 @@
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=66" alt="" aria-hidden="true" width="40" height="40">
+          <img class="about-icon" src="assets/icons/icon-192.png?v=67" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
@@ -262,16 +262,20 @@
     </div>
     <div class="sheet-b">
       <div class="viewer-img"><img id="vw-img" alt=""></div>
+      <!-- 끼니: 스탬프 화면과 같은 막대. 바꾸면 달력 체크가 따라 바뀐다 -->
+      <div class="vw-meal">
+        <div class="mp-track" id="vw-meal" role="slider" tabindex="0" aria-label="끼니" aria-valuemin="0" aria-valuemax="4" aria-valuenow="1" aria-valuetext="점심">
+          <span class="mp-fill"></span><span class="mp-thumb"></span>
+          <span class="mp-labels" aria-hidden="true"><span>아침</span><span>점심</span><span>저녁</span><span>간식</span><span>없음</span></span>
+        </div>
+      </div>
       <div class="msg-slot" id="vw-msg" aria-live="polite"></div>
-      <div class="vw-more">
-        <label class="pt-text-button vw-meal"><span id="vw-meal-t"></span><select id="vw-meal" aria-label="끼니 바꾸기">
-          <option value="breakfast">아침</option><option value="lunch">점심</option><option value="dinner">저녁</option><option value="snack">간식</option><option value="none">끼니 없음</option>
-        </select></label>
-        <button class="pt-text-button" type="button" id="vw-orig" hidden>원본 사진 저장</button>
-        <button class="pt-text-button danger" type="button" id="vw-del">이 사진 지우기</button>
+      <div class="vw-more" id="vw-more" hidden>
+        <button class="pt-text-button" type="button" id="vw-orig">원본 사진도 저장하기</button>
       </div>
     </div>
     <div class="sheet-f">
+      <button class="btn ico" type="button" id="vw-del" aria-label="이 사진 지우기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
       <button class="btn pri" type="button" id="vw-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장하기</button>
     </div>
   </div>

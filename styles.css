@@ -242,7 +242,14 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
   border-radius: var(--radius-segment); font-size: 15px; font-weight: 650; letter-spacing: -.2px; transition: transform .2s;
 }
 .btn svg { width: 20px; height: 20px; flex: none; }
-.btn.pri { background: var(--blue-ink); color: var(--on-ink); }
+/* 주 버튼은 차분한 파랑(진한 파랑 · 그림자 없이) — 스탬프 화면 · 사진 보기 같게 */
+.btn.pri { min-height: 52px; border-radius: 16px; background: #dbe7fa; color: #24569f; font-weight: 700; box-shadow: none; transition: background-color .15s, transform .2s; }
+.btn.pri:active { background: #cddff8; }
+.btn.pri:disabled { background: #e6ebf2; color: #a9b3c0; }
+/* 아이콘만 있는 보조 버튼 (사진 지우기) */
+.btn.ico { flex: none; width: 52px; min-height: 52px; padding: 0; border-radius: 16px; background: rgba(25, 31, 40, .055); color: var(--ink2); transition: background-color .15s, transform .2s; }
+.btn.ico:active { background: rgba(25, 31, 40, .1); }
+.btn.ico svg { width: 22px; height: 22px; }
 .btn.sec { background: var(--bg); color: var(--ink2); border: 1px solid var(--line); }
 .btn:active:not(:disabled) { transform: scale(.97); }
 .btn:disabled { opacity: .45; cursor: default; }
@@ -449,10 +456,8 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 
 /* 저장 · 보내기: 옅은 청색 판 하나, 그림자 · 테두리 없이 */
 .ed-actions { display: flex; margin-top: 2px; }
-.ed-actions .btn.pri { min-height: 52px; border-radius: 16px; background: #dbe7fa; color: #24569f; font-weight: 700; box-shadow: none; transition: background-color .15s, transform .2s; }
-.ed-actions .btn.pri:active { background: #cddff8; }
-.ed-actions .btn.pri:disabled { background: #e6ebf2; color: #a9b3c0; }
-.vw-more { display: flex; justify-content: center; gap: 8px; }
+.vw-meal { margin-top: 12px; }
+.vw-more { display: flex; justify-content: center; margin-top: 4px; }
 
 /* ── 즉시 저장 알림 ── */
 .toast {
@@ -681,7 +686,4 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .slot-lb { display: flex; align-items: center; justify-content: center; gap: 3px; margin-top: 6px; font-size: 13px; line-height: 18px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
 .slot-lb svg { flex: none; width: 13px; height: 13px; color: var(--calendar-solo-ring); }
 .slot-lb.is-wait { color: var(--ink3); font-weight: 600; }
-/* 사진 보기: 끼니 바꾸기 (아이폰 기본 고르기 창) */
-.vw-meal { position: relative; display: inline-flex; align-items: center; }
-.vw-meal select { position: absolute; inset: 0; width: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
 
