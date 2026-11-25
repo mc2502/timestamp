@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=70';
-import { readExifDate } from './exif.js?v=70';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=70';
-import * as db from './db.js?v=70';
+} from './format.js?v=71';
+import { readExifDate } from './exif.js?v=71';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=71';
+import * as db from './db.js?v=71';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '70';
+const APP_VERSION = '71';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -83,7 +83,6 @@ const state = {
   filter: FILTERS.some(([id]) => id === local.get('timestamp:filter')) ? local.get('timestamp:filter') : 'all',
   month: null,
   selectedDay: null,
-  preset: null,
   todayKey: dayKey(new Date()),
   hiddenAt: 0,
 };
@@ -472,8 +471,6 @@ function bindEvents() {
     if (e.target.closest('[data-pick]')) { openInput('#input-photo'); return; }
     const photo = e.target.closest('[data-id]');
     if (photo) { openViewer(photo.dataset.id); return; }
-    const slot = e.target.closest('[data-slot]');
-    if (slot) { fillSlot(slot.dataset.slot); return; }
     const day = e.target.closest('[data-day]');
     if (day && !day.disabled) {
       state.selectedDay = day.dataset.day;
@@ -517,38 +514,16 @@ function bindEvents() {
 
 // #input-photo: 사진 보관함에서 고른다
 // #input-camera: 기본 카메라를 바로 연다
-function openInput(sel, preset = null) {
-  state.preset = preset; // 끼니 칸에서 열었으면 { meal, day }, 아니면 비운다
+function openInput(sel) {
   const input = $(sel);
   input.value = '';
   input.click();
 }
 
 function handleFile(file, { camera = false } = {}) {
-  const preset = state.preset;
-  state.preset = null;
   if (!file) return;
-  if (settings.instantSave) quickSave(file, preset);
-  else startEdit(file, { camera, preset });
-}
-
-// 달력의 빈 끼니 칸: 오늘은 바로 카메라, 지난날은 사진 보관함. 끼니는 그 칸으로 정해 둔다
-function fillSlot(meal) {
-  const day = state.selectedDay;
-  openInput(day === dayKey(new Date()) ? '#input-camera' : '#input-photo', { meal, day });
-}
-
-// 끼니 칸에서 고른 사진: 끼니는 칸을 따르고, 시각 정보가 아예 없으면 그날 그 끼니 무렵으로 둔다
-const SLOT_HOUR = { breakfast: [8, 0], lunch: [12, 30], dinner: [18, 30] };
-function applyPreset(photo, preset) {
-  if (!preset) return mealFor(photo.takenAt);
-  if (photo.timeSource === 'now' && preset.day !== dayKey(photo.takenAt)) {
-    const d = fromDayKey(preset.day);
-    d.setHours(...(SLOT_HOUR[preset.meal] || [12, 0]));
-    photo.takenAt = d;
-    photo.timeSource = 'slot';
-  }
-  return preset.meal;
+  if (settings.instantSave) quickSave(file);
+  else startEdit(file, { camera });
 }
 
 function showView(view, { keepScroll = false } = {}) {
@@ -925,8 +900,8 @@ function renderDay() {
       return `<div class="slot"><button class="slot-ph" type="button" data-id="${r.id}" aria-label="${label} ${t} 사진 보기"><img src="${thumbUrl(r)}" alt="">${more}</button>`
         + `<p class="slot-lb">${CHECK_SVG}${label}</p></div>`;
     }
-    // 빈 칸: 아직 비어 있는 그릇 그림 (카메라 모양은 아래 탭바 버튼과 겹쳐서 쓰지 않는다)
-    return `<div class="slot"><button class="slot-ph is-empty${isToday ? ' is-today' : ''}" type="button" data-slot="${m}" aria-label="${label} 사진 ${isToday ? '찍기' : '추가하기'}"><img class="slot-dish" src="assets/art/slot/${m}.png" alt=""><span>${isToday ? '찍기' : '추가'}</span></button>`
+    // 빈 칸: 아직 비어 있는 그릇 그림만. 누를 수 없다 (사진 찍기는 아래 가운데 버튼 하나로)
+    return `<div class="slot"><div class="slot-ph is-empty${isToday ? ' is-today' : ''}" role="img" aria-label="${label} 아직 없음"><img class="slot-dish" src="assets/art/slot/${m}.png" alt=""></div>`
       + `<p class="slot-lb is-wait">${label}</p></div>`;
   }).join('');
 }
@@ -1070,14 +1045,14 @@ function shareText(result) {
 
 /* ── 즉시 저장: 스탬프 화면 없이, 가운데를 정사각형으로, 마지막에 쓴 스탬프로 ── */
 
-async function quickSave(file, preset = null) {
+async function quickSave(file) {
   showToast('사진을 남기고 있어요', { stay: true });
   let photo;
   try {
     photo = await readPhoto(file);
     const side = Math.min(photo.W0, photo.H0);
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
-    const meal = applyPreset(photo, preset);
+    const meal = mealFor(photo.takenAt);
     const look = { style: settings.stampStyle, color: settings.stampColor };
     const pick = { odung: randomPose('odung'), perpeng: randomPose('perpeng') };
     const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, chars: poseImages(pick) }, look);
@@ -1103,15 +1078,10 @@ async function quickSave(file, preset = null) {
     if (kept) {
       upsertRecord(rec);
       state.fresh.add(rec.id);
-      if (preset) {
-        state.selectedDay = rec.day;
-        renderAll();
-      } else {
-        if (state.view !== 'album') showView('album');
-        if (state.filter !== 'all' && state.filter !== meal) state.filter = 'all';
-        renderAll();
-        window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
-      }
+      if (state.view !== 'album') showView('album');
+      if (state.filter !== 'all' && state.filter !== meal) state.filter = 'all';
+      renderAll();
+      window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
     }
     playStampSound();
     showToast(kept ? `${fmtClock(photo.takenAt)} 사진을 남겼어요` : '이 기기에는 남기지 못했어요', { file: out.file, recordId: kept ? rec.id : null, pop: true });
@@ -1147,13 +1117,12 @@ const E = {
 const TIME_NOTES = {
   file: '파일에 남은 시각이에요. 맞는지 확인해 주세요',
   now: '촬영 시각이 없어 지금 시각을 넣었어요',
-  slot: '촬영 시각이 없어 고른 날로 넣었어요. 시각을 확인해 주세요',
 };
 
 const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: poseImages(e.pose), charPos: e.charPos });
 const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
-async function startEdit(file, { camera = false, preset = null } = {}) {
+async function startEdit(file, { camera = false } = {}) {
   const mine = {
     id: uid(), createdAt: Date.now(), version: 0, job: null, timer: 0, source: file,
     file: null, thumb: null, savedAt: null, sentAt: null, persistedVersion: null,
@@ -1183,8 +1152,7 @@ async function startEdit(file, { camera = false, preset = null } = {}) {
     Object.assign(mine, photo);
     // 방금 카메라로 찍은 사진이면 지금 시각이 곧 찍은 시각이다
     if (camera && mine.timeSource !== 'exif') mine.timeSource = 'camera';
-    mine.meal = applyPreset(mine, preset);
-    if (preset) mine.mealAuto = false;
+    mine.meal = mealFor(mine.takenAt);
     mine.crop = { cx: mine.W0 / 2, cy: mine.H0 / 2, z: 1 };
 
     buildPreview(mine);
