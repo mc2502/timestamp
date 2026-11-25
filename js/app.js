@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=81';
-import { readExifDate } from './exif.js?v=81';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=81';
-import * as db from './db.js?v=81';
+} from './format.js?v=82';
+import { readExifDate } from './exif.js?v=82';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=82';
+import * as db from './db.js?v=82';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '81';
+const APP_VERSION = '82';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1167,7 +1167,7 @@ async function quickSave(file) {
     photo = await readPhoto(file);
     const side = Math.min(photo.W0, photo.H0);
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
-    if (isFuture(photo.takenAt)) { showToast(futureNote(photo.takenAt)); return; }
+    if (timeBlocked(photo.takenAt)) { showToast(blockNote(photo.takenAt)); return; }
     const meal = mealFor(photo.takenAt);
     if (mealTaken(dayKey(photo.takenAt), meal)) {
       URL.revokeObjectURL(photo.url);
@@ -1238,11 +1238,22 @@ const E = {
 
 // 미래 사진은 남기지 않는다: 지금보다 2시간 넘게 뒤의 시각이면 미래로 본다
 // (2시간까지는 기기 시계 · 시간대가 조금 어긋난 것으로 보고 받아 준다)
+// 지난 쪽은 앱을 낸 2026년 11월 1일(FIRST_MONTH)부터만 받는다. 그 전 사진은 달력에도 없는 달이라 남기지 않는다
 const FUTURE_SLACK = 2 * 60 * 60 * 1000;
 const isFuture = (d) => d.getTime() > Date.now() + FUTURE_SLACK;
-const shortWhen = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일 ${fmtClock(d)}`;
-const futureNote = (d) => `미래 시각(${shortWhen(d)})에 찍힌 사진이라 남길 수 없어요`;
-const FUTURE_EDIT_NOTE = '지금보다 2시간 넘게 뒤는 미래라서 넣을 수 없어요';
+const isTooEarly = (d) => d < FIRST_MONTH;
+const timeBlocked = (d) => isFuture(d) || isTooEarly(d);
+const shortWhen = (d) => `${d.getFullYear() !== new Date().getFullYear() ? `${d.getFullYear()}년 ` : ''}${d.getMonth() + 1}월 ${d.getDate()}일 ${fmtClock(d)}`;
+// 바로 남기기 알림 · 스탬프 화면 안내 · 시각 고치기 알림
+const blockNote = (d) => (isFuture(d)
+  ? `미래 시각(${shortWhen(d)})에 찍힌 사진이라 남길 수 없어요`
+  : `11월 1일 전(${shortWhen(d)})에 찍힌 사진이라 남길 수 없어요`);
+const blockDetail = (d) => `${shortWhen(d)}에 찍힌 사진이에요.\n${isFuture(d)
+  ? '지금보다 2시간 넘게 뒤는 미래라서 남길 수 없어요.'
+  : '2026년 11월 1일부터 찍은 사진만 남길 수 있어요.'}`;
+const editBlockNote = (d) => (isFuture(d)
+  ? '지금보다 2시간 넘게 뒤는 미래라서 넣을 수 없어요'
+  : '2026년 11월 1일 전 시각은 넣을 수 없어요');
 
 // 시각을 지어내지 않는다: 사진에 시각이 없을 때만 알려 준다
 const TIME_NOTES = {
@@ -1280,11 +1291,11 @@ async function startEdit(file, { camera = false } = {}) {
   try {
     const photo = await readPhoto(file);
     if (ed !== mine) { URL.revokeObjectURL(photo.url); return; }
-    if (isFuture(photo.takenAt)) {
+    if (timeBlocked(photo.takenAt)) {
       URL.revokeObjectURL(photo.url);
       E.skel.classList.add('is-err');
       E.hint.classList.add('gone');
-      E.skelText.textContent = `${shortWhen(photo.takenAt)}에 찍힌 사진이에요.\n지금보다 2시간 넘게 뒤는 미래라서 남길 수 없어요.`;
+      E.skelText.textContent = blockDetail(photo.takenAt);
       return;
     }
     Object.assign(mine, photo);
@@ -1357,6 +1368,7 @@ function fillFields() {
   E.timeText.innerHTML = `${d.getMonth() + 1}월 ${d.getDate()}일 <small>${ampm}</small> ${hm}`;
   E.time.setAttribute('aria-label', `촬영 시각 ${monthDay(d)} ${fmtClock(d)}`);
   E.time.value = toLocalInput(d);
+  E.time.min = toLocalInput(FIRST_MONTH);
   E.time.max = toLocalInput(new Date(Date.now() + FUTURE_SLACK));
   E.timePill.classList.toggle('is-guess', Boolean(TIME_NOTES[ed.timeSource]));
   edMealBar.show();
@@ -1585,7 +1597,7 @@ async function readyFile() {
 async function editorShare() {
   if (!ed?.ready) return;
   const mine = ed;
-  if (isFuture(mine.takenAt)) { showToast(FUTURE_EDIT_NOTE); return; }
+  if (timeBlocked(mine.takenAt)) { showToast(editBlockNote(mine.takenAt)); return; }
   // 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 새 사진으로 바꿀지 먼저 묻는다
   const taken = mealTaken(dayKey(mine.takenAt), mine.meal, mine.id);
   if (taken) {
@@ -1700,7 +1712,7 @@ function bindEditor() {
     if (!ed?.ready) return;
     const d = fromLocalInput(E.time.value);
     if (!d) { fillFields(); return; }
-    if (isFuture(d)) { showToast(FUTURE_EDIT_NOTE); fillFields(); return; } // 원래 시각으로 되돌린다
+    if (timeBlocked(d)) { showToast(editBlockNote(d)); fillFields(); return; } // 원래 시각으로 되돌린다
     ed.takenAt = d;
     ed.timeSource = 'edited';
     if (ed.mealAuto) ed.meal = mealFor(d);
