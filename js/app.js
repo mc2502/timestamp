@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=65';
-import { readExifDate } from './exif.js?v=65';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=65';
-import * as db from './db.js?v=65';
+} from './format.js?v=66';
+import { readExifDate } from './exif.js?v=66';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=66';
+import * as db from './db.js?v=66';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '65';
+const APP_VERSION = '66';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1141,7 +1141,6 @@ const E = {
   timePill: $('#ed-time-pill'),
   seg: $('#meal-seg'),
   track: $('#meal-track'),
-  mealName: $('#meal-name'),
   share: $('#ed-share'),
 };
 
@@ -1258,14 +1257,17 @@ function fillFields() {
   fillLook();
 }
 
-// 끼니 막대: 다섯 칸(아침 · 점심 · 저녁 · 간식 · 끼니 없음). 손잡이를 끌면 손가락을 따라가고, 놓으면 가까운 칸에 붙는다
+// 끼니 막대: 다섯 칸(아침 · 점심 · 저녁 · 간식 · 없음)의 이름이 막대 안에 있다.
+// 흰 손잡이를 끌면 손가락을 따라가고, 놓으면 가까운 칸에 붙는다. 손잡이 위 이름이 고른 끼니
 const MEAL_STOPS = ['breakfast', 'lunch', 'dinner', 'snack', null];
 const stopLabel = (m) => mealLabel(m) || '끼니 없음';
 function paintMeal(p) {
   const i = clamp(Math.round(p), 0, MEAL_STOPS.length - 1);
   E.track.style.setProperty('--p', String(p / (MEAL_STOPS.length - 1)));
-  $$('i', E.track).forEach((dot, k) => dot.classList.toggle('on', k <= p + 0.01));
-  E.mealName.textContent = stopLabel(MEAL_STOPS[i]);
+  $$('.mp-labels > span', E.track).forEach((el, k) => {
+    el.classList.toggle('on', k === i);
+    el.classList.toggle('past', k < i);
+  });
   E.track.setAttribute('aria-valuenow', String(i));
   E.track.setAttribute('aria-valuetext', stopLabel(MEAL_STOPS[i]));
 }
@@ -1522,7 +1524,9 @@ function bindEditor() {
   let mealDrag = null;
   const mealAt = (e) => {
     const r = E.track.getBoundingClientRect();
-    return clamp((e.clientX - r.left - 22) / Math.max(1, r.width - 44), 0, 1) * (MEAL_STOPS.length - 1);
+    const n = MEAL_STOPS.length;
+    const w = (r.width - 8) / n; // 한 칸 너비 = 손잡이 너비
+    return clamp((e.clientX - r.left - 4 - w / 2) / Math.max(1, w * (n - 1)), 0, 1) * (n - 1);
   };
   const mealMove = (e) => {
     const p = mealAt(e);

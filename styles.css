@@ -402,26 +402,25 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .g-mix i + i { height: 2.5px; width: 68%; }
 
 /* 식사: 이 화면에서 알약은 이것 하나 — 옅은 회색 판에 흰 손잡이 */
-/* 끼니 막대: 위에 고른 끼니 이름, 아래 회색 막대에 하늘색 채움 + 흰 손잡이 + 다섯 칸 점. 끌거나 눌러서 고른다 */
-.ed-meal { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.mp-name { font-size: 15px; line-height: 20px; font-weight: 700; letter-spacing: -.02em; color: #2a5a9c; }
+/* 끼니 막대: 회색 막대 안에 다섯 이름이 제자리에. 흰 손잡이(한 칸 너비)가 끌려 다니고, 손잡이까지는 옅은 하늘색으로 찬다 */
+.ed-meal { display: block; }
 .mp-track {
-  --p: .25; position: relative; width: 100%; height: 44px; border-radius: 22px; background: rgba(25, 31, 40, .055);
+  --p: .25;
+  position: relative; width: 100%; height: 44px; border-radius: 22px; background: rgba(25, 31, 40, .055);
   touch-action: none; cursor: pointer; -webkit-user-select: none; user-select: none;
 }
 .mp-fill {
-  position: absolute; left: 4px; top: 4px; bottom: 4px; width: calc(var(--p) * (100% - 44px) + 36px); border-radius: 18px;
-  background: #d3e5fa; transition: width .3s cubic-bezier(.22, .8, .25, 1);
+  position: absolute; left: 4px; top: 4px; bottom: 4px; border-radius: 18px; background: #dbe8f9;
+  width: calc(var(--p) * (100% - 8px) * 4 / 5 + (100% - 8px) / 5); transition: width .3s cubic-bezier(.22, .8, .25, 1);
 }
-.mp-track i {
-  position: absolute; top: 50%; left: calc(22px + var(--i) * (100% - 44px) / 4); width: 6px; height: 6px; margin: -3px 0 0 -3px;
-  border-radius: 50%; background: rgba(25, 31, 40, .16); transition: background-color .2s;
-}
-.mp-track i.on { background: rgba(42, 90, 156, .34); }
 .mp-thumb {
-  position: absolute; top: 4px; left: calc(4px + var(--p) * (100% - 44px)); width: 36px; height: 36px; border-radius: 50%;
-  background: #ffffff; box-shadow: 0 1px 4px rgba(22, 42, 66, .14); transition: left .3s cubic-bezier(.22, .8, .25, 1);
+  position: absolute; top: 4px; bottom: 4px; border-radius: 18px; background: #ffffff; box-shadow: 0 1px 4px rgba(22, 42, 66, .12);
+  left: calc(4px + var(--p) * (100% - 8px) * 4 / 5); width: calc((100% - 8px) / 5); transition: left .3s cubic-bezier(.22, .8, .25, 1);
 }
+.mp-labels { position: absolute; inset: 0 4px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; pointer-events: none; }
+.mp-labels > span { text-align: center; font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: var(--ink3); transition: color .15s; }
+.mp-labels > span.past { color: #4d6c93; }
+.mp-labels > span.on { color: var(--ink); font-weight: 700; }
 .mp-track.is-dragging .mp-fill, .mp-track.is-dragging .mp-thumb { transition: none; }
 .mp-track:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
