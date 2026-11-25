@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=75';
-import { readExifDate } from './exif.js?v=75';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=75';
-import * as db from './db.js?v=75';
+} from './format.js?v=76';
+import { readExifDate } from './exif.js?v=76';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=76';
+import * as db from './db.js?v=76';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '75';
+const APP_VERSION = '76';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -50,12 +50,14 @@ const ART = {
     face: 'assets/mascots/odung-calendar-face-v7.png',
     hero: 'assets/art/odung-hero.png', // 앱 아이콘과 같은 그림 (첫 화면 · 시작 화면)
     empty: 'assets/art/odung-empty.png', // 빈 접시 (사진이 없는 끼니 · 날)
+    album: 'assets/mascots/odung-calendar-face-v7.png', // 카메라를 길게 누르면 뜨는 ‘앨범에서 고르기’ (아스트로 그림이 오면 바꾼다)
   },
   perpeng: {
     camera: 'assets/mascots/perpeng-camera-v2.png',
     face: 'assets/mascots/perpeng-calendar-face-v4.png',
     hero: 'assets/art/perpeng-hero.png',
     empty: 'assets/art/perpeng-empty.png',
+    album: 'assets/mascots/perpeng-calendar-face-v4.png',
   },
 };
 
