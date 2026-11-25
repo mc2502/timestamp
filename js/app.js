@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=80';
-import { readExifDate } from './exif.js?v=80';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=80';
-import * as db from './db.js?v=80';
+} from './format.js?v=81';
+import { readExifDate } from './exif.js?v=81';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=81';
+import * as db from './db.js?v=81';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '80';
+const APP_VERSION = '81';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -128,8 +128,8 @@ async function init() {
   state.selectedDay = dayKey(now);
   const place = recallPlace();
   if (place) {
-    if (Number.isFinite(place.month)) state.month = new Date(place.month);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(place.day || '')) state.selectedDay = place.day;
+    if (Number.isFinite(place.month)) state.month = clampMonth(new Date(place.month));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(place.day || '') && place.day >= dayKey(FIRST_MONTH)) state.selectedDay = place.day;
     if (place.view === 'calendar') showView('calendar', { keepScroll: true });
   }
 
@@ -616,9 +616,19 @@ function setFilter(id) {
   renderAlbum();
 }
 
+// 달력은 앱을 낸 달(2026년 11월)부터 이번 달까지만 넘긴다
+const FIRST_MONTH = new Date(2026, 10, 1);
+function clampMonth(d) {
+  const now = new Date();
+  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  if (d < FIRST_MONTH) return new Date(FIRST_MONTH);
+  if (d > thisMonth) return thisMonth;
+  return d;
+}
+
 function shiftMonth(delta) {
   const m = state.month;
-  state.month = new Date(m.getFullYear(), m.getMonth() + delta, 1);
+  state.month = clampMonth(new Date(m.getFullYear(), m.getMonth() + delta, 1));
   renderCalendar();
 }
 
@@ -933,6 +943,7 @@ function renderCalendar() {
   const now = new Date();
   const prefix = `${y}-${String(mo + 1).padStart(2, '0')}`;
   $('#mon-t').textContent = `${y}년 ${mo + 1}월`;
+  $('#mon-prev').disabled = m <= FIRST_MONTH;
   $('#mon-next').disabled = y === now.getFullYear() && mo === now.getMonth();
 
   const meals = mealsByDay();
@@ -1156,6 +1167,7 @@ async function quickSave(file) {
     photo = await readPhoto(file);
     const side = Math.min(photo.W0, photo.H0);
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
+    if (isFuture(photo.takenAt)) { showToast(futureNote(photo.takenAt)); return; }
     const meal = mealFor(photo.takenAt);
     if (mealTaken(dayKey(photo.takenAt), meal)) {
       URL.revokeObjectURL(photo.url);
@@ -1224,6 +1236,14 @@ const E = {
   share: $('#ed-share'),
 };
 
+// 미래 사진은 남기지 않는다: 지금보다 2시간 넘게 뒤의 시각이면 미래로 본다
+// (2시간까지는 기기 시계 · 시간대가 조금 어긋난 것으로 보고 받아 준다)
+const FUTURE_SLACK = 2 * 60 * 60 * 1000;
+const isFuture = (d) => d.getTime() > Date.now() + FUTURE_SLACK;
+const shortWhen = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일 ${fmtClock(d)}`;
+const futureNote = (d) => `미래 시각(${shortWhen(d)})에 찍힌 사진이라 남길 수 없어요`;
+const FUTURE_EDIT_NOTE = '지금보다 2시간 넘게 뒤는 미래라서 넣을 수 없어요';
+
 // 시각을 지어내지 않는다: 사진에 시각이 없을 때만 알려 준다
 const TIME_NOTES = {
   file: '파일에 남은 시각이에요. 맞는지 확인해 주세요',
@@ -1260,6 +1280,13 @@ async function startEdit(file, { camera = false } = {}) {
   try {
     const photo = await readPhoto(file);
     if (ed !== mine) { URL.revokeObjectURL(photo.url); return; }
+    if (isFuture(photo.takenAt)) {
+      URL.revokeObjectURL(photo.url);
+      E.skel.classList.add('is-err');
+      E.hint.classList.add('gone');
+      E.skelText.textContent = `${shortWhen(photo.takenAt)}에 찍힌 사진이에요.\n지금보다 2시간 넘게 뒤는 미래라서 남길 수 없어요.`;
+      return;
+    }
     Object.assign(mine, photo);
     // 방금 카메라로 찍은 사진이면 지금 시각이 곧 찍은 시각이다
     if (camera && mine.timeSource !== 'exif') mine.timeSource = 'camera';
@@ -1280,7 +1307,8 @@ async function startEdit(file, { camera = false } = {}) {
   } catch {
     if (ed !== mine) return;
     E.skel.classList.add('is-err');
-    E.skelText.textContent = '사진을 열지 못했어요. 다른 사진으로 다시 시도해 주세요.';
+    E.hint.classList.add('gone');
+    E.skelText.textContent = '사진을 열지 못했어요.\n다른 사진으로 다시 시도해 주세요.';
   }
 }
 
@@ -1329,7 +1357,7 @@ function fillFields() {
   E.timeText.innerHTML = `${d.getMonth() + 1}월 ${d.getDate()}일 <small>${ampm}</small> ${hm}`;
   E.time.setAttribute('aria-label', `촬영 시각 ${monthDay(d)} ${fmtClock(d)}`);
   E.time.value = toLocalInput(d);
-  E.time.max = toLocalInput(new Date(Date.now() + 60000));
+  E.time.max = toLocalInput(new Date(Date.now() + FUTURE_SLACK));
   E.timePill.classList.toggle('is-guess', Boolean(TIME_NOTES[ed.timeSource]));
   edMealBar.show();
   fillLook();
@@ -1557,6 +1585,7 @@ async function readyFile() {
 async function editorShare() {
   if (!ed?.ready) return;
   const mine = ed;
+  if (isFuture(mine.takenAt)) { showToast(FUTURE_EDIT_NOTE); return; }
   // 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 새 사진으로 바꿀지 먼저 묻는다
   const taken = mealTaken(dayKey(mine.takenAt), mine.meal, mine.id);
   if (taken) {
@@ -1671,6 +1700,7 @@ function bindEditor() {
     if (!ed?.ready) return;
     const d = fromLocalInput(E.time.value);
     if (!d) { fillFields(); return; }
+    if (isFuture(d)) { showToast(FUTURE_EDIT_NOTE); fillFields(); return; } // 원래 시각으로 되돌린다
     ed.takenAt = d;
     ed.timeSource = 'edited';
     if (ed.mealAuto) ed.meal = mealFor(d);

@@ -408,6 +408,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .preview-skel { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 0 24px; font-size: 13px; color: var(--ink3); font-weight: 600; text-align: center; }
 .skel-face { width: 56px; height: 56px; transform-origin: 50% 92%; animation: refresh-face-waddle .7s ease-in-out infinite; }
 .preview-skel.is-err .skel-face { animation: none; }
+.preview-skel span { white-space: pre-line; } /* 안내 두 문장은 줄을 나눠서 */
 .ed-hint {
   position: absolute; left: 12px; top: 12px; padding: 6px 12px; border-radius: 14px;
   background: rgba(25, 31, 40, .5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
