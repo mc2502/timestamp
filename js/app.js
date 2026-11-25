@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=72';
-import { readExifDate } from './exif.js?v=72';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=72';
-import * as db from './db.js?v=72';
+} from './format.js?v=73';
+import { readExifDate } from './exif.js?v=73';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=73';
+import * as db from './db.js?v=73';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '72';
+const APP_VERSION = '73';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -512,8 +512,9 @@ function bindEvents() {
   }
 }
 
-// 가운데 카메라: 누르면 바로 촬영. 길게 누르면 살짝 진동한 뒤 바로 위에 ‘앨범에서 고르기’가 뜬다.
-// 누른 채 그 버튼으로 올려 놓아도 되고, 손을 뗀 뒤 눌러도 된다. 바깥을 누르면 닫힌다
+// 가운데 카메라: 누르면 바로 촬영. 길게 누르면 버튼이 톡 튀며(안드로이드는 진동도) 바로 위에 ‘앨범에서 고르기’가 뜬다.
+// 손을 뗀 뒤 그 버튼을 누른다. 아이폰은 ‘끌어서 놓기’로는 사진 고르기 창을 열어 주지 않아서(탭이어야 함),
+// 누른 채 올려서 놓으면 메뉴를 그대로 띄워 두고 눌러 주기를 기다린다. 바깥을 누르면 닫힌다
 const HOLD_MS = 420;
 function bindAddButton() {
   const add = $('#add');
@@ -536,16 +537,23 @@ function bindAddButton() {
     held = false;
     start = { x: e.clientX, y: e.clientY };
     clearTimeout(timer);
-    timer = setTimeout(() => { held = true; haptic(); openPop(); }, HOLD_MS);
+    timer = setTimeout(() => {
+      held = true;
+      buzz();
+      add.classList.remove('is-held');
+      void add.offsetWidth; // 다시 누를 때도 튀는 움직임이 처음부터
+      add.classList.add('is-held');
+      openPop();
+    }, HOLD_MS);
   });
   add.addEventListener('pointermove', (e) => {
     if (!held && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 12) clearTimeout(timer); // 끌면 길게 누르기 취소
     if (held) album.classList.toggle('is-over', overAlbum(e));
   });
-  add.addEventListener('pointerup', (e) => {
+  add.addEventListener('pointerup', () => {
     clearTimeout(timer);
     start = null;
-    if (held && overAlbum(e)) { closePop(); openInput('#input-photo'); } // 누른 채 올려서 놓기
+    album.classList.remove('is-over'); // 올려서 놓았어도 메뉴는 남겨 두고, 눌러서 고른다
   });
   add.addEventListener('pointercancel', () => { clearTimeout(timer); start = null; });
   add.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!held) { held = true; openPop(); } }); // 마우스 오른쪽 · 키보드 메뉴 키
@@ -561,20 +569,9 @@ function bindAddButton() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) closePop(); });
 }
 
-// 살짝 진동: 안드로이드는 vibrate, 아이폰 사파리(iOS 18 이상)는 스위치 체크박스를 누를 때의 햅틱을 빌린다
-let hapticSwitch = null;
-function haptic() {
+// 살짝 진동: 진동을 허락하는 브라우저(안드로이드)에서만. 아이폰 웹앱은 누르고 있는 동안 진동을 낼 수 없다
+function buzz() {
   try { navigator.vibrate?.(12); } catch { /* 진동이 없는 기기 */ }
-  try {
-    if (!hapticSwitch) {
-      hapticSwitch = document.createElement('label');
-      hapticSwitch.className = 'vh';
-      hapticSwitch.setAttribute('aria-hidden', 'true');
-      hapticSwitch.innerHTML = '<input type="checkbox" switch tabindex="-1">';
-      document.body.append(hapticSwitch);
-    }
-    hapticSwitch.click();
-  } catch { /* 햅틱을 못 내도 동작에는 지장 없음 */ }
 }
 
 // #input-photo: 사진 보관함에서 고른다
