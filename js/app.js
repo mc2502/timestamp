@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=73';
-import { readExifDate } from './exif.js?v=73';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=73';
-import * as db from './db.js?v=73';
+} from './format.js?v=74';
+import { readExifDate } from './exif.js?v=74';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=74';
+import * as db from './db.js?v=74';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '73';
+const APP_VERSION = '74';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -742,14 +742,45 @@ function upsertRecord(rec) {
   state.records.sort((a, b) => a.takenAt - b.takenAt);
 }
 
-async function updateRecord(rec) {
-  try {
-    await db.put(rec);
-  } catch {
-    return false;
+// 아이폰 사파리는 저장소에서 꺼낸 사진(Blob)을 같은 기록에 그대로 다시 넣으면, 덮어쓰면서 원래 파일을 지워
+// 사진이 깨질 수 있다. 끼니 · 공유 표시만 바꿀 때도 사진은 새 Blob으로 복사해서 넣는다
+async function freshBlobs(rec) {
+  const out = { ...rec };
+  for (const key of ['blob', 'thumb', 'original']) {
+    const b = rec[key];
+    if (!(b instanceof Blob)) continue;
+    const data = await b.arrayBuffer();
+    out[key] = b instanceof File
+      ? new File([data], b.name, { type: b.type, lastModified: b.lastModified })
+      : new Blob([data], { type: b.type });
   }
-  upsertRecord(rec);
+  return out;
+}
+
+// 저장에 성공하면 실제로 저장된 기록(새 Blob)을, 못 하면 null을 돌려준다
+async function updateRecord(rec) {
+  let saved;
+  try {
+    saved = await freshBlobs(rec);
+    await db.put(saved);
+  } catch {
+    return null;
+  }
+  upsertRecord(saved);
   renderAll();
+  return saved;
+}
+
+// 한 끼니에 한 장: 같은 날 같은 끼니(아침 · 점심 · 저녁)에 이미 있는 사진. 간식 · 끼니 없음은 여러 장이어도 된다
+function mealTaken(day, meal, exceptId = null) {
+  if (!['breakfast', 'lunch', 'dinner'].includes(meal)) return null;
+  return state.records.find((r) => r.day === day && r.meal === meal && r.id !== exceptId) || null;
+}
+
+async function removeRecord(id) {
+  try { await db.remove(id); } catch { return false; }
+  forgetThumb(id);
+  state.records = state.records.filter((r) => r.id !== id);
   return true;
 }
 
@@ -1117,6 +1148,13 @@ async function quickSave(file) {
     const side = Math.min(photo.W0, photo.H0);
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
     const meal = mealFor(photo.takenAt);
+    if (mealTaken(dayKey(photo.takenAt), meal)) {
+      URL.revokeObjectURL(photo.url);
+      photo = null;
+      showToast(`이날 ${mealLabel(meal)} 사진이 이미 있어서 스탬프 화면을 열었어요`);
+      startEdit(file);
+      return;
+    }
     const look = { style: settings.stampStyle, color: settings.stampColor };
     const pick = { odung: randomPose('odung'), perpeng: randomPose('perpeng') };
     const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, chars: poseImages(pick) }, look);
@@ -1510,6 +1548,15 @@ async function readyFile() {
 async function editorShare() {
   if (!ed?.ready) return;
   const mine = ed;
+  // 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 새 사진으로 바꿀지 먼저 묻는다
+  const taken = mealTaken(dayKey(mine.takenAt), mine.meal, mine.id);
+  if (taken) {
+    const ok = window.confirm(`이날 ${mealLabel(mine.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요? 먼저 있던 사진은 앱에서만 지워지고, 아이폰 앨범에 저장한 사진은 그대로예요.`);
+    if (!ok) { showToast('끼니를 바꾸면 따로 남길 수 있어요'); return; }
+    mine.replaceId = taken.id;
+  } else {
+    mine.replaceId = null;
+  }
   let file = mine.file;
   if (!file) {
     E.share.classList.add('is-busy');
@@ -1559,6 +1606,7 @@ async function persistEdit(e) {
   e.persistedVersion = e.version;
   upsertRecord(rec);
   if (isNew) state.fresh.add(rec.id);
+  if (e.replaceId) { await removeRecord(e.replaceId); e.replaceId = null; } // 같은 끼니의 먼저 있던 사진은 앱에서 뺀다
   renderAll();
   return true;
 }
@@ -1794,16 +1842,32 @@ async function viewerMeal(meal) {
   if (!vw) return;
   const mine = vw;
   const before = mine.rec;
-  const rec = { ...before, meal };
-  mine.rec = rec; // 막대는 바로 새 칸에 둔다
-  if (!(await updateRecord(rec))) {
+  // 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 두 사진의 끼니를 서로 바꿀지 묻는다
+  const other = mealTaken(before.day, meal, before.id);
+  if (other && !window.confirm(`이날 ${mealLabel(meal)} 사진이 이미 있어요.\n두 사진의 끼니를 서로 바꿀까요?`)) {
+    vwMealBar.show();
+    return;
+  }
+  mine.rec = { ...before, meal }; // 막대는 바로 새 칸에 둔다
+  // 먼저 다른 사진을 이 사진의 원래 끼니로 옮겨 자리를 비운다
+  if (other && !(await updateRecord({ ...other, meal: before.meal ?? null }))) {
+    mine.rec = before;
+    if (vw === mine) { vwMealBar.show(); showMsg(V.msg, 'err', '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'); }
+    return;
+  }
+  const saved = await updateRecord(mine.rec);
+  if (!saved) {
     mine.rec = before; // 못 바꿨으면 원래 칸으로
     if (vw === mine) { vwMealBar.show(); showMsg(V.msg, 'err', '바꾸지 못했어요. 잠시 후 다시 시도해 주세요.'); }
     return;
   }
   if (vw !== mine) return;
-  viewerTitles(rec);
-  showMsg(V.msg, 'ok', MEAL_ON_PHOTO.has(rec.style) ? '끼니를 바꿨어요. 사진 속 글씨는 그대로예요.' : '끼니를 바꿨어요.');
+  mine.rec = saved;
+  viewerTitles(saved);
+  const note = MEAL_ON_PHOTO.has(saved.style) ? ' 사진 속 글씨는 그대로예요.' : '';
+  showMsg(V.msg, 'ok', other
+    ? `${mealLabel(meal)} 사진과 끼니를 서로 바꿨어요.${note}`
+    : `끼니를 바꿨어요.${note}`);
 }
 const vwMealBar = mealBar($('#vw-meal'), {
   current: () => vw?.rec.meal,
@@ -1826,10 +1890,10 @@ async function viewerShare() {
   if (vw !== mine || result === 'cancelled') return;
   if (result === 'retry') { showMsg(V.msg, 'warn', '한 번 더 눌러 주세요.'); return; }
   if (result === 'error') { showMsg(V.msg, 'err', '공유 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.'); return; }
-  const rec = { ...mine.rec, sentAt: Date.now() };
-  if (await updateRecord(rec)) {
-    mine.rec = rec;
-    if (vw === mine) viewerTitles(rec);
+  const saved = await updateRecord({ ...mine.rec, sentAt: Date.now() });
+  if (saved) {
+    mine.rec = saved;
+    if (vw === mine) viewerTitles(saved);
   }
   if (vw === mine) showMsg(V.msg, 'ok', result === 'downloaded' ? '사진을 내려받았어요.' : '다 됐어요.');
 }
