@@ -240,19 +240,41 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .add.is-held::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid rgba(27, 100, 218, .45); animation: add-ring .5s ease-out forwards; pointer-events: none; }
 @keyframes add-held { 0% { transform: scale(.94); } 45% { transform: scale(1.12); } 100% { transform: scale(1); } }
 @keyframes add-ring { from { transform: scale(1); opacity: 1; } to { transform: scale(1.45); opacity: 0; } }
-/* 카메라를 길게 누르면 바로 위에 뜨는 ‘앨범에서 고르기’ (탭바와 같은 유리) */
-.add-pop { position: fixed; z-index: 25; left: 0; right: 0; bottom: calc(var(--nav-bottom) + var(--nav-height) + 10px); display: flex; justify-content: center; pointer-events: none; }
+/* 카메라를 길게 누르면 바로 위에 뜨는 ‘앨범에서 고르기’ (탭바와 같은 유리).
+   탭바 바로 아래 층이라, 카메라 버튼 뒤에서 솟아올라 위로 나오고 닫힐 때는 다시 그 뒤로 들어간다 */
+.add-pop { position: fixed; z-index: 19; left: 0; right: 0; bottom: calc(var(--nav-bottom) + var(--nav-height) + 10px); display: flex; justify-content: center; pointer-events: none; }
 /* 글씨 대신 앨범을 든 그날의 캐릭터(오둥이 · 퍼펭이)가 든 동그란 버튼 */
 .add-pop button {
+  /* 이 버튼 가운데에서 카메라 버튼 가운데까지의 거리: 탭바 높이의 반 + 틈 10 + 버튼 반지름 32 */
+  --rise: calc(var(--nav-height) / 2 + 42px);
   position: relative; pointer-events: auto; display: grid; place-items: center; width: 64px; height: 64px; padding: 0; border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, .78); background: rgba(255, 255, 255, .86); box-shadow: var(--shadow-nav);
   -webkit-backdrop-filter: var(--backdrop-nav); backdrop-filter: var(--backdrop-nav);
-  transform-origin: 50% 100%; animation: add-pop-in .24s cubic-bezier(.34, 1.56, .64, 1); transition: background-color .12s, transform .12s;
+  animation: add-pop-in .5s ease-in-out both; transition: background-color .12s, transform .12s;
 }
+.add-pop.is-closing button { pointer-events: none; animation: add-pop-out .2s cubic-bezier(.4, 0, 1, 1) both; }
 .add-pop .add-album-art { width: 54px; height: 54px; object-fit: contain; pointer-events: none; }
 .add-pop button.is-over, .add-pop button:active { background: #e3edfb; transform: scale(1.06); }
-@keyframes add-pop-in { from { transform: translateY(10px) scale(.86); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .add-pop button, .add.is-held, .add.is-held::after { animation: none; } }
+/* 카메라 자리에서 작게 출발해 위로 솟고, 살짝 넘쳤다가 제자리 */
+@keyframes add-pop-in {
+  0% { transform: translateY(var(--rise)) scale(.5); opacity: 0; animation-timing-function: cubic-bezier(.2, .6, .35, 1); } /* 솟는 구간은 눈에 보이게 천천히 감속 */
+  20% { opacity: 1; }
+  62% { transform: translateY(-7px) scale(1.05); }
+  82% { transform: translateY(2px) scale(.99); }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes add-pop-out {
+  0% { transform: none; opacity: 1; }
+  75% { opacity: 1; }
+  100% { transform: translateY(var(--rise)) scale(.5); opacity: 0; }
+}
+@keyframes add-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes add-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .add.is-held, .add.is-held::after { animation: none; }
+  .add-pop button { animation: add-fade-in .15s ease-out both; }
+  .add-pop.is-closing button { animation: add-fade-out .12s ease-in both; }
+}
 .tab:active, .add:active { transform: scale(.94); }
 
 /* ── 버튼 ── */

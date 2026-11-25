@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=77';
-import { readExifDate } from './exif.js?v=77';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=77';
-import * as db from './db.js?v=77';
+} from './format.js?v=78';
+import { readExifDate } from './exif.js?v=78';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=78';
+import * as db from './db.js?v=78';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '77';
+const APP_VERSION = '78';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -526,14 +526,21 @@ function bindAddButton() {
   let held = false;
   let start = null;
   const overAlbum = (e) => Boolean(document.elementFromPoint(e.clientX, e.clientY)?.closest('#add-album'));
+  const isOpen = () => !pop.hidden && !pop.classList.contains('is-closing');
+  let closeTimer = 0;
   const openPop = () => {
+    clearTimeout(closeTimer);
+    pop.classList.remove('is-closing'); // 닫히며 내려가던 중이면 다시 솟아오른다
     pop.hidden = false;
     add.setAttribute('aria-expanded', 'true');
   };
+  // 닫을 때는 카메라 버튼 뒤로 다시 들어간 다음에 숨긴다
   const closePop = () => {
-    pop.hidden = true;
     album.classList.remove('is-over');
     add.setAttribute('aria-expanded', 'false');
+    if (!isOpen()) return;
+    pop.classList.add('is-closing');
+    closeTimer = setTimeout(() => { pop.hidden = true; pop.classList.remove('is-closing'); }, 200);
   };
   add.addEventListener('pointerdown', (e) => {
     held = false;
@@ -561,14 +568,14 @@ function bindAddButton() {
   add.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!held) { held = true; openPop(); } }); // 마우스 오른쪽 · 키보드 메뉴 키
   add.addEventListener('click', (e) => {
     if (held) { e.preventDefault(); held = false; return; } // 길게 누른 뒤의 클릭은 촬영이 아니다
-    if (!pop.hidden) { closePop(); return; }
+    if (isOpen()) { closePop(); return; }
     openInput('#input-camera');
   });
   album.addEventListener('click', () => { closePop(); openInput('#input-photo'); });
   document.addEventListener('pointerdown', (e) => {
-    if (!pop.hidden && !e.target.closest('#add-pop, #add')) closePop();
+    if (isOpen() && !e.target.closest('#add-pop, #add')) closePop();
   }, true);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) closePop(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) closePop(); });
 }
 
 // 살짝 진동: 진동을 허락하는 브라우저(안드로이드)에서만. 아이폰 웹앱은 누르고 있는 동안 진동을 낼 수 없다
