@@ -250,17 +250,17 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
   position: relative; pointer-events: auto; display: grid; place-items: center; width: 64px; height: 64px; padding: 0; border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, .78); background: rgba(255, 255, 255, .86); box-shadow: var(--shadow-nav);
   -webkit-backdrop-filter: var(--backdrop-nav); backdrop-filter: var(--backdrop-nav);
-  animation: add-pop-in .5s ease-in-out both; transition: background-color .12s, transform .12s;
+  animation: add-pop-in .56s ease-in-out both; transition: background-color .12s, transform .12s;
 }
 .add-pop.is-closing button { pointer-events: none; animation: add-pop-out .2s cubic-bezier(.4, 0, 1, 1) both; }
 .add-pop .add-album-art { width: 54px; height: 54px; object-fit: contain; pointer-events: none; }
 .add-pop button.is-over, .add-pop button:active { background: #e3edfb; transform: scale(1.06); }
-/* 카메라 자리에서 작게 출발해 위로 솟고, 살짝 넘쳤다가 제자리 */
+/* 카메라 자리에서 작게 출발해 커지면서 위로 솟고, 꼭대기에서 한껏 커졌다가 원래 크기로 돌아와 제자리 */
 @keyframes add-pop-in {
   0% { transform: translateY(var(--rise)) scale(.5); opacity: 0; animation-timing-function: cubic-bezier(.2, .6, .35, 1); } /* 솟는 구간은 눈에 보이게 천천히 감속 */
   20% { opacity: 1; }
-  62% { transform: translateY(-7px) scale(1.05); }
-  82% { transform: translateY(2px) scale(.99); }
+  55% { transform: translateY(-6px) scale(1.2); animation-timing-function: cubic-bezier(.45, 0, .55, 1); }
+  80% { transform: translateY(1px) scale(.96); }
   100% { transform: none; opacity: 1; }
 }
 @keyframes add-pop-out {
