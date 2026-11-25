@@ -288,6 +288,11 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .msg.warn { color: var(--blue-ink); background: rgba(27, 100, 218, .1); }
 
 /* 사진 보기 */
+/* 사진 보기 머리: 시트 위쪽과 사진 사이에 숨 쉴 여백, 날짜는 사진과 같은 왼쪽 선(20px) */
+#viewer .sheet-h { padding: 22px 14px 16px 20px; }
+#viewer .sheet-h .ht { padding-left: 0; }
+#viewer .sheet-h b { font-size: 20px; line-height: 28px; letter-spacing: -.03em; }
+#viewer .sheet-h span { margin-top: 3px; font-size: 13px; line-height: 18px; }
 .viewer-img { display: flex; justify-content: center; border-radius: 18px; overflow: hidden; background: var(--surface-inset); }
 .viewer-img img { width: 100%; max-height: min(60dvh, 560px); object-fit: contain; }
 #vw-del { margin-top: 6px; }
