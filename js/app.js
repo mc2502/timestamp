@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=82';
-import { readExifDate } from './exif.js?v=82';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=82';
-import * as db from './db.js?v=82';
+} from './format.js?v=83';
+import { readExifDate } from './exif.js?v=83';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=83';
+import * as db from './db.js?v=83';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '82';
+const APP_VERSION = '83';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -471,6 +471,8 @@ function bindEvents() {
     const filter = e.target.closest('[data-filter]');
     if (filter) { setFilter(filter.dataset.filter); return; }
     if (e.target.closest('[data-add]')) { openInput('#input-camera'); return; }
+    const slot = e.target.closest('[data-slot]');
+    if (slot) { pickForSlot(slot); return; }
     const photo = e.target.closest('[data-id]');
     if (photo) { openViewer(photo.dataset.id); return; }
     const day = e.target.closest('[data-day]');
@@ -585,16 +587,43 @@ function buzz() {
 
 // #input-photo: 사진 보관함에서 고른다
 // #input-camera: 기본 카메라를 바로 연다
-function openInput(sel) {
+// target: 달력의 끼니 칸에서 열었을 때 그 날 · 끼니. 다른 곳에서 열면 지워져서 엉뚱한 칸에 들어가지 않는다
+let pendingTarget = null;
+function openInput(sel, { target = null } = {}) {
+  pendingTarget = target;
   const input = $(sel);
   input.value = '';
   input.click();
 }
 
 function handleFile(file, { camera = false } = {}) {
+  const target = pendingTarget;
+  pendingTarget = null;
   if (!file) return;
-  if (settings.instantSave) quickSave(file);
+  // 끼니 칸에서 고른 사진은 늘 스탬프 화면으로 (그 칸의 날 · 끼니로 맞춰 두고, 바꿀 때는 저장하며 한 번 묻는다)
+  if (target) startEdit(file, { camera, target });
+  else if (settings.instantSave) quickSave(file);
   else startEdit(file, { camera });
+}
+
+// 달력의 끼니 칸: 그림은 그대로 두고, 누르면 빈 칸은 그 끼니 사진 올리기, 사진이 있는 칸은 새 사진으로 바꾸기.
+// 누른 순간에만 옅은 테두리가 잠깐 켜졌다 사라진다
+function pickForSlot(el) {
+  clearTimeout(el.tapTimer);
+  el.classList.remove('is-tapped');
+  void el.offsetWidth; // 연달아 눌러도 처음부터
+  el.classList.add('is-tapped');
+  el.tapTimer = setTimeout(() => el.classList.remove('is-tapped'), 800); // 사진 고르기 창이 떠 있는 동안에도 확실히 지운다
+  openInput('#input-photo', { target: { day: state.selectedDay, meal: el.dataset.slot } });
+}
+
+// 끼니 칸에 넣은 사진이 다른 날 사진(또는 시각이 없는 사진)이면, 그 날의 끼니 시각으로 둔다. 오늘인데 아직 안 온 시각이면 지금
+const SLOT_TIME = { breakfast: [8, 0], lunch: [12, 30], dinner: [18, 30] };
+function slotTime({ day, meal }) {
+  const d = fromDayKey(day);
+  const [h, m] = SLOT_TIME[meal] || [12, 0];
+  d.setHours(h, m, 0, 0);
+  return d.getTime() > Date.now() ? new Date() : d;
 }
 
 function showView(view, { keepScroll = false } = {}) {
@@ -989,7 +1018,7 @@ function daySay(got, isToday) {
   return `${MAIN_MEALS.filter((m) => got.has(m)).map(mealLabel).join(' · ')}을 남겼어요`;
 }
 
-// 고른 날의 밥상: 캐릭터 + 세 칸. 사진이 있으면 그 사진과 체크, 없으면 빈 칸(오늘은 찍기, 지난날은 추가)
+// 고른 날의 밥상: 캐릭터 + 세 칸. 사진이 있으면 그 사진과 체크(누르면 바꾸기), 없으면 그릇 그림(누르면 올리기)
 function renderDay() {
   const key = state.selectedDay;
   const d = fromDayKey(key);
@@ -1010,11 +1039,11 @@ function renderDay() {
       const r = items[0];
       const t = fmtClock(new Date(r.takenAt));
       const more = items.length > 1 ? `<span class="slot-more">+${items.length - 1}</span>` : '';
-      return `<div class="slot"><button class="slot-ph" type="button" data-id="${r.id}" aria-label="${label} ${t} 사진 보기"><img src="${thumbUrl(r)}" alt="">${more}</button>`
+      return `<div class="slot"><button class="slot-ph" type="button" data-slot="${m}" aria-label="${label} ${t} 사진 바꾸기"><img src="${thumbUrl(r)}" alt="">${more}</button>`
         + `<p class="slot-lb">${CHECK_SVG}${label}</p></div>`;
     }
-    // 빈 칸: 아직 비어 있는 그릇 그림만. 누를 수 없다 (사진 찍기는 아래 가운데 버튼 하나로)
-    return `<div class="slot"><div class="slot-ph is-empty${isToday ? ' is-today' : ''}" role="img" aria-label="${label} 아직 없음"><img class="slot-dish" src="assets/art/slot/${m}.png" alt=""></div>`
+    // 빈 칸: 아직 비어 있는 그릇 그림만 (글씨 없이). 누르면 이 끼니 사진을 올린다
+    return `<div class="slot"><button class="slot-ph is-empty${isToday ? ' is-today' : ''}" type="button" data-slot="${m}" aria-label="${label} 사진 올리기"><img class="slot-dish" src="assets/art/slot/${m}.png" alt=""></button>`
       + `<p class="slot-lb is-wait">${label}</p></div>`;
   }).join('');
 }
@@ -1259,12 +1288,13 @@ const editBlockNote = (d) => (isFuture(d)
 const TIME_NOTES = {
   file: '파일에 남은 시각이에요. 맞는지 확인해 주세요',
   now: '촬영 시각이 없어 지금 시각을 넣었어요',
+  slot: '고른 날 사진이 아니라서 끼니 시각으로 넣었어요',
 };
 
 const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: poseImages(e.pose), charPos: e.charPos });
 const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
-async function startEdit(file, { camera = false } = {}) {
+async function startEdit(file, { camera = false, target = null } = {}) {
   const mine = {
     id: uid(), createdAt: Date.now(), version: 0, job: null, timer: 0, source: file,
     file: null, thumb: null, savedAt: null, sentAt: null, persistedVersion: null,
@@ -1291,6 +1321,11 @@ async function startEdit(file, { camera = false } = {}) {
   try {
     const photo = await readPhoto(file);
     if (ed !== mine) { URL.revokeObjectURL(photo.url); return; }
+    // 끼니 칸에서 골랐는데 그 날 사진이 아니면 그 날의 끼니 시각으로
+    if (target && dayKey(photo.takenAt) !== target.day) {
+      photo.takenAt = slotTime(target);
+      photo.timeSource = 'slot';
+    }
     if (timeBlocked(photo.takenAt)) {
       URL.revokeObjectURL(photo.url);
       E.skel.classList.add('is-err');
@@ -1300,8 +1335,9 @@ async function startEdit(file, { camera = false } = {}) {
     }
     Object.assign(mine, photo);
     // 방금 카메라로 찍은 사진이면 지금 시각이 곧 찍은 시각이다
-    if (camera && mine.timeSource !== 'exif') mine.timeSource = 'camera';
-    mine.meal = mealFor(mine.takenAt);
+    if (camera && mine.timeSource !== 'exif' && mine.timeSource !== 'slot') mine.timeSource = 'camera';
+    mine.meal = target ? target.meal : mealFor(mine.takenAt);
+    if (target) mine.mealAuto = false; // 시각을 고쳐도 끼니는 고른 칸 그대로
     mine.crop = { cx: mine.W0 / 2, cy: mine.H0 / 2, z: 1 };
 
     buildPreview(mine);

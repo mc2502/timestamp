@@ -722,15 +722,17 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .mc-char { width: 84px; height: 84px; align-self: end; margin: -24px 0 16px -6px; object-fit: contain; pointer-events: none; user-select: none; }
 .mc-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .slot { min-width: 0; }
-.slot-ph { position: relative; display: block; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); transition: transform .2s; }
+.slot-ph { position: relative; display: block; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); outline: 2px solid transparent; outline-offset: 2px; }
 .slot-ph img { width: 100%; height: 100%; object-fit: cover; }
-.slot-ph:active { transform: scale(.96); }
-/* 빈 칸: 그릇 그림만 (누르는 칸이 아니라서 버튼처럼 보이지 않게, 점선만 옅게) */
+/* 끼니 칸은 그림을 바꾸지 않고, 누르는 순간에만 옅은 파란 테두리가 켜졌다 사라진다 (빈 칸은 올리기, 사진 칸은 바꾸기) */
+.slot-ph:active { outline-color: rgba(27, 100, 218, .4); }
+.slot-ph.is-tapped { animation: slot-tap .7s ease-out; }
+@keyframes slot-tap { 0%, 35% { outline-color: rgba(27, 100, 218, .4); } 100% { outline-color: transparent; } }
+/* 빈 칸: 그릇 그림만, 점선은 옅게 */
 .slot-ph.is-empty {
-  display: flex; align-items: center; justify-content: center; cursor: default;
+  display: flex; align-items: center; justify-content: center;
   background: rgba(255, 255, 255, .45); border: 1.5px dashed rgba(109, 134, 164, .28);
 }
-.slot-ph.is-empty:active { transform: none; }
 .slot-ph .slot-dish { width: 48px; height: 48px; object-fit: contain; pointer-events: none; }
 .slot-ph.is-empty:not(.is-today) .slot-dish { opacity: .5; } /* 지난날 빈 칸은 그릇도 흐리게 */
 .slot-more { position: absolute; right: 6px; bottom: 6px; padding: 1px 7px; border-radius: 9px; background: rgba(25, 31, 40, .5); color: #fff; font-size: 11px; font-weight: 650; line-height: 18px; }
