@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=69';
-import { readExifDate } from './exif.js?v=69';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=69';
-import * as db from './db.js?v=69';
+} from './format.js?v=70';
+import { readExifDate } from './exif.js?v=70';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=70';
+import * as db from './db.js?v=70';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '69';
+const APP_VERSION = '70';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -827,7 +827,6 @@ const dayStamp = (key) => ({
 // 밥상 카드의 캐릭터: 아직 안 먹은 날은 빈 그릇, 먹은 끼니가 있으면 마지막 끼니를 먹는 모습, 세 끼 다면 배부른 모습
 const mealArt = (pose) => (pose ? `assets/art/meal/${state.family}-${pose}.png` : art.empty);
 const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12l5 5l10 -10"/></svg>';
-const PLUS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="M5 12h14"/></svg>';
 
 // 날마다 남긴 끼니 (day → Set). 사진은 있는데 세 끼가 하나도 없는 날도 빈 Set으로 들어간다
 function mealsByDay() {
@@ -926,7 +925,8 @@ function renderDay() {
       return `<div class="slot"><button class="slot-ph" type="button" data-id="${r.id}" aria-label="${label} ${t} 사진 보기"><img src="${thumbUrl(r)}" alt="">${more}</button>`
         + `<p class="slot-lb">${CHECK_SVG}${label}</p></div>`;
     }
-    return `<div class="slot"><button class="slot-ph is-empty${isToday ? ' is-today' : ''}" type="button" data-slot="${m}" aria-label="${label} 사진 ${isToday ? '찍기' : '추가하기'}">${isToday ? CAMERA_SVG : PLUS_SVG}<span>${isToday ? '찍기' : '추가'}</span></button>`
+    // 빈 칸: 아직 비어 있는 그릇 그림 (카메라 모양은 아래 탭바 버튼과 겹쳐서 쓰지 않는다)
+    return `<div class="slot"><button class="slot-ph is-empty${isToday ? ' is-today' : ''}" type="button" data-slot="${m}" aria-label="${label} 사진 ${isToday ? '찍기' : '추가하기'}"><img class="slot-dish" src="assets/art/slot/${m}.png" alt=""><span>${isToday ? '찍기' : '추가'}</span></button>`
       + `<p class="slot-lb is-wait">${label}</p></div>`;
   }).join('');
 }

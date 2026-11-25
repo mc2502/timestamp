@@ -1,6 +1,7 @@
 // 아스트로가 그린 달력 · 도장 그림(1024px)을 앱에 쓸 크기로 만든다.
 // Build: swiftc -O -o /tmp/mkcal scripts/make-calendar-art.swift && /tmp/mkcal assets/astro/calendar assets/art
 //  - 밥상 캐릭터 8장 → art/meal/{who}-{breakfast,lunch,dinner,full}.png (288px, 거의 불투명한 곳은 완전히 불투명하게)
+//  - 빈 끼니 칸 그림 3장 → art/slot/{breakfast,lunch,dinner}.png (168px)
 //  - 달력 도장 6장 → art/stamp/{who}-{smile,yum,wink}.png (120px, 오둥이 하늘 잉크 · 퍼펭이 민트 잉크로 칠함)
 //  - 사진 도장 고리 → art/seal-ring-rough.png (512px, 검정) + 고리 바깥선으로 만든 원판 art/seal-disc-rough.png
 import Foundation
@@ -46,7 +47,7 @@ final class Bitmap {
   var image: CGImage { ctx.makeImage()! }
 }
 
-/// 알파가 thr보다 큰 픽셀의 범위 (버퍼 좌표: y=0이 아래)
+/// 알파가 thr보다 큰 픽셀의 범위 (메모리 좌표: y=0이 맨 위 줄)
 func bbox(_ b: Bitmap, thr: UInt8 = 16) -> (x0: Int, y0: Int, x1: Int, y1: Int) {
   var x0 = b.w, y0 = b.h, x1 = -1, y1 = -1
   for y in 0..<b.h { for x in 0..<b.w where b.alpha(x, y) > thr { x0 = min(x0, x); x1 = max(x1, x); y0 = min(y0, y); y1 = max(y1, y) } }
@@ -61,11 +62,22 @@ func resample(_ img: CGImage, crop: CGRect, size: Int) -> Bitmap {
   return out
 }
 
-// ── 1. 밥상 캐릭터: 프레임은 그대로(모두 같은 크기 · 같은 발 위치), 288px ──
+// ── 1. 밥상 캐릭터: 8장을 같은 키 · 같은 발 위치로 맞춰 288px ──
+// 그림마다 캐릭터 크기가 조금씩 달라서(예: 새 오둥이 저녁만 9% 큼) 끼니가 바뀔 때 커졌다 작아지지 않게,
+// 그림 내용의 키를 프레임의 81.6%, 발끝을 위에서 90.6%(퍼펭이 원래 자리)에 두고 가로는 가운데로
+let fitHeight: CGFloat = 0.816, fitBottom: CGFloat = 0.906
 for who in ["odung", "perpeng"] {
   for meal in ["breakfast", "lunch", "dinner", "full"] {
     let img = load("\(who)-meal-\(meal).png")
-    let b = resample(img, crop: CGRect(x: 0, y: 0, width: img.width, height: img.height), size: 288)
+    let bb = bbox(Bitmap(img), thr: 40) // 메모리 좌표: y=0이 위
+    let W = CGFloat(img.width)
+    let contentH = CGFloat(bb.y1 - bb.y0 + 1)
+    let side = contentH / fitHeight // 이 크기의 정사각형을 잘라 288px로
+    let cx = CGFloat(bb.x0 + bb.x1 + 1) / 2
+    let bottomFromTop = CGFloat(bb.y1 + 1) // 위에서 잰 발끝
+    let top = bottomFromTop - fitBottom * side
+    let crop = CGRect(x: cx - side / 2, y: W - (top + side), width: side, height: side)
+    let b = resample(img, crop: crop, size: 288)
     // 거의 불투명(228 이상)한 곳은 완전히 불투명하게: 유리 카드 위에서 비쳐 보이지 않게
     for i in stride(from: 0, to: b.w * b.h * 4, by: 4) {
       let a = Int(b.p[i + 3])
@@ -78,6 +90,20 @@ for who in ["odung", "perpeng"] {
   }
 }
 
+// ── 1-2. 빈 끼니 칸 그림(빈 그릇): 프레임 그대로 168px (칸 안에 44px로 들어간다) ──
+for meal in ["breakfast", "lunch", "dinner"] {
+  let img = load("slot-\(meal).png")
+  let b = resample(img, crop: CGRect(x: 0, y: 0, width: img.width, height: img.height), size: 168)
+  for i in stride(from: 0, to: b.w * b.h * 4, by: 4) {
+    let a = Int(b.p[i + 3])
+    if a >= 228 && a < 255 {
+      for c in 0..<3 { b.p[i + c] = UInt8(min(255, Int(b.p[i + c]) * 255 / a)) }
+      b.p[i + 3] = 255
+    }
+  }
+  save(b.image, "slot/\(meal).png")
+}
+
 // ── 2. 달력 도장: 테두리에 딱 맞게 잘라 120px, 잉크 색으로 ──
 let inks: [String: (Int, Int, Int)] = ["odung": (74, 127, 208), "perpeng": (47, 154, 137)]
 for who in ["odung", "perpeng"] {
@@ -86,7 +112,7 @@ for who in ["odung", "perpeng"] {
     let full = Bitmap(img)
     let bb = bbox(full)
     let side = CGFloat(max(bb.x1 - bb.x0, bb.y1 - bb.y0) + 1) * 1.03
-    let cx = CGFloat(bb.x0 + bb.x1 + 1) / 2, cy = CGFloat(bb.y0 + bb.y1 + 1) / 2
+    let cx = CGFloat(bb.x0 + bb.x1 + 1) / 2, cy = CGFloat(img.height) - CGFloat(bb.y0 + bb.y1 + 1) / 2 // 그리기 좌표(y=0이 아래)로
     let b = resample(img, crop: CGRect(x: cx - side / 2, y: cy - side / 2, width: side, height: side), size: 120)
     let (r, g, bl) = inks[who]!
     for i in stride(from: 0, to: b.w * b.h * 4, by: 4) {
@@ -104,7 +130,7 @@ do {
   let bb = bbox(full, thr: 40)
   // 고리 바깥 지름이 그림 폭의 98.5%가 되게 (앱은 원판 지름 2R을 0.985로 나눈 크기로 그린다)
   let side = CGFloat(max(bb.x1 - bb.x0, bb.y1 - bb.y0) + 1) / 0.985
-  let cx = CGFloat(bb.x0 + bb.x1 + 1) / 2, cy = CGFloat(bb.y0 + bb.y1 + 1) / 2
+  let cx = CGFloat(bb.x0 + bb.x1 + 1) / 2, cy = CGFloat(img.height) - CGFloat(bb.y0 + bb.y1 + 1) / 2 // 그리기 좌표(y=0이 아래)로
   let crop = CGRect(x: cx - side / 2, y: cy - side / 2, width: side, height: side)
   let W = 1024
   let work = resample(img, crop: crop, size: W)
