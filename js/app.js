@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=91';
-import { readExifDate } from './exif.js?v=91';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=91';
-import * as db from './db.js?v=91';
+} from './format.js?v=92';
+import { readExifDate } from './exif.js?v=92';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=92';
+import * as db from './db.js?v=92';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '91';
+const APP_VERSION = '92';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1196,7 +1196,7 @@ async function quickSave(file, { target = null } = {}) {
     }
     playStampSound();
     const done = target
-      ? `${mealLabel(meal) ? `${mealLabel(meal)} ` : ''}사진을 ${replacing ? '바꿨어요' : '남겼어요'}`
+      ? `${mealLabel(meal) ? `${mealLabel(meal)} ` : ''}사진을 ${replacing ? '교체했어요' : '남겼어요'}`
       : `${fmtClock(photo.takenAt)} 사진을 남겼어요`;
     showToast(kept ? done : '이 기기에는 남기지 못했어요', { pop: true });
   } catch {
@@ -1684,7 +1684,7 @@ async function keepEdit(e) {
   const replacing = Boolean(e.replaceId);
   const kept = await persistEdit(e);
   const label = mealLabel(e.meal);
-  showToast(kept ? `${label ? `${label} ` : ''}사진을 ${replacing ? '바꿨어요' : '남겼어요'}` : '이 기기에는 기록을 남기지 못했어요');
+  showToast(kept ? `${label ? `${label} ` : ''}사진을 ${replacing ? '교체했어요' : '남겼어요'}` : '이 기기에는 기록을 남기지 못했어요');
   return kept;
 }
 
