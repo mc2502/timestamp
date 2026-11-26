@@ -64,14 +64,16 @@ const base=process.env.TEST_URL || 'http://127.0.0.1:5173/';
  });
  await check('즉시 저장 중복 안내 유지, 다른 끼니 저장 후 필터 통일',async()=>{
   await page.evaluate(()=>qa.quickSave(photo));
-  assert.match(await page.locator('#toast-text').textContent(),/오늘 점심 사진이 있어요/);
+  assert.equal(await page.locator('#toast').isHidden(),true);
+  assert.match(await page.locator('#ed-feedback-title').textContent(),/점심 사진이 있어요/);
+  assert.equal(await page.locator('#ed-done-label').textContent(),'사진 교체');
   await page.evaluate(async()=>{qa.setFilter('breakfast');qa.ed.meal='snack';qa.ed.mealAuto=false;await qa.editorDone()});
   assert.equal(await page.evaluate(()=>qa.state.filter),'all');
   assert.equal(await page.locator('.tile[data-id]').count(),2);
  });
  await check('오늘 아직 열리지 않은 저녁 저장 차단',async()=>{
   await page.evaluate(async()=>{await qa.startEdit(photo);qa.ed.meal='dinner';await qa.editorDone()});
-  assert.match(await page.locator('#toast-text').textContent(),/오후 3시/);
+  assert.match(await page.locator('#ed-feedback-title').textContent(),/오후 3시/);
   assert.equal(await page.locator('#editor').isVisible(),true);
   await page.evaluate(()=>qa.closeEditor());
  });

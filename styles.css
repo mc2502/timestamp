@@ -442,16 +442,12 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .g-mix i + i { height: 2.5px; width: 68%; }
 
 /* 식사: 이 화면에서 알약은 이것 하나 — 옅은 회색 판에 흰 손잡이 */
-/* 끼니 막대: 회색 막대 안에 다섯 이름이 제자리에. 흰 손잡이(한 칸 너비)가 끌려 다니고, 손잡이까지는 옅은 하늘색으로 찬다 */
+/* 끼니 막대: 흰 손잡이 하나만 움직여 선택과 저장 여부가 섞이지 않게 한다. */
 .ed-meal { display: block; }
 .mp-track {
   --p: .25;
   position: relative; width: 100%; height: 44px; border-radius: 22px; background: rgba(25, 31, 40, .055);
   touch-action: none; cursor: pointer; -webkit-user-select: none; user-select: none;
-}
-.mp-fill {
-  position: absolute; left: 4px; top: 4px; bottom: 4px; border-radius: 18px; background: #dbe8f9;
-  width: calc(var(--p) * (100% - 8px) * 4 / 5 + (100% - 8px) / 5); transition: width .3s cubic-bezier(.22, .8, .25, 1);
 }
 .mp-thumb {
   position: absolute; top: 4px; bottom: 4px; border-radius: 18px; background: #ffffff; box-shadow: 0 1px 4px rgba(22, 42, 66, .12);
@@ -459,10 +455,18 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 }
 .mp-labels { position: absolute; inset: 0 4px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; pointer-events: none; }
 .mp-labels > span { text-align: center; font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: var(--ink3); transition: color .15s; }
-.mp-labels > span.past { color: #4d6c93; }
 .mp-labels > span.on { color: var(--ink); font-weight: 700; }
-.mp-track.is-dragging .mp-fill, .mp-track.is-dragging .mp-thumb { transition: none; }
+.mp-track.is-dragging .mp-thumb { transition: none; }
 .mp-track:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* 선택 상태는 막대에, 저장된 사진과 안내는 그 아래에. 두 줄 자리를 유지해 끼니를 바꿔도 사진이 움직이지 않는다. */
+.ed-feedback { display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 0 5px; color: var(--ink2); }
+.ed-feedback img { flex: none; width: 34px; height: 34px; object-fit: cover; border-radius: 7px; }
+.ed-feedback-copy { min-width: 0; display: flex; flex-direction: column; }
+#ed-feedback-title { font-size: 13px; line-height: 19px; font-weight: 600; overflow-wrap: anywhere; white-space: pre-line; }
+#ed-feedback-detail { font-size: 12px; line-height: 18px; color: var(--ink3); overflow-wrap: anywhere; }
+.ed-feedback[data-tone="error"] #ed-feedback-title { color: var(--err); }
+.ed-feedback[data-tone="busy"] #ed-feedback-title { color: #24569f; }
 
 /* 촬영 시각 · 글자색: 상자 없이 글자와 점 */
 .ed-row { display: flex; align-items: center; gap: 2px; min-height: 40px; margin: 0 -8px; }
@@ -518,9 +522,6 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 }
 .toast[data-family="perpeng"] { --toast-ink: #2f9a89; }
 html.is-locked .toast { bottom: calc(var(--sb) + 96px); }
-/* 스탬프 화면에서는 아래쪽 시각 · 끼니 줄을 가리지 않게, 머리 줄과 사진 사이 빈 띠에 */
-html:has(#editor:not([hidden])) .toast { bottom: auto; top: calc(var(--st) + 52px); animation-name: toast-down; }
-@keyframes toast-down { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
 .toast-face {
   display: block; width: 32px; height: 32px; flex: none; background: var(--toast-ink);
   -webkit-mask: url('assets/art/stamp/odung-smile.png') center / contain no-repeat;
@@ -765,7 +766,5 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .backup-actions button { min-height: 44px; text-align: left; color: var(--blue-ink); font-size: 14px; font-weight: 600; }
 .backup-actions button:disabled { opacity: .5; }
 .backup-status { min-height: 36px; margin-top: 0; }
-.mp-labels > span.has-photo::after { content: ''; position: absolute; width: 3px; height: 3px; border-radius: 50%; background: currentColor; bottom: 5px; left: calc(50% - 1.5px); }
-.mp-labels > span { position: relative; }
 /* 고정 바탕이나 이미 흐려진 상단 안에서는 겹치는 유리 레이어를 만들지 않는다. */
 .today-card, .meal-card, .topbar .seg-filter, .topbar .btn-pill, .ed-fit, .ed-hint { -webkit-backdrop-filter: none; backdrop-filter: none; }

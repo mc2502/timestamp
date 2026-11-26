@@ -1,15 +1,15 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=102';
-import { readExifDate } from './exif.js?v=102';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=102';
-import * as db from './db.js?v=102';
-import { albumCaption } from './album-copy.js?v=102';
-import { createBackup, readBackup } from './backup.js?v=102';
+} from './format.js?v=103';
+import { readExifDate } from './exif.js?v=103';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=103';
+import * as db from './db.js?v=103';
+import { albumCaption } from './album-copy.js?v=103';
+import { createBackup, readBackup } from './backup.js?v=103';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '102';
+const APP_VERSION = '103';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -761,9 +761,17 @@ function openLaunch() {
 let toastTimer = 0;
 
 // 짧은 알림은 3초, 긴 안내는 읽을 시간을 더 준다. 저장 중 알림은 완료될 때까지 유지.
-function showToast(text, { pop = false, stay = false } = {}) {
+function showToast(text, { pop = false, stay = false, tone = 'info', detail = '' } = {}) {
   const el = $('#toast');
   clearTimeout(toastTimer);
+  // 편집 중 안내는 끼니 바로 아래에 둔다. 사진 위에 떠서 가리는 알림은 쓰지 않는다.
+  if (ed?.ready && !E.sheet.hidden) {
+    el.hidden = true;
+    ed.notice = { text, tone, detail };
+    fillEditorFeedback();
+    if (!stay) toastTimer = setTimeout(hideToast, clamp(text.length * 90, 3000, 6500));
+    return;
+  }
   el.dataset.family = state.family;
   $('#toast-text').textContent = text;
   el.classList.remove('pop');
@@ -778,6 +786,7 @@ function showToast(text, { pop = false, stay = false } = {}) {
 function hideToast() {
   clearTimeout(toastTimer);
   $('#toast').hidden = true;
+  if (ed) { ed.notice = null; fillEditorFeedback(); }
 }
 
 /* ── 기록 데이터 ── */
@@ -1238,10 +1247,9 @@ async function quickSave(file, { target = null } = {}) {
     if (opens) { showToast(slotOpenNote(meal, opens)); return; }
     const replacing = prev;
     if (!target && mealTaken(dayKey(photo.takenAt), meal)) {
-      const duplicateDay = dayKey(photo.takenAt);
       releasePhoto(photo);
       photo = null;
-      await startEdit(file, { notice: `${dayKey(new Date()) === duplicateDay ? '오늘' : '이날'} ${mealLabel(meal)} 사진이 있어요. 바꾸거나 다른 끼니로 남겨 주세요` });
+      await startEdit(file);
       return;
     }
     const look = { style: settings.stampStyle, color: settings.stampColor };
@@ -1263,7 +1271,7 @@ async function quickSave(file, { target = null } = {}) {
     };
     try { await db.put(rec, replacing?.id); }
     catch {
-      await startEdit(file, { target, notice: '저장하지 못했어요. 사진은 여기 있어요. 완료를 눌러 다시 시도해 주세요' });
+      await startEdit(file, { target, notice: { text: '사진을 저장하지 못했어요', detail: '사진은 그대로 있어요. 아래 버튼으로 다시 시도해 주세요', tone: 'error', stay: true } });
       return;
     }
     state.dbOk = true;
@@ -1282,7 +1290,7 @@ async function quickSave(file, { target = null } = {}) {
       : `${fmtClock(photo.takenAt)} 사진을 남겼어요`;
     showToast(adjusted ? `${done}. 다른 날 사진이라 ${shortWhen(photo.takenAt)}으로 넣었어요` : done, { pop: true });
   } catch {
-    await startEdit(file, { target, notice: '사진 준비가 늦어지고 있어요. 확인한 뒤 완료를 눌러 주세요' });
+    await startEdit(file, { target, notice: { text: '사진을 확인해 주세요', detail: '끼니와 시각을 확인한 뒤 아래 버튼으로 저장해 주세요' } });
   } finally {
     releasePhoto(photo);
     endWork();
@@ -1308,6 +1316,11 @@ const E = {
   timePill: $('#ed-time-pill'),
   done: $('#ed-done'),
   save: $('#ed-save'),
+  feedback: $('#ed-feedback'),
+  feedbackTitle: $('#ed-feedback-title'),
+  feedbackDetail: $('#ed-feedback-detail'),
+  existingPhoto: $('#ed-existing-photo'),
+  doneLabel: $('#ed-done-label'),
 };
 
 // 미래 사진은 남기지 않는다: 지금보다 2시간 넘게 뒤의 시각이면 미래로 본다
@@ -1349,6 +1362,7 @@ async function startEdit(file, { camera = false, target = null, notice = null } 
     charPos: null, // 캐릭터를 옮긴 자리 (없으면 도장에 붙어 있다)
   };
   ed = mine;
+  fillEditorFeedback();
   E.canvas.hidden = true;
   E.skel.hidden = false;
   E.reset.hidden = true;
@@ -1383,7 +1397,8 @@ async function startEdit(file, { camera = false, target = null, notice = null } 
       if (dayKey(mine.takenAt) !== target.day) {
         mine.takenAt = prev ? new Date(prev.takenAt) : slotTime(target);
         mine.timeSource = 'edited';
-        notice = `${notice || ''} 다른 날 사진이라 ${shortWhen(mine.takenAt)}으로 맞췄어요`.trim();
+        const adjustedNote = `다른 날 사진이라 ${shortWhen(mine.takenAt)}으로 맞췄어요`;
+        notice = notice ? { ...notice, detail: adjustedNote } : { text: '선택한 날의 시각으로 맞췄어요', detail: adjustedNote };
       }
       mine.replaceId = prev?.id || null;
       mine.mealAuto = false;
@@ -1402,7 +1417,7 @@ async function startEdit(file, { camera = false, target = null, notice = null } 
     fillFields();
     stampIn();
     markDirty();
-    if (notice || TIME_NOTES[mine.timeSource]) showToast(notice || TIME_NOTES[mine.timeSource]);
+    if (notice) showToast(notice.text, notice);
     setTimeout(() => { if (ed === mine) E.hint.classList.add('gone'); }, 2600);
   } catch {
     if (ed !== mine) return;
@@ -1461,13 +1476,31 @@ function fillFields() {
   E.time.min = toLocalInput(FIRST_MONTH);
   E.time.max = toLocalInput(new Date(Date.now() + FUTURE_SLACK));
   E.timePill.classList.toggle('is-guess', Boolean(TIME_NOTES[ed.timeSource]));
-  $$('.mp-labels > span').forEach((el, i) => {
-    const exists = mealTaken(dayKey(d), MEAL_STOPS[i], ed.id);
-    el.classList.toggle('has-photo', Boolean(exists));
-    el.title = exists ? '이미 남긴 끼니' : '';
-  });
   edMealBar.show();
   fillLook();
+  fillEditorFeedback();
+}
+
+function fillEditorFeedback() {
+  const ready = ed?.ready;
+  const taken = ready ? mealTaken(dayKey(ed.takenAt), ed.meal, ed.id) : null;
+  const note = ready && ed.notice;
+  const meal = ready ? mealLabel(ed.meal) : '';
+  let title = '', detail = '';
+  if (ready) {
+    title = taken ? `${meal} 사진이 있어요` : meal ? `${meal} 사진으로 남겨요` : '끼니 구분 없이 남겨요';
+    detail = TIME_NOTES[ed.timeSource] || (taken ? '새 사진으로 교체할 수 있어요' : '');
+  }
+  const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
+  setText(E.feedbackTitle, note ? note.text : title);
+  setText(E.feedbackDetail, note ? note.detail : detail);
+  E.feedback.dataset.tone = note?.tone || 'info';
+  E.existingPhoto.hidden = !taken || Boolean(note);
+  if (taken && !note) {
+    const src = thumbUrl(taken);
+    if (E.existingPhoto.getAttribute('src') !== src) E.existingPhoto.src = src;
+  } else E.existingPhoto.removeAttribute('src');
+  setText(E.doneLabel, ed?.busy ? '저장 중' : taken ? '사진 교체' : '완료');
 }
 
 // 끼니 막대: 다섯 칸(아침 · 점심 · 저녁 · 간식 · 없음)의 이름이 막대 안에 있다.
@@ -1483,7 +1516,6 @@ function mealBar(track, { current, choose, ready, live }) {
     track.style.setProperty('--p', String(p / (n - 1)));
     labels.forEach((el, k) => {
       el.classList.toggle('on', k === i);
-      el.classList.toggle('past', k < i);
     });
     track.setAttribute('aria-valuenow', String(i));
     const exists = ed && mealTaken(dayKey(ed.takenAt), MEAL_STOPS[i], ed.id);
@@ -1547,6 +1579,7 @@ const edMealBar = mealBar($('#meal-track'), {
   choose: (meal) => {
     ed.meal = meal;
     ed.mealAuto = false;
+    hideToast();
     changed(); // 혼합 스탬프 · 도장에는 끼니가 찍힌다
   },
 });
@@ -1730,7 +1763,7 @@ async function persistEdit(e) {
 //  · X(닫기): 남기지 않고 닫는다
 // 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 바꿀지 묻고, 취소하면 스탬프 화면에 그대로 남아 끼니를 고를 수 있다
 function readyToKeep(e) {
-  if (timeBlocked(e.takenAt)) { showToast(editBlockNote(e.takenAt)); return false; }
+  if (timeBlocked(e.takenAt)) { showToast(editBlockNote(e.takenAt), { tone: 'error' }); return false; }
   // 오늘의 아직 안 열린 끼니(달력 칸과 같은 규칙: 아침 3시 · 점심 9시 · 저녁 15시)로는 남기지 않는다
   const day = dayKey(e.takenAt);
   const opens = MAIN_MEALS.includes(e.meal) ? slotOpensAt(day, e.meal) : null;
@@ -1740,7 +1773,7 @@ function readyToKeep(e) {
   if (e.replaceId && e.replaceId !== taken?.id) e.replaceId = null;
   if (taken && e.replaceId !== taken.id) {
     if (!window.confirm(`${day === dayKey(new Date()) ? '오늘' : '이날'} ${mealLabel(e.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요?`)) {
-      showToast('끼니를 바꾸면 따로 남길 수 있어요');
+      hideToast();
       return false;
     }
     e.replaceId = taken.id;
@@ -1752,35 +1785,37 @@ function setEditorBusy(mine, busy) {
   mine.busy = busy;
   E.done.disabled = E.save.disabled = busy;
   $('#ed-close').disabled = busy;
-  $('.ed-panel').inert = busy;
+  // 안내 영역은 화면 읽기에서 계속 접근 가능하게 두고 조작부만 잠근다.
+  for (const el of [E.strip, $('#meal-seg'), $('.ed-row')]) el.inert = busy;
   E.preview.inert = busy;
-  E.sheet.setAttribute('aria-busy', String(busy));
+  E.preview.setAttribute('aria-busy', String(busy));
+  fillEditorFeedback();
 }
 async function finishEditor(share = false) {
   const mine = ed;
   if (!mine?.ready || mine.busy || !readyToKeep(mine)) return;
   setEditorBusy(mine, true);
   beginWork();
-  showToast(share ? '사진을 준비하고 있어요' : '사진을 남기고 있어요', { stay: true });
+  showToast(share ? '사진을 준비하고 있어요' : '사진을 남기고 있어요', { stay: true, tone: 'busy' });
   try {
     if (!mine.file) await exportFor(mine, mine.version);
     if (share) {
       hideToast();
       const result = await shareFiles([mine.file]);
       if (result === 'cancelled') return;
-      if (result === 'retry') { showToast('사진을 준비했어요. 앨범 저장을 한 번 더 눌러 주세요'); return; }
-      if (result === 'error') { showToast('저장 화면을 열지 못했어요. 다시 시도해 주세요'); return; }
+      if (result === 'retry') { showToast('사진을 준비했어요', { detail: '앨범 저장을 한 번 더 눌러 주세요' }); return; }
+      if (result === 'error') { showToast('저장 화면을 열지 못했어요', { tone: 'error', detail: '앨범 저장을 눌러 다시 시도해 주세요' }); return; }
     }
-    showToast('사진을 남기고 있어요', { stay: true });
+    showToast('사진을 남기고 있어요', { stay: true, tone: 'busy' });
     const replacing = Boolean(mine.replaceId);
     if (!await persistEdit(mine)) {
-      showToast('저장하지 못했어요. 사진은 여기 있어요. 완료를 눌러 다시 시도해 주세요', { stay: true });
+      showToast('사진을 저장하지 못했어요', { stay: true, tone: 'error', detail: '사진은 그대로 있어요. 아래 버튼으로 다시 시도해 주세요' });
       return;
     }
     setEditorBusy(mine, false);
     closeEditor();
     showToast(`${mealLabel(mine.meal) ? `${mealLabel(mine.meal)} ` : ''}사진을 ${replacing ? '교체했어요' : '남겼어요'}`, { pop: true });
-  } catch { showToast('사진을 준비하지 못했어요. 다시 시도해 주세요'); }
+  } catch { showToast('사진을 준비하지 못했어요', { tone: 'error', detail: '아래 버튼으로 다시 시도해 주세요' }); }
   finally {
     if (ed === mine) setEditorBusy(mine, false);
     endWork();
@@ -1870,7 +1905,8 @@ function bindEditor() {
     if (!ed?.ready || ed.busy) return;
     const d = fromLocalInput(E.time.value);
     if (!d) { fillFields(); return; }
-    if (timeBlocked(d)) { showToast(editBlockNote(d)); fillFields(); return; } // 원래 시각으로 되돌린다
+    if (timeBlocked(d)) { showToast(editBlockNote(d), { tone: 'error' }); fillFields(); return; } // 원래 시각으로 되돌린다
+    hideToast();
     ed.takenAt = d;
     ed.timeSource = 'edited';
     if (ed.mealAuto) ed.meal = mealFor(d);
