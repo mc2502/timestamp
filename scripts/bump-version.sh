@@ -13,8 +13,8 @@ next=$((cur + 1))
 
 # 공개 버전과 업데이트 노트를 먼저 기록해야 배포 번호를 올릴 수 있다.
 node scripts/check-release.mjs --next-build "$next"
-# 맨 위 업데이트 노트의 날짜·시간을 지금(한국 시각)으로
-node scripts/release-time.mjs
+# 맨 위 업데이트 노트의 날짜·시간을 지금(한국 시각)으로. 노트 문장만 고칠 때(RELEASE_NOTES_ONLY=1)는 원래 시각을 둔다
+if [ "${RELEASE_NOTES_ONLY:-}" != 1 ]; then node scripts/release-time.mjs; fi
 
 # 아이콘 · manifest 주소에도 붙인다: 아이폰은 같은 주소의 홈 화면 아이콘을 오래 기억해서, 주소가 바뀌어야 새 그림을 받는다
 sed -i '' -E "s/\?v=[0-9]+/?v=$next/g" index.html js/app.js js/stamp.js manifest.webmanifest
