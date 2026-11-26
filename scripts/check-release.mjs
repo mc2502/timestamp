@@ -37,8 +37,11 @@ try {
     const versionPattern = /['"]?version['"]?\s*:\s*['"]([^'"]+)['"]/g;
     const history = [...(previous || '').matchAll(versionPattern)].map(match => match[1]);
     const oldVersion = history[0];
-    if (oldVersion) assert.ok(compare(RELEASES[0].version, oldVersion) > 0, `현재 ${oldVersion} 다음 버전을 새 항목으로 기록해 주세요`);
-    assert.ok(history.every(version => RELEASES.some(release => release.version === version)), '이전 업데이트 노트도 지우지 않고 남겨 주세요');
+    // 여러 버전을 하나로 합치기로 한 배포만 RELEASE_MERGE=1 로 아래 두 검사를 건너뛴다 (2026-11-26: 1.0.2–1.0.6 → 1.0.2)
+    const merging = process.env.RELEASE_MERGE === '1';
+    if (merging) console.log(`버전 합치기: ${oldVersion} → ${RELEASES[0].version} (이전 노트 확인 건너뜀)`);
+    if (oldVersion && !merging) assert.ok(compare(RELEASES[0].version, oldVersion) > 0, `현재 ${oldVersion} 다음 버전을 새 항목으로 기록해 주세요`);
+    if (!merging) assert.ok(history.every(version => RELEASES.some(release => release.version === version)), '이전 업데이트 노트도 지우지 않고 남겨 주세요');
   } else {
     assert.equal(Number(/const APP_BUILD = '(\d+)'/.exec(source('js/app.js'))?.[1]), build, '앱과 서비스 워커의 내부 번호가 달라요');
   }
