@@ -1,16 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput, keepPhrases,
-} from './format.js?v=108';
-import { readExifDate } from './exif.js?v=108';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=108';
-import * as db from './db.js?v=108';
-import { albumCaption } from './album-copy.js?v=108';
-import { createBackup, readBackup } from './backup.js?v=108';
-import { RELEASES, APP_VERSION } from './releases.js?v=108';
+} from './format.js?v=109';
+import { readExifDate } from './exif.js?v=109';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=109';
+import * as db from './db.js?v=109';
+import { albumCaption } from './album-copy.js?v=109';
+import { createBackup, readBackup } from './backup.js?v=109';
+import { RELEASES, APP_VERSION } from './releases.js?v=109';
 
 // 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
-const APP_BUILD = '108';
+const APP_BUILD = '109';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1284,9 +1284,10 @@ async function renderStamped(img, rect, info, look, frame = {}) {
 /* ── 즉시 저장: 스탬프 화면 없이, 가운데를 정사각형으로, 마지막에 쓴 스탬프로 ── */
 
 // target: 달력의 끼니 칸이나 사진 보기의 ‘바꾸기’에서 골랐을 때 그 날 · 끼니(· 바꿀 사진). 스탬프 화면 없이 바로 넣고,
-// 있던 사진은 새 사진으로 바꾼다. target.plain(달력 칸)이면 스탬프를 찍지 않고 사진만 넣는다
+// 있던 사진은 새 사진으로 바꾼다. target.plain(달력 칸 · 사진 교체하기)이면 스탬프를 찍지 않고 사진만 넣는다
 async function quickSave(file, { target = null } = {}) {
   const plain = Boolean(target?.plain);
+  const retry = target?.replaceOf ? '사진 교체하기를 다시 눌러 주세요' : '칸을 다시 눌러 주세요';
   if (activeWork) return;
   beginWork();
   showToast('사진을 남기고 있어요', { stay: true });
@@ -1342,7 +1343,7 @@ async function quickSave(file, { target = null } = {}) {
     try { await db.put(rec, replacing?.id); }
     catch {
       // 스탬프 없이 넣는 사진은 스탬프 화면으로 보내지 않는다. 칸을 다시 누르면 된다
-      if (plain) { showToast('사진을 저장하지 못했어요. 칸을 다시 눌러 주세요', { tone: 'error' }); return; }
+      if (plain) { showToast(`사진을 저장하지 못했어요. ${retry}`, { tone: 'error' }); return; }
       await startEdit(file, { target, notice: { text: '사진을 저장하지 못했어요', detail: '사진은 그대로 있어요. 아래 버튼으로 다시 시도해 주세요', tone: 'error', stay: true } });
       return;
     }
@@ -1362,7 +1363,7 @@ async function quickSave(file, { target = null } = {}) {
       : `${fmtClock(photo.takenAt)} 사진을 남겼어요`;
     showToast(adjusted ? `${done}. 다른 날 사진이라 ${shortWhen(photo.takenAt)}으로 넣었어요` : done, { pop: true });
   } catch {
-    if (plain) { showToast('사진을 넣지 못했어요. 칸을 다시 눌러 주세요', { tone: 'error' }); return; }
+    if (plain) { showToast(`사진을 넣지 못했어요. ${retry}`, { tone: 'error' }); return; }
     await startEdit(file, { target, notice: { text: '사진을 확인해 주세요', detail: '끼니와 시각을 확인한 뒤 아래 버튼으로 저장해 주세요' } });
   } finally {
     releasePhoto(photo);
@@ -2176,7 +2177,8 @@ function viewerReplace() {
   if (!vw || activeWork) return;
   const { id, day, meal } = vw.rec;
   closeViewer();
-  openInput('#input-photo', { target: { day, meal: meal ?? null, replaceOf: id } });
+  // 교체하는 사진도 스탬프 없이 사진만 넣는다 (이미 스탬프가 있는 사진을 고르면 두 번 찍히지 않게)
+  openInput('#input-photo', { target: { day, meal: meal ?? null, replaceOf: id, plain: true } });
 }
 
 async function viewerDelete() {
