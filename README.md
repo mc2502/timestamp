@@ -40,7 +40,7 @@ styles.css            PT Note 토큰과 컴포넌트 스타일
 js/app.js             화면, 설정, 즉시 저장, 스탬프 화면, 달력 칸 넣기 · 바꾸기, 소리·효과
 js/stamp.js           스탬프 7종 그리기
 js/exif.js            JPEG 촬영 시각 읽기
-js/format.js          날짜·시간 표기, 식사 구분
+js/format.js          날짜·시간 표기, 식사 구분, 알림 문장 묶음(keepPhrases: 날짜·시각 · ‘남길 수 없어요’ 같은 말이 갈라지지 않게. app.js의 setPhrases가 줄바꿈 없는 칸으로 그린다)
 js/db.js              기록 보관 (이 기기의 IndexedDB)
 js/album-copy.js      끼니별 오늘 카드 문구
 js/releases.js        공개 버전과 업데이트 노트 (최신 항목부터)

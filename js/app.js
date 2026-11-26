@@ -1,16 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
-  relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=106';
-import { readExifDate } from './exif.js?v=106';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=106';
-import * as db from './db.js?v=106';
-import { albumCaption } from './album-copy.js?v=106';
-import { createBackup, readBackup } from './backup.js?v=106';
-import { RELEASES, APP_VERSION } from './releases.js?v=106';
+  relDay, mealLabel, mealFor, toLocalInput, fromLocalInput, keepPhrases,
+} from './format.js?v=107';
+import { readExifDate } from './exif.js?v=107';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=107';
+import * as db from './db.js?v=107';
+import { albumCaption } from './album-copy.js?v=107';
+import { createBackup, readBackup } from './backup.js?v=107';
+import { RELEASES, APP_VERSION } from './releases.js?v=107';
 
 // 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
-const APP_BUILD = '106';
+const APP_BUILD = '107';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -758,6 +758,8 @@ function openSheet(sheet) {
   appRoot.inert = true;
   document.documentElement.classList.add('is-locked');
   requestAnimationFrame(() => {
+    // 그새 시트 안의 다른 곳(끼니 막대 등)을 눌렀으면 포커스를 빼앗지 않는다
+    if (sheet.hidden || sheet.contains(document.activeElement)) return;
     const target = sheet.querySelector('[data-autofocus]') || sheet.querySelector('button');
     target?.focus({ preventScroll: true, focusVisible: false });
   });
@@ -804,6 +806,23 @@ function openLaunch() {
 let toastTimer = 0;
 
 // 짧은 알림은 3초, 긴 안내는 읽을 시간을 더 준다. 저장 중 알림은 완료될 때까지 유지.
+// 알림 문장: 함께 읽어야 하는 말(keepPhrases가 묶은 덩어리)은 줄바꿈하지 않는 칸에 넣고,
+// 띄어쓰기와 <wbr> 자리에서만 줄을 바꾼다. Safari는 줄바꿈 없는 공백 말고는 :, ) 뒤에서도 끊어서 칸으로 막는다.
+// 글자는 원래 문장 그대로다(화면 읽기·검사에도 같은 문장).
+function setPhrases(el, text) {
+  const value = text || '';
+  if (el.dataset.phrases === value && el.textContent === value) return;
+  el.dataset.phrases = value;
+  el.replaceChildren(...keepPhrases(value).split(/([ \u200b\n])/).filter(Boolean).map((part) => {
+    if (part === '\u200b') return document.createElement('wbr');
+    if (part === ' ' || part === '\n') return part;
+    const chunk = document.createElement('span');
+    chunk.className = 'phrase';
+    chunk.textContent = part.replace(/\u00a0/g, ' ').replace(/\u2060/g, '');
+    return chunk;
+  }));
+}
+
 function showToast(text, { pop = false, stay = false, tone = 'info', detail = '' } = {}) {
   const el = $('#toast');
   clearTimeout(toastTimer);
@@ -816,7 +835,7 @@ function showToast(text, { pop = false, stay = false, tone = 'info', detail = ''
     return;
   }
   el.dataset.family = state.family;
-  $('#toast-text').textContent = text;
+  setPhrases($('#toast-text'), text);
   el.classList.remove('pop');
   el.hidden = false;
   if (pop && settings.effects && !reducedMotion()) {
@@ -1116,7 +1135,7 @@ async function renderStorageNote() {
 /* ── 백업: 먼저 검증한 뒤 기존 기록에 없는 사진만 복원 ── */
 let backupFile = null;
 let backupBusy = false;
-function backupStatus(text) { $('#backup-status').textContent = text; }
+function backupStatus(text) { setPhrases($('#backup-status'), text); }
 function setBackupBusy(busy) {
   backupBusy = busy;
   $('#backup-export').disabled = $('#backup-import').disabled = busy;
@@ -1530,8 +1549,8 @@ function fillEditorFeedback() {
     detail = TIME_NOTES[ed.timeSource] || (taken ? '새 사진으로 교체할 수 있어요' : '');
   }
   const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
-  setText(E.feedbackTitle, note ? note.text : title);
-  setText(E.feedbackDetail, note ? note.detail : detail);
+  setPhrases(E.feedbackTitle, note ? note.text : title);
+  setPhrases(E.feedbackDetail, note ? note.detail : detail);
   E.feedback.dataset.tone = note?.tone || 'info';
   E.existingPhoto.hidden = !taken || Boolean(note);
   if (taken && !note) {

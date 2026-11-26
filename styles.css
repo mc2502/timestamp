@@ -488,8 +488,8 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .ed-feedback { display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 0 5px; color: var(--ink2); }
 .ed-feedback img { flex: none; width: 34px; height: 34px; object-fit: cover; border-radius: 7px; }
 .ed-feedback-copy { min-width: 0; display: flex; flex-direction: column; }
-#ed-feedback-title { font-size: 13px; line-height: 19px; font-weight: 600; overflow-wrap: anywhere; white-space: pre-line; }
-#ed-feedback-detail { font-size: 12px; line-height: 18px; color: var(--ink3); overflow-wrap: anywhere; }
+#ed-feedback-title { font-size: 13px; line-height: 19px; font-weight: 600; word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; white-space: pre-line; }
+#ed-feedback-detail { font-size: 12px; line-height: 18px; color: var(--ink3); word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
 .ed-feedback[data-tone="error"] #ed-feedback-title { color: var(--err); }
 .ed-feedback[data-tone="busy"] #ed-feedback-title { color: #24569f; }
 
@@ -562,7 +562,9 @@ html.is-locked .toast { bottom: calc(var(--sb) + 96px); }
   -webkit-mask-image: url('assets/art/stamp/perpeng-smile.png'); mask-image: url('assets/art/stamp/perpeng-smile.png');
 }
 .toast.pop .toast-face { animation: toast-seal-pop .28s ease-out; }
-.toast-text { display: block; min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
+.toast-text { display: block; min-width: 0; word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
+/* 알림 문장의 묶음(setPhrases): 이 안에서는 줄을 바꾸지 않는다 */
+.phrase { white-space: nowrap; }
 @keyframes toast-seal-pop { 0% { transform: scale(.88); } 65% { transform: scale(1.04); } 100% { transform: none; } }
 
 @keyframes toast-in { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -796,6 +798,6 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .backup-actions { display: grid; gap: 2px; padding-bottom: 6px; }
 .backup-actions button { min-height: 44px; text-align: left; color: var(--blue-ink); font-size: 14px; font-weight: 600; }
 .backup-actions button:disabled { opacity: .5; }
-.backup-status { min-height: 36px; margin-top: 0; }
+.backup-status { min-height: 36px; margin-top: 0; word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
 /* 고정 바탕이나 이미 흐려진 상단 안에서는 겹치는 유리 레이어를 만들지 않는다. */
 .today-card, .meal-card, .topbar .seg-filter, .topbar .btn-pill, .ed-fit, .ed-hint { -webkit-backdrop-filter: none; backdrop-filter: none; }
