@@ -53,7 +53,7 @@ export async function readBackup(file, progress = () => {}) {
       || !MEALS.includes(item.meal) || ![item.width, item.height].every((n) => Number.isInteger(n) && n > 0 && n <= 20000)) throw invalid();
     ids.add(item.id);
     const record = { id: item.id, day: item.day, takenAt: item.takenAt, meal: item.meal,
-      style: ['odung', 'perpeng', 'basic', 'capsule', 'meal', 'big', 'film'].includes(item.style) ? item.style : 'basic',
+      style: ['odung', 'perpeng', 'basic', 'capsule', 'meal', 'big', 'film', 'none'].includes(item.style) ? item.style : 'basic',
       width: item.width, height: item.height, createdAt: Number.isFinite(item.createdAt) ? item.createdAt : item.takenAt };
     for (const key of ['blob', 'thumb', 'original']) {
       const part = item[key];
