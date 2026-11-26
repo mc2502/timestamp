@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=86">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=86">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=86">
+<link rel="manifest" href="manifest.webmanifest?v=87">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=87">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=87">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=86">
+<link rel="stylesheet" href="styles.css?v=87">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=86"></script>
+<script type="module" src="js/app.js?v=87"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -179,7 +179,7 @@
           <span class="switch"><input type="checkbox" role="switch" data-setting="photoTime" aria-describedby="d-phototime"><i aria-hidden="true"></i></span>
         </label>
         <label class="set-row">
-          <span class="set-m"><b>원본 사진도 저장</b><span id="d-original">‘앨범에 저장하기’를 마치면 스탬프 없는 원본도 저장할 수 있게 버튼을 띄워요. 카카오톡에는 스탬프 사진만 가요.</span></span>
+          <span class="set-m"><b>원본 사진도 저장</b><span id="d-original">스탬프 없는 원본도 함께 남겨 두고, 사진 보기에서 따로 저장할 수 있어요. 카카오톡에는 스탬프 사진만 가요.</span></span>
           <span class="switch"><input type="checkbox" role="switch" data-setting="saveOriginal" aria-describedby="d-original"><i aria-hidden="true"></i></span>
         </label>
         <label class="set-row">
@@ -203,7 +203,7 @@
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=86" alt="" aria-hidden="true" width="40" height="40">
+          <img class="about-icon" src="assets/icons/icon-192.png?v=87" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
@@ -254,7 +254,7 @@
       </div>
 
       <div class="ed-actions">
-        <button class="btn pri" type="button" id="ed-share" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장하기</button>
+        <button class="btn pri" type="button" id="ed-done" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12l5 5l10 -10"/></svg>완료</button>
       </div>
     </section>
   </div>
@@ -276,7 +276,7 @@
     </div>
     <div class="sheet-f">
       <button class="btn ico" type="button" id="vw-del" aria-label="이 사진 지우기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
-      <button class="btn pri" type="button" id="vw-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/><path d="M7 11l5 5l5 -5"/><path d="M12 4l0 12"/></svg>앨범에 저장하기</button>
+      <button class="btn pri" type="button" id="vw-replace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 4a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M15 16a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z"/><path d="M21 11v-3a2 2 0 0 0 -2 -2h-6l3 3m0 -6l-3 3"/><path d="M3 13v3a2 2 0 0 0 2 2h6l-3 -3m0 6l3 -3"/></svg>바꾸기</button>
     </div>
   </div>
 </div>

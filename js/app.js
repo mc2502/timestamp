@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=86';
-import { readExifDate } from './exif.js?v=86';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=86';
-import * as db from './db.js?v=86';
+} from './format.js?v=87';
+import { readExifDate } from './exif.js?v=87';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=87';
+import * as db from './db.js?v=87';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '86';
+const APP_VERSION = '87';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1199,26 +1199,26 @@ async function shareFiles(files) {
   return 'downloaded';
 }
 
-// ‘앨범에 저장’은 설정에 따라 원본도 함께, ‘보내기’는 스탬프 사진만
-function shareText(result) {
-  return result === 'downloaded' ? '사진을 내려받았어요. 카카오톡에서 골라 보내 주세요' : '앨범 탭에도 남겼어요';
-}
-
 /* ── 즉시 저장: 스탬프 화면 없이, 가운데를 정사각형으로, 마지막에 쓴 스탬프로 ── */
 
-// target: 달력의 끼니 칸에서 골랐을 때 그 날 · 끼니. 그 칸에 바로 넣고, 있던 사진은 새 사진으로 바꾼다
+// target: 달력의 끼니 칸이나 사진 보기의 ‘바꾸기’에서 골랐을 때 그 날 · 끼니(· 바꿀 사진). 스탬프 화면 없이 바로 넣고,
+// 있던 사진은 새 사진으로 바꾼다
 async function quickSave(file, { target = null } = {}) {
   showToast('사진을 남기고 있어요', { stay: true });
   let photo;
   try {
     photo = await readPhoto(file);
-    // 끼니 칸에서 골랐는데 그 날 사진이 아니면(시각이 없는 사진 포함) 그 날의 끼니 시각으로
-    if (target && dayKey(photo.takenAt) !== target.day) photo.takenAt = slotTime(target);
+    // 바뀔 사진: 사진 보기의 ‘바꾸기’면 그 사진, 달력 칸이면 그 칸에 있던 사진
+    const prev = target
+      ? (target.replaceOf ? state.records.find((r) => r.id === target.replaceOf) : mealTaken(target.day, target.meal)) || null
+      : null;
+    // 그 날 사진이 아니면(시각이 없는 사진 포함) 바뀔 사진의 시각, 빈 칸이면 그 날의 끼니 시각으로
+    if (target && dayKey(photo.takenAt) !== target.day) photo.takenAt = prev ? new Date(prev.takenAt) : slotTime(target);
     const side = Math.min(photo.W0, photo.H0);
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
     if (timeBlocked(photo.takenAt)) { showToast(blockNote(photo.takenAt)); return; }
     const meal = target ? target.meal : mealFor(photo.takenAt);
-    const replacing = target ? mealTaken(target.day, meal) : null;
+    const replacing = prev;
     if (!target && mealTaken(dayKey(photo.takenAt), meal)) {
       URL.revokeObjectURL(photo.url);
       photo = null;
@@ -1263,9 +1263,10 @@ async function quickSave(file, { target = null } = {}) {
     }
     playStampSound();
     const done = target
-      ? `${mealLabel(meal)} 사진을 ${replacing ? '바꿨어요' : '남겼어요'}`
+      ? `${mealLabel(meal) ? `${mealLabel(meal)} ` : ''}사진을 ${replacing ? '바꿨어요' : '남겼어요'}`
       : `${fmtClock(photo.takenAt)} 사진을 남겼어요`;
-    showToast(kept ? done : '이 기기에는 남기지 못했어요', { file: out.file, recordId: kept ? rec.id : null, pop: true });
+    // 달력 칸에서 넣은 사진은 앨범에서 고른 것이라 ‘앨범에 저장’을 붙이지 않는다
+    showToast(kept ? done : '이 기기에는 남기지 못했어요', target ? { pop: true } : { file: out.file, recordId: kept ? rec.id : null, pop: true });
   } catch {
     showToast('사진을 열지 못했어요. 다시 시도해 주세요');
   } finally {
@@ -1291,7 +1292,7 @@ const E = {
   timeText: $('#ed-time-text'),
   timePill: $('#ed-time-pill'),
   seg: $('#meal-seg'),
-  share: $('#ed-share'),
+  done: $('#ed-done'),
 };
 
 // 미래 사진은 남기지 않는다: 지금보다 2시간 넘게 뒤의 시각이면 미래로 본다
@@ -1335,7 +1336,7 @@ async function startEdit(file, { camera = false } = {}) {
   E.canvas.hidden = true;
   E.skel.hidden = false;
   E.reset.hidden = true;
-  E.share.disabled = true;
+  E.done.disabled = true;
   E.timeText.textContent = '';
   E.timePill.classList.remove('is-guess');
   E.skel.classList.remove('is-err');
@@ -1367,7 +1368,7 @@ async function startEdit(file, { camera = false } = {}) {
 
     E.skel.hidden = true;
     E.canvas.hidden = false;
-    E.share.disabled = false;
+    E.done.disabled = false;
     fillFields();
     stampIn();
     markDirty();
@@ -1644,50 +1645,6 @@ function exportFor(e, v) {
   return p;
 }
 
-async function readyFile() {
-  if (ed.file) return ed.file;
-  clearTimeout(ed.timer);
-  await exportFor(ed, ed.version);
-  return ed.file;
-}
-
-// 앨범에 저장하기: 아이폰 공유 화면에서 ‘이미지 저장’(또는 카카오톡)을 고른다
-async function editorShare() {
-  if (!ed?.ready) return;
-  const mine = ed;
-  if (timeBlocked(mine.takenAt)) { showToast(editBlockNote(mine.takenAt)); return; }
-  // 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 새 사진으로 바꿀지 먼저 묻는다
-  const taken = mealTaken(dayKey(mine.takenAt), mine.meal, mine.id);
-  if (taken) {
-    const ok = window.confirm(`이날 ${mealLabel(mine.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요? 먼저 있던 사진은 앱에서만 지워지고, 아이폰 앨범에 저장한 사진은 그대로예요.`);
-    if (!ok) { showToast('끼니를 바꾸면 따로 남길 수 있어요'); return; }
-    mine.replaceId = taken.id;
-  } else {
-    mine.replaceId = null;
-  }
-  let file = mine.file;
-  if (!file) {
-    E.share.classList.add('is-busy');
-    try { file = await readyFile(); } finally { E.share.classList.remove('is-busy'); }
-    if (!file) return;
-  }
-  const result = await shareFiles([file]);
-  if (ed !== mine || result === 'cancelled') return;
-  if (result === 'retry') { showToast('사진을 준비했어요. 한 번 더 눌러 주세요'); return; }
-  if (result === 'error') { showToast('공유 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요'); return; }
-
-  mine.sentAt = Date.now();
-  const kept = await persistEdit(mine);
-  if (ed !== mine) return;
-  if (!kept) { showToast('이 기기에는 기록을 남기지 못했어요'); return; }
-  // 원본도 남기기로 했으면: 카카오톡에 같이 가지 않게 따로 저장 버튼을 띄운다
-  if (settings.saveOriginal && mine.source && result !== 'downloaded') {
-    showToast('원본도 저장할까요?', { file: originalFile(mine.source, mine.takenAt), label: '원본 저장', mark: false, pop: true });
-    return;
-  }
-  showToast(shareText(result), { pop: true });
-}
-
 async function persistEdit(e) {
   if (!state.dbOk || !e.file) return false;
   const isNew = e.persistedVersion === null;
@@ -1719,8 +1676,8 @@ async function persistEdit(e) {
   return true;
 }
 
-// 스탬프 화면에 올라온 사진은 이미 앱에 올린 것으로 본다: 따로 ‘저장’ 없이, 닫으면 지금 모습 그대로 앨범 탭 · 달력에 남는다.
-// 아래 ‘앨범에 저장하기’는 스탬프 찍힌 사진을 아이폰 앨범 · 카카오톡으로 보내고 싶을 때만.
+// 스탬프 화면에 올라온 사진은 이미 앱에 올린 것으로 본다: 따로 ‘저장’ 없이, ‘완료’나 닫기를 누르면 지금 모습 그대로
+// 앨범 탭 · 달력에 남는다. 스탬프 찍힌 사진을 카카오톡 등으로 보내고 싶으면 사진 보기의 ‘앨범에 저장하기’로.
 // 그날 그 끼니 사진이 이미 있으면 바꿀지 묻고, 취소하면 이 새 사진은 남기지 않는다 (한 끼니에 한 장)
 function keepChoice(e) {
   if (!e?.ready || timeBlocked(e.takenAt) || e.persistedVersion === e.version) return false;
@@ -1771,7 +1728,7 @@ function keepQuietly() {
 
 function bindEditor() {
   $('#ed-close').addEventListener('click', closeEditor);
-  E.share.addEventListener('click', editorShare);
+  E.done.addEventListener('click', closeEditor); // 완료 = 닫기 = 앱에 남기기
 
   E.strip.addEventListener('click', (e) => {
     const b = e.target.closest('[data-style]');
@@ -1967,7 +1924,6 @@ function openViewer(id) {
   vw = {
     rec,
     url: URL.createObjectURL(rec.blob),
-    file: new File([rec.blob], stampedName(d), { type: 'image/jpeg', lastModified: rec.takenAt }),
   };
   viewerTitles(rec);
   $('#vw-more').hidden = !rec.original;
@@ -1985,19 +1941,14 @@ function closeViewer() {
   closeSheet(V.sheet);
 }
 
-async function viewerShare() {
+// 바꾸기: 이 사진 자리에 새 사진을 넣는다 (앱에 이미 남아 있는 사진이라 ‘저장’ 대신).
+// 사진 보기를 닫고 바로 사진 고르기를 연다(아이폰은 누른 그 순간에 열어야 해서). 고르면 스탬프 화면 없이
+// 같은 날 · 같은 끼니로 들어가고 이 사진은 앱에서 빠진다
+function viewerReplace() {
   if (!vw) return;
-  const mine = vw;
-  const result = await shareFiles([mine.file]);
-  if (vw !== mine || result === 'cancelled') return;
-  if (result === 'retry') { showMsg(V.msg, 'warn', '한 번 더 눌러 주세요.'); return; }
-  if (result === 'error') { showMsg(V.msg, 'err', '공유 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.'); return; }
-  const saved = await updateRecord({ ...mine.rec, sentAt: Date.now() });
-  if (saved) {
-    mine.rec = saved;
-    if (vw === mine) viewerTitles(saved);
-  }
-  if (vw === mine) showMsg(V.msg, 'ok', result === 'downloaded' ? '사진을 내려받았어요.' : '다 됐어요.');
+  const { id, day, meal } = vw.rec;
+  closeViewer();
+  openInput('#input-photo', { target: { day, meal: meal ?? null, replaceOf: id } });
 }
 
 // 스탬프 없는 원본 (설정에서 ‘원본 사진도 저장’을 켰을 때 남겨 둔 것)
@@ -2028,7 +1979,7 @@ async function viewerDelete() {
 }
 
 function bindViewer() {
-  $('#vw-share').addEventListener('click', viewerShare);
+  $('#vw-replace').addEventListener('click', viewerReplace);
   $('#vw-orig').addEventListener('click', viewerOriginal);
   $('#vw-del').addEventListener('click', viewerDelete);
 }
