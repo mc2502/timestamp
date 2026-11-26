@@ -170,6 +170,9 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 }
 .grid::-webkit-scrollbar { display: none; }
 .grid > .tile { scroll-snap-align: start; }
+/* 끼니 필터: 날짜 머리글 없이 한 격자로, 세 칸씩 아래로 (칸 크기 · 간격 같음) */
+.grid.is-wrap { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; scroll-snap-type: none; }
+.filtered { padding-top: 12px; }
 .tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); transition: transform .2s; }
 .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; transition: filter .2s; }
 .tile:active { transform: scale(.96); }

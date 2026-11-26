@@ -1,16 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput, keepPhrases,
-} from './format.js?v=115';
-import { readExifDate } from './exif.js?v=115';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=115';
-import * as db from './db.js?v=115';
-import { albumCaption } from './album-copy.js?v=115';
-import { createBackup, readBackup } from './backup.js?v=115';
-import { RELEASES, APP_VERSION } from './releases.js?v=115';
+} from './format.js?v=116';
+import { readExifDate } from './exif.js?v=116';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=116';
+import * as db from './db.js?v=116';
+import { albumCaption } from './album-copy.js?v=116';
+import { createBackup, readBackup } from './backup.js?v=116';
+import { RELEASES, APP_VERSION } from './releases.js?v=116';
 
 // 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
-const APP_BUILD = '115';
+const APP_BUILD = '116';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -948,7 +948,6 @@ function renderAlbum() {
     $('#boot-retry').hidden = false;
   }
   $('#filters').hidden = !has;
-  $('#album-meta').textContent = has ? `총 ${state.records.length}장` : '';
 
   const counts = { all: state.records.length };
   for (const r of state.records) if (r.meal) counts[r.meal] = (counts[r.meal] || 0) + 1;
@@ -959,6 +958,8 @@ function renderAlbum() {
     `<button type="button" data-filter="${id}" aria-pressed="${state.filter === id}" aria-label="${label} ${counts[id] || 0}장">${label}</button>`).join('');
 
   const list = state.records.filter((r) => state.filter === 'all' || r.meal === state.filter);
+  // 위 오른쪽 장수: 전체는 모든 사진, 끼니를 고르면 그 끼니 사진 수
+  $('#album-meta').textContent = !has ? '' : state.filter === 'all' ? `총 ${state.records.length}장` : `${mealLabel(state.filter)} ${list.length}장`;
   const byDay = new Map();
   for (const r of list) {
     if (!byDay.has(r.day)) byDay.set(r.day, []);
@@ -968,7 +969,12 @@ function renderAlbum() {
   const keys = [...byDay.keys()].sort().reverse();
   renderTodayCard(has, todayKey);
   const animate = settings.effects && !reducedMotion();
-  $('#album-grid').innerHTML = keys.map((key) => {
+  // 끼니를 고르면 날짜로 나누지 않는다: 그 끼니 사진만 최신 순으로 세 칸씩 채워 내려간다 (칸 크기는 같다)
+  if (state.filter !== 'all') {
+    const tiles = list.slice().sort((a, b) => b.takenAt - a.takenAt).map((r) => tileHtml(r, animate)).join('');
+    $('#album-grid').innerHTML = list.length
+      ? `<section class="filtered" aria-label="${mealLabel(state.filter)} 사진"><div class="grid is-wrap">${tiles}</div></section>` : '';
+  } else $('#album-grid').innerHTML = keys.map((key) => {
     const items = (byDay.get(key) || []).sort((a, b) => a.takenAt - b.takenAt); // 하루 안에서는 아침 → 점심 → 저녁 순
     const d = fromDayKey(key);
     const count = items.length ? `<b>${items.length}</b>장` : '아직 없어요';
