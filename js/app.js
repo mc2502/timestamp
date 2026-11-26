@@ -1,16 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput, keepPhrases,
-} from './format.js?v=109';
-import { readExifDate } from './exif.js?v=109';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=109';
-import * as db from './db.js?v=109';
-import { albumCaption } from './album-copy.js?v=109';
-import { createBackup, readBackup } from './backup.js?v=109';
-import { RELEASES, APP_VERSION } from './releases.js?v=109';
+} from './format.js?v=110';
+import { readExifDate } from './exif.js?v=110';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=110';
+import * as db from './db.js?v=110';
+import { albumCaption } from './album-copy.js?v=110';
+import { createBackup, readBackup } from './backup.js?v=110';
+import { RELEASES, APP_VERSION } from './releases.js?v=110';
 
 // 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
-const APP_BUILD = '109';
+const APP_BUILD = '110';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -636,8 +636,10 @@ function handleFile(file, { camera = false } = {}) {
   pendingTarget = null;
   pickingFile = false;
   if (!file || activeWork) { resumeReload(); return; }
-  // 끼니 칸에서 고른 사진은 스탬프 화면 없이 그 칸에 바로 (있던 사진은 새 사진으로 바뀐다)
-  if (target) quickSave(file, { target });
+  // 사진 교체하기: 스탬프 화면에서 골라 바꾼다
+  if (target?.edit) startEdit(file, { target });
+  // 끼니 칸에서 고른 사진은 스탬프 화면 없이 그 칸에 바로, 스탬프 없이 (있던 사진은 새 사진으로 바뀐다)
+  else if (target) quickSave(file, { target });
   else if (settings.instantSave) quickSave(file);
   else startEdit(file, { camera });
 }
@@ -1284,7 +1286,7 @@ async function renderStamped(img, rect, info, look, frame = {}) {
 /* ── 즉시 저장: 스탬프 화면 없이, 가운데를 정사각형으로, 마지막에 쓴 스탬프로 ── */
 
 // target: 달력의 끼니 칸이나 사진 보기의 ‘바꾸기’에서 골랐을 때 그 날 · 끼니(· 바꿀 사진). 스탬프 화면 없이 바로 넣고,
-// 있던 사진은 새 사진으로 바꾼다. target.plain(달력 칸 · 사진 교체하기)이면 스탬프를 찍지 않고 사진만 넣는다
+// 있던 사진은 새 사진으로 바꾼다. target.plain(달력 칸)이면 스탬프를 찍지 않고 사진만 넣는다
 async function quickSave(file, { target = null } = {}) {
   const plain = Boolean(target?.plain);
   const retry = target?.replaceOf ? '사진 교체하기를 다시 눌러 주세요' : '칸을 다시 눌러 주세요';
@@ -1475,6 +1477,7 @@ async function startEdit(file, { camera = false, target = null, notice = null } 
         notice = notice ? { ...notice, detail: adjustedNote } : { text: '선택한 날의 시각으로 맞췄어요', detail: adjustedNote };
       }
       mine.replaceId = prev?.id || null;
+      mine.replaceOf = target.replaceOf || null; // 사진 보기에서 바꾸기로 한 사진 (끼니를 바꿔도 이 사진을 바꾼다)
       mine.mealAuto = false;
     }
     await charsReady(mine.pose);
@@ -1553,23 +1556,30 @@ function fillFields() {
 function fillEditorFeedback() {
   const ready = ed?.ready;
   const taken = ready ? mealTaken(dayKey(ed.takenAt), ed.meal, ed.id) : null;
+  // 사진 보기의 ‘사진 교체하기’로 연 경우: 바꿀 사진. 다른 사진이 있는 끼니로 옮기면(clash) 그 사진을 보여 준다
+  const replacing = ready && ed.replaceOf ? state.records.find((r) => r.id === ed.replaceOf) || null : null;
+  const clash = Boolean(replacing && taken && taken.id !== replacing.id);
+  const shown = clash ? taken : replacing || taken;
   const note = ready && ed.notice;
   const meal = ready ? mealLabel(ed.meal) : '';
   let title = '', detail = '';
-  if (ready) {
+  if (ready && replacing && !clash) {
+    title = '원래 사진을 새 사진으로 바꿔요';
+    detail = TIME_NOTES[ed.timeSource] || '';
+  } else if (ready) {
     title = taken ? `${meal} 사진이 있어요` : meal ? `${meal} 사진으로 남겨요` : '끼니 구분 없이 남겨요';
-    detail = TIME_NOTES[ed.timeSource] || (taken ? '새 사진으로 교체할 수 있어요' : '');
+    detail = clash ? '다른 끼니를 골라 주세요' : TIME_NOTES[ed.timeSource] || (taken ? '새 사진으로 교체할 수 있어요' : '');
   }
   const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
   setPhrases(E.feedbackTitle, note ? note.text : title);
   setPhrases(E.feedbackDetail, note ? note.detail : detail);
   E.feedback.dataset.tone = note?.tone || 'info';
-  E.existingPhoto.hidden = !taken || Boolean(note);
-  if (taken && !note) {
-    const src = thumbUrl(taken);
+  E.existingPhoto.hidden = !shown || Boolean(note);
+  if (shown && !note) {
+    const src = thumbUrl(shown);
     if (E.existingPhoto.getAttribute('src') !== src) E.existingPhoto.src = src;
   } else E.existingPhoto.removeAttribute('src');
-  setText(E.doneLabel, ed?.busy ? '저장 중' : taken ? '사진 교체' : '완료');
+  setText(E.doneLabel, ed?.busy ? '저장 중' : shown ? '사진 교체' : '완료');
 }
 
 // 끼니 막대: 다섯 칸(아침 · 점심 · 저녁 · 간식 · 없음)의 이름이 막대 안에 있다.
@@ -1852,6 +1862,12 @@ function readyToKeep(e) {
   const opens = MAIN_MEALS.includes(e.meal) ? slotOpensAt(day, e.meal) : null;
   if (opens) { showToast(slotOpenNote(e.meal, opens)); return false; }
   const taken = mealTaken(day, e.meal, e.id);
+  // 사진 보기의 ‘사진 교체하기’: 보던 사진을 바꾼다. 다른 사진이 있는 끼니로 옮기면 두 장이 한꺼번에 사라지지 않게 막는다
+  if (e.replaceOf) {
+    if (taken && taken.id !== e.replaceOf) { showToast(`이날 ${mealLabel(e.meal)} 사진이 이미 있어요. 다른 끼니를 골라 주세요`); return false; }
+    e.replaceId = e.replaceOf;
+    return true;
+  }
   // 앞서 바꾸기로 했던 사진이 지금 끼니 · 날과 겹치지 않으면 바꾸기는 취소 (끼니를 바꾼 뒤 엉뚱한 사진이 지워지지 않게)
   if (e.replaceId && e.replaceId !== taken?.id) e.replaceId = null;
   if (taken && e.replaceId !== taken.id) {
@@ -2177,8 +2193,8 @@ function viewerReplace() {
   if (!vw || activeWork) return;
   const { id, day, meal } = vw.rec;
   closeViewer();
-  // 교체하는 사진도 스탬프 없이 사진만 넣는다 (이미 스탬프가 있는 사진을 고르면 두 번 찍히지 않게)
-  openInput('#input-photo', { target: { day, meal: meal ?? null, replaceOf: id, plain: true } });
+  // 고른 사진으로 스탬프 화면을 연다. 완료하면 보던 사진 대신 들어간다
+  openInput('#input-photo', { target: { day, meal: meal ?? null, replaceOf: id, edit: true } });
 }
 
 async function viewerDelete() {

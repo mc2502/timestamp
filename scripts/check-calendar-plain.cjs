@@ -1,4 +1,5 @@
-// 달력 칸 · 사진 보기의 ‘사진 교체하기’로 올린 사진은 스탬프 없이 사진만, 즉시 저장(카메라)은 그대로 스탬프가 찍히는지 확인한다.
+// 달력 칸에서 올린 사진은 스탬프 없이 사진만, 사진 보기의 ‘사진 교체하기’는 스탬프 화면을 거쳐 보던 사진 대신 들어가고,
+// 즉시 저장(카메라)은 그대로 스탬프가 찍히는지 확인한다.
 // 실행: PLAYWRIGHT_MODULE=/path/to/playwright node scripts/check-calendar-plain.cjs  (격리된 저장소 · 가짜 사진만 사용)
 const http = require('node:http');
 const fs = require('node:fs');
@@ -68,17 +69,40 @@ server.listen(0, '127.0.0.1', async () => {
     console.log('calendar replace', JSON.stringify(b));
     assert.equal(b.style, 'none');
     assert.ok(b.ink.offRatio < 0.001);
-    // 3) 사진 보기의 ‘사진 교체하기’도 스탬프 없음 (이미 스탬프가 있는 사진을 골라도 두 번 찍히지 않게)
-    await page.locator('.tab[data-view="album"]').click();
-    await page.locator('[data-id]').first().click();
-    const before = await page.evaluate(async () => { window.before = (await window.records())[0].id; return window.before; });
-    await page.locator('#vw-replace').click();
+    // 3) 사진 보기의 ‘사진 교체하기’는 스탬프 화면을 열고, 완료하면 보던 사진 대신 스탬프 찍힌 새 사진이 들어간다
+    const replaceFromViewer = async () => {
+      await page.locator('.tab[data-view="album"]').click();
+      await page.locator('[data-id]').first().click();
+      await page.evaluate(async () => { window.before = (await window.records())[0].id; });
+      await page.locator('#vw-replace').click();
+      await page.waitForSelector('#editor:not([hidden])');
+      await page.waitForFunction(() => !document.querySelector('#ed-done').disabled);
+    };
+    await replaceFromViewer();
+    const fb = await page.evaluate(() => ({ title: document.querySelector('#ed-feedback-title').textContent, label: document.querySelector('#ed-done-label').textContent, existing: !document.querySelector('#ed-existing-photo').hidden }));
+    if (out) await page.screenshot({ path: `${out}/replace-editor.png` });
+    console.log('replace editor', JSON.stringify(fb));
+    assert.deepEqual(fb, { title: '원래 사진을 새 사진으로 바꿔요', label: '사진 교체', existing: true });
+    await page.locator('#ed-done').click();
+    await page.waitForSelector('#editor', { state: 'hidden' });
     await until(async () => { const rs = await window.records(); return rs.length === 1 && rs[0].id !== window.before; });
-    const c = await page.evaluate(async () => { const [r] = await window.records(); return { id: r.id, style: r.style, ink: await window.inkOf(r.blob) }; });
+    const c = await page.evaluate(async () => { const [r] = await window.records(); return { style: r.style, meal: r.meal, ink: await window.inkOf(r.blob), toast: document.querySelector('#toast-text').textContent }; });
     console.log('viewer replace', JSON.stringify(c));
-    assert.notEqual(c.id, before);
-    assert.equal(c.style, 'none');
-    assert.ok(c.ink.offRatio < 0.001, '사진 보기 교체도 스탬프가 없어야 함');
+    assert.notEqual(c.style, 'none');
+    assert.equal(c.meal, 'lunch');
+    assert.ok(c.ink.offRatio > 0.005, '사진 교체하기는 스탬프 화면에서 고른 스탬프가 찍혀야 함');
+    assert.match(c.toast, /교체했어요/);
+    // 스탬프 화면에서 끼니를 바꿔도 보던 사진이 바뀐다 (두 장이 남지 않음)
+    await replaceFromViewer();
+    await page.locator('#meal-track').focus();
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await page.evaluate(() => document.querySelector('#ed-done-label').textContent), '사진 교체');
+    await page.locator('#ed-done').click();
+    await page.waitForSelector('#editor', { state: 'hidden' });
+    await until(async () => { const rs = await window.records(); return rs.length === 1 && rs[0].id !== window.before; });
+    const moved = await page.evaluate(async () => (await window.records()).map((r) => r.meal));
+    console.log('replace with meal change', JSON.stringify(moved));
+    assert.deepEqual(moved, ['breakfast']);
     // 4) 즉시 저장(카메라 · 앨범에서 바로)은 그대로 스탬프
     await page.evaluate(() => {
       localStorage.setItem('timestamp:settings', JSON.stringify({ ...JSON.parse(localStorage.getItem('timestamp:settings') || '{}'), instantSave: true }));
@@ -110,7 +134,7 @@ server.listen(0, '127.0.0.1', async () => {
     console.log('instant save', JSON.stringify(d));
     assert.ok(d && d.style !== 'none' && d.ink.offRatio > 0.005, '즉시 저장은 스탬프가 있어야 함');
     assert.deepEqual(errors, []);
-    console.log('PASS 달력 칸 · 사진 교체하기는 스탬프 없음, 즉시 저장은 스탬프 유지');
+    console.log('PASS 달력 칸은 스탬프 없음 · 사진 교체하기는 스탬프 화면에서 교체 · 즉시 저장은 스탬프 유지');
   } finally { await browser.close(); server.close(); }
 });
 process.on('unhandledRejection', (e) => { console.error(e); process.exit(1); });
