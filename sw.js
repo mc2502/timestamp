@@ -1,5 +1,5 @@
 // 버전 숫자는 scripts/bump-version.sh 가 올린다.
-const VERSION = '105';
+const VERSION = '106';
 const CACHE = `timestamp-v${VERSION}`;
 const ART_CACHE = 'timestamp-art-v1';
 const SHELL = [
@@ -48,24 +48,94 @@ const SHELL = [
   ...['breakfast', 'lunch', 'dinner'].map((m) => `./assets/art/slot/${m}.png`),
   './assets/art/album/odung.png',
   './assets/art/album/perpeng.png',
-  './assets/art/notifications/toast-label-v1.png',
   `./assets/icons/icon-192.png?v=${VERSION}`,
   `./assets/icons/apple-touch-icon.png?v=${VERSION}`,
 ];
 
-// 코드와 첫 화면은 같은 버전으로 설치. 그림은 주소가 바뀔 때만 새로 받는다.
+// 그림 내용 지문. scripts/art-hashes.mjs가 배포 때(bump-version.sh) 채운다. 손으로 고치지 않는다.
+const ART_HASH = {
+  'assets/art/album/odung.png': '04ebdeb66f0e',
+  'assets/art/album/perpeng.png': 'badc585df962',
+  'assets/art/meal/odung-breakfast.png': 'aeb7030e9444',
+  'assets/art/meal/odung-dinner.png': '54fd9c53dc53',
+  'assets/art/meal/odung-full.png': 'c7df55b9fba8',
+  'assets/art/meal/odung-lunch.png': '3c421e4baa42',
+  'assets/art/meal/perpeng-breakfast.png': '8816c11ec72c',
+  'assets/art/meal/perpeng-dinner.png': '12d674117169',
+  'assets/art/meal/perpeng-full.png': 'a6a185b879d8',
+  'assets/art/meal/perpeng-lunch.png': '6b7b45f49508',
+  'assets/art/odung-empty.png': '4b7f1405f0be',
+  'assets/art/odung-hero.png': '7da9b37a04a2',
+  'assets/art/perpeng-empty.png': 'ec2037a757f9',
+  'assets/art/perpeng-hero.png': '29f032dca72b',
+  'assets/art/seal-disc-rough.png': '303af379e529',
+  'assets/art/seal-ring-rough.png': '721578cf1869',
+  'assets/art/slot/breakfast.png': '8428534a9978',
+  'assets/art/slot/dinner.png': 'a416362bd7f9',
+  'assets/art/slot/lunch.png': '15a5bbf0219f',
+  'assets/art/stamp/odung-miss-hungry.png': '86f4a110e684',
+  'assets/art/stamp/odung-miss-sad.png': 'e8860ceb0416',
+  'assets/art/stamp/odung-smile.png': '71e9ba2be8cf',
+  'assets/art/stamp/odung-wink.png': 'b9ec1c28dd51',
+  'assets/art/stamp/odung-yum.png': 'b7744cfc17d2',
+  'assets/art/stamp/perpeng-miss-hungry.png': 'e926f22f126a',
+  'assets/art/stamp/perpeng-miss-sad.png': '20c3da495e07',
+  'assets/art/stamp/perpeng-smile.png': '7f5037c681e5',
+  'assets/art/stamp/perpeng-wink.png': '74d30ca77531',
+  'assets/art/stamp/perpeng-yum.png': '445075884be6',
+  'assets/mascots/odung-calendar-face-v7.png': '908c0f7e46eb',
+  'assets/mascots/odung-camera-v2.png': '8a293f71d7e9',
+  'assets/mascots/odung-camera-v3.png': '578d0ace9a04',
+  'assets/mascots/perpeng-calendar-face-v4.png': 'fe62e86efc53',
+  'assets/mascots/perpeng-camera-v2.png': '8ccba3d1eb32',
+  'assets/mascots/perpeng-camera-v3.png': '0af9dd8b3ff9',
+  'assets/poses/odung-fullbody.png': '31affb22788c',
+  'assets/poses/odung-pt.png': '6e2eabb384e5',
+  'assets/poses/odung-running.png': 'b617c6f7ec59',
+  'assets/poses/odung-solo.png': 'd92ca4201248',
+  'assets/poses/odung-stairs.png': '900390a69f74',
+  'assets/poses/odung-strength.png': '4b32b92ca52f',
+  'assets/poses/odung-summary.png': 'f568dd98b64c',
+  'assets/poses/perpeng-arms.png': '9636f9f5d737',
+  'assets/poses/perpeng-chest.png': '6935058aaf8e',
+  'assets/poses/perpeng-fullbody.png': '3df7900fb1c1',
+  'assets/poses/perpeng-pt.png': '9bc63f8140ac',
+  'assets/poses/perpeng-running.png': '13243b7afcb7',
+  'assets/poses/perpeng-solo.png': 'a6fbf41aebf7',
+  'assets/poses/perpeng-stairs.png': 'cffb5630ba63',
+  'assets/poses/perpeng-summary.png': '1150a0a17639',
+};
+
+// 주소에 ?v= 가 없는 assets/ 파일만 그림 캐시에 둔다. (?v= 아이콘은 버전 캐시로)
+const scopePath = new URL(self.registration.scope).pathname;
+const artPath = (url) => (url.origin === self.location.origin && !url.search && url.pathname.startsWith(`${scopePath}assets/`)
+  ? url.pathname.slice(scopePath.length) : null);
+
+// 지문을 응답 머리에 붙여 저장한다. 다음 배포에서 지문이 같으면 다시 받지 않는다.
+async function putArt(cache, req, res, path) {
+  const hash = ART_HASH[path];
+  if (!hash) { await cache.put(req, res); return; }
+  const headers = new Headers(res.headers);
+  headers.set('x-art-hash', hash);
+  await cache.put(req, new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers }));
+}
+
+// 코드와 첫 화면은 같은 버전으로 설치. 그림은 내용(지문)이 바뀐 것만 새로 받는다.
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const shell = await caches.open(CACHE);
     const art = await caches.open(ART_CACHE);
     await Promise.all(SHELL.map(async (path) => {
       const req = new Request(new URL(path, self.registration.scope));
-      const isArt = path.startsWith('./assets/');
-      const cache = isArt ? art : shell;
-      if (isArt && await cache.match(req)) return;
+      const key = artPath(new URL(req.url));
+      if (key) {
+        const hit = await art.match(req);
+        if (hit && (!ART_HASH[key] || hit.headers.get('x-art-hash') === ART_HASH[key])) return;
+      }
       const res = await fetch(req, { cache: 'reload' });
       if (!res.ok) throw new Error(`Install failed: ${path}`);
-      await cache.put(req, res);
+      if (key) await putArt(art, req, res, key);
+      else await shell.put(req, res);
     }));
     await self.skipWaiting();
   })());
@@ -77,6 +147,15 @@ self.addEventListener('activate', (event) => {
     const previous = `timestamp-v${Number(VERSION) - 1}`;
     const keys = await caches.keys();
     await Promise.all(keys.filter((k) => /^timestamp-v\d+$/.test(k) && ![CACHE, previous].includes(k)).map((k) => caches.delete(k)));
+    // 그림 캐시 정리: 예전에 쌓인 ?v= 아이콘과 더 이상 배포하지 않는 그림. 다른 곳(글꼴 CDN) 파일은 둔다.
+    const art = await caches.open(ART_CACHE);
+    const shipped = Object.keys(ART_HASH).length > 0;
+    await Promise.all((await art.keys()).map((req) => {
+      const url = new URL(req.url);
+      if (url.origin !== self.location.origin) return null;
+      const stale = url.search || (shipped && !ART_HASH[artPath(url)]);
+      return stale ? art.delete(req) : null;
+    }));
     await self.clients.claim();
   })());
 });
@@ -118,11 +197,13 @@ self.addEventListener('fetch', (event) => {
         return res;
       } catch { return await shell.match(key) || Response.error(); }
     }
-    const cache = await caches.open(url.pathname.includes('/assets/') || !sameOrigin ? ART_CACHE : CACHE);
+    const key = artPath(url);
+    const cache = await caches.open(key || !sameOrigin ? ART_CACHE : CACHE);
     const hit = await cache.match(req) || await caches.match(req);
     if (hit) return hit;
     const res = await fetch(req);
-    if (res.ok || res.type === 'opaque') await cache.put(req, res.clone());
+    if (key && res.ok) await putArt(cache, req, res.clone(), key);
+    else if (res.ok || res.type === 'opaque') await cache.put(req, res.clone());
     return res;
   })().catch(() => Response.error()));
 });

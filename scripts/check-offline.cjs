@@ -11,15 +11,17 @@ const path=require('node:path');
  const publicVersion=/version:\s*'([^']+)'/.exec(releaseSource)[1];
  const nextParts=publicVersion.split('.').map(Number);nextParts[2]++;
  const nextPublicVersion=nextParts.join('.');
- let version=current,slow=false,slowBody=false;const requests=[];
+ let version=current,slow=false,slowBody=false,artOverride=null;const requests=[];
  const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');requests.push(url.pathname+url.search);
   let relative=decodeURIComponent(url.pathname).slice(1)||'index.html';
   if(relative.includes('..')){res.writeHead(403).end();return}
   try{
-   let body=await fs.readFile(path.join(root,relative));
+   let body=await fs.readFile(path.join(root,artOverride&&relative===artOverride.path?artOverride.from:relative));
    const ext=path.extname(relative),text=['.js','.html','.css','.webmanifest'].includes(ext);
    if(text)body=Buffer.from(body.toString().replace(/\?v=\d+/g,`?v=${version}`).replace(/const (APP_BUILD|VERSION) = '\d+';/g,(_,n)=>`const ${n} = '${version}';`));
+   // 같은 이름으로 다시 그린 그림: 다른 내용과 바뀐 지문을 내보낸다
+   if(relative==='sw.js'&&artOverride)body=Buffer.from(body.toString().replace(new RegExp(`'${artOverride.path}': '[0-9a-f]+'`),`'${artOverride.path}': '${artOverride.hash}'`));
    if(relative==='js/releases.js'&&version>current)body=Buffer.from(body.toString().replace(`version: '${publicVersion}'`,`version: '${nextPublicVersion}'`));
    if(slow&&relative==='index.html'&&!url.searchParams.has('check'))await new Promise(r=>setTimeout(r,8000));
    if(slowBody && relative==='index.html'&&!url.searchParams.has('check')){res.writeHead(200,{'content-type':'text/html'});res.write(body.subarray(0,50));await new Promise(r=>setTimeout(r,8000));res.end(body.subarray(50));return}
@@ -61,6 +63,36 @@ const path=require('node:path');
    assert.equal(await page.evaluate(()=>caches.has('unrelated-app')),true);
    await page.reload();await page.waitForFunction(()=>window.__tsBooted);
    assert.equal(await page.locator('#app-version').textContent(),`버전 ${nextPublicVersion}`);
+  });
+  await check('같은 이름으로 다시 그린 그림만 새로 받음',async()=>{
+   artOverride={path:'assets/art/stamp/odung-smile.png',from:'assets/art/stamp/perpeng-smile.png',hash:'0123456789ab'};
+   requests.length=0;version++;
+   await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});
+   await page.waitForFunction(v=>caches.has(`timestamp-v${v}`),version);
+   await page.waitForTimeout(1500);
+   const art=requests.filter(x=>x.startsWith('/assets/')&&!x.includes('/icons/'));
+   assert.deepEqual(art,['/assets/art/stamp/odung-smile.png']);
+   await page.reload();await page.waitForFunction(()=>window.__tsBooted);
+   const info=await page.evaluate(async()=>{const r=await(await caches.open('timestamp-art-v1')).match('assets/art/stamp/odung-smile.png');return{hash:r.headers.get('x-art-hash'),size:(await r.blob()).size}});
+   const want=(await fs.stat(path.join(root,artOverride.from))).size;
+   assert.deepEqual(info,{hash:'0123456789ab',size:want});
+   const icons=await page.evaluate(async()=>(await(await caches.open('timestamp-art-v1')).keys()).filter(r=>r.url.includes('?')).length);
+   assert.equal(icons,0);
+  });
+  await check('느린 망에서 새 버전이 나와도 새로고침이 되풀이되지 않음',async()=>{
+   let loads=0;const onNav=(f)=>{if(f===page.mainFrame())loads++};
+   page.on('framenavigated',onNav);
+   version++;slow=true;
+   await page.reload();
+   const deadline=Date.now()+40000;let ok=false;
+   while(!ok&&Date.now()<deadline){
+    await page.waitForTimeout(500);
+    try{ok=await page.evaluate(v=>Boolean(window.__tsBooted&&[...document.scripts].some(s=>s.src.includes(`app.js?v=${v}`))),version)}catch{/* 새로 불러오는 중 */}
+   }
+   await page.waitForTimeout(4000); // 새 버전에서 더 새로고침하지 않는지
+   slow=false;page.off('framenavigated',onNav);
+   assert.ok(ok,'새 버전으로 바뀌지 않음');
+   assert.ok(loads<=2,`새로고침 ${loads}번`);
   });
   await check('업데이트한 버전도 오프라인 실행',async()=>{
    await context.setOffline(true);await page.reload();await page.waitForFunction(()=>window.__tsBooted);

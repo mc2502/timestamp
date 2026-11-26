@@ -1,16 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=105';
-import { readExifDate } from './exif.js?v=105';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=105';
-import * as db from './db.js?v=105';
-import { albumCaption } from './album-copy.js?v=105';
-import { createBackup, readBackup } from './backup.js?v=105';
-import { RELEASES, APP_VERSION } from './releases.js?v=105';
+} from './format.js?v=106';
+import { readExifDate } from './exif.js?v=106';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=106';
+import * as db from './db.js?v=106';
+import { albumCaption } from './album-copy.js?v=106';
+import { createBackup, readBackup } from './backup.js?v=106';
+import { RELEASES, APP_VERSION } from './releases.js?v=106';
 
 // 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
-const APP_BUILD = '105';
+const APP_BUILD = '106';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -177,6 +177,10 @@ async function init() {
 
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   if ('serviceWorker' in navigator && window.isSecureContext) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      swSwapped = true;
+      if (awaitingUpdate) reload();
+    });
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 }
@@ -191,11 +195,20 @@ async function checkForUpdate() {
     const res = await fetch(`index.html?check=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(3500) });
     const html = res.ok ? await res.text() : '';
     const latest = /app\.js\?v=(\d+)/.exec(html)?.[1];
-    if (latest && latest !== APP_BUILD && !refreshing) {
-      reload();
-    }
+    if (latest && latest !== APP_BUILD && !refreshing) applyUpdate();
   } catch { /* 확인 못 해도 지금 버전으로 계속 쓴다 */ }
   checkingUpdate = false;
+}
+
+// 서비스 워커가 새 버전을 다 받아 자리를 바꾼 뒤에 새로 불러온다.
+// 바로 새로고침하면, 느린 망에서는 첫 화면이 저장본(예전 버전)으로 다시 열려 새로고침이 되풀이된다.
+let swSwapped = false;
+let awaitingUpdate = false;
+function applyUpdate() {
+  const sw = navigator.serviceWorker;
+  if (!sw?.controller || swSwapped) { reload(); return; }
+  awaitingUpdate = true;
+  sw.getRegistration().then((reg) => reg?.update()).catch(() => { /* 다음 확인 때 다시 */ });
 }
 
 // 현재 쓰는 포즈만 기다린다. 느리거나 실패한 그림은 다음 선택 때 다시 받을 수 있다.

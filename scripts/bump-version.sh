@@ -19,5 +19,8 @@ sed -i '' -E "s/\?v=[0-9]+/?v=$next/g" index.html js/app.js js/stamp.js manifest
 sed -i '' -E "s/^const VERSION = '[0-9]+';/const VERSION = '$next';/" sw.js
 sed -i '' -E "s/^const APP_BUILD = '[0-9]+';/const APP_BUILD = '$next';/" js/app.js
 
+# 그림 내용 지문: 같은 이름으로 다시 그린 그림도 설치된 앱이 새로 받게 한다
+node scripts/art-hashes.mjs
+
 echo "내부 배포 번호 $cur → $next"
 grep -n "?v=$next\|VERSION = '$next'" index.html js/app.js js/stamp.js manifest.webmanifest sw.js

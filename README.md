@@ -45,7 +45,7 @@ js/db.js              기록 보관 (이 기기의 IndexedDB)
 js/album-copy.js      끼니별 오늘 카드 문구
 js/releases.js        공개 버전과 업데이트 노트 (최신 항목부터)
 js/backup.js          사진 백업 파일 생성·검증
-sw.js                 코드·그림 캐시 우선, 첫 화면 2.8초 후 저장본 사용
+sw.js                 코드·그림 캐시 우선, 첫 화면 2.8초 후 저장본 사용, 그림 내용 지문(ART_HASH)
 manifest.webmanifest  홈 화면 앱 정보
 assets/               마스코트, 빈 화면 그림, 앱 아이콘
 ```
@@ -70,9 +70,9 @@ Mac 브라우저에서 http://localhost:5173 을 열어요.
 ./scripts/bump-version.sh
 ```
 
-`index.html`, `js/app.js`, `js/stamp.js`의 `?v=` 숫자와 `sw.js`의 `VERSION`, `js/app.js`의 `APP_BUILD`가 함께 1 올라가요. 이 내부 번호는 캐시 갱신에만 쓰며 앱에는 **1.0.0** 형식의 공개 버전만 보여요. `node scripts/check-release.mjs`로 현재 배포와 노트가 일치하는지 다시 확인할 수 있어요.
+`index.html`, `js/app.js`, `js/stamp.js`의 `?v=` 숫자와 `sw.js`의 `VERSION`, `js/app.js`의 `APP_BUILD`가 함께 1 올라가요. 같은 스크립트가 `scripts/art-hashes.mjs`로 `assets/` 그림마다 내용 지문을 `sw.js`의 `ART_HASH`에 적어요. 그래서 같은 파일 이름으로 다시 그린 그림도 설치된 앱이 다음 배포 때 새로 받고, 바뀌지 않은 그림은 다시 받지 않아요. (GitHub Pages의 ETag는 배포마다 모든 파일이 바뀌어서 쓸 수 없어요) 이 내부 번호는 캐시 갱신에만 쓰며 앱에는 **1.0.0** 형식의 공개 버전만 보여요. `node scripts/check-release.mjs`로 현재 배포와 노트가 일치하는지 다시 확인할 수 있어요.
 
-검사 후 변경한 파일만 커밋·푸시하고, 실제 사이트의 설정에서 버전·노트·오프라인 표시를 확인해요. 시작이 늦어도 오프라인 사본을 지우지 않고, 저장·사진 선택·편집 중에는 새 버전 적용을 미뤄요.
+검사 후 변경한 파일만 커밋·푸시하고, 실제 사이트의 설정에서 버전·노트·오프라인 표시를 확인해요. 시작이 늦어도 오프라인 사본을 지우지 않고, 저장·사진 선택·편집 중에는 새 버전 적용을 미뤄요. 새 버전을 찾으면 서비스 워커가 새 버전을 다 받아 자리를 바꾼 뒤에 한 번만 새로 불러와요(느린 망에서 새로고침이 되풀이되지 않게).
 
 ## 아이폰에서 쓰기
 

@@ -529,23 +529,29 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .toast {
   position: fixed; z-index: 400; bottom: calc(var(--nav-bottom) + var(--nav-height) + 14px); left: 0; right: 0; width: max-content; margin-inline: auto;
   display: flex; align-items: center; gap: 10px; max-width: min(390px, calc(100% - 40px)); min-height: 52px; padding: 10px 18px 10px 14px;
-  isolation: isolate; border-radius: 11px; background: transparent; box-shadow: 0 4px 14px -3px rgba(36, 86, 159, .16);
+  isolation: isolate; border-radius: 14px; background: transparent; filter: drop-shadow(0 4px 10px rgba(36, 86, 159, .13));
   font-size: 14px; line-height: 21px; font-weight: 600; letter-spacing: -.012em; color: #24569f;
-  --toast-ink: #4a7fd0; pointer-events: none; animation: toast-in .24s ease-out;
+  --toast-ink: #4a7fd0; --toast-line: #b3c9eb; --notch: 5px; --line: 1.5px;
+  pointer-events: none; animation: toast-in .24s ease-out;
+}
+/* 티켓 라벨: 잉크 선(::after) 위에 선 두께만큼 안쪽으로 흰 바탕(::before)을 얹는다.
+   양쪽 홈도 같은 중심에서 선 두께만큼 크게 파서, 선이 홈을 따라 고르게 돈다. 크기가 바뀌어도 늘어나지 않는다. */
+.toast::before, .toast::after { content: ''; position: absolute; border-radius: inherit; }
+.toast::after {
+  inset: 0; z-index: -2; background: var(--toast-line);
+  -webkit-mask: radial-gradient(circle at 0 50%, transparent var(--notch), #000 calc(var(--notch) + .75px)) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent var(--notch), #000 calc(var(--notch) + .75px)) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle at 0 50%, transparent var(--notch), #000 calc(var(--notch) + .75px)) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent var(--notch), #000 calc(var(--notch) + .75px)) right / 51% 100% no-repeat;
 }
 .toast::before {
-  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: #fff;
-  /* 작은 양쪽 홈만 남기고, 칸을 나누는 배경이나 점선은 쓰지 않는다. */
-  -webkit-mask: radial-gradient(circle at 0 50%, transparent 0 3px, #000 3.7px) left / 51% 100% no-repeat,
-    radial-gradient(circle at 100% 50%, transparent 0 3px, #000 3.7px) right / 51% 100% no-repeat;
-  mask: radial-gradient(circle at 0 50%, transparent 0 3px, #000 3.7px) left / 51% 100% no-repeat,
-    radial-gradient(circle at 100% 50%, transparent 0 3px, #000 3.7px) right / 51% 100% no-repeat;
+  inset: var(--line); z-index: -1; border-radius: calc(14px - var(--line)); background: #fff;
+  -webkit-mask: radial-gradient(circle at calc(0px - var(--line)) 50%, transparent calc(var(--notch) + var(--line)), #000 calc(var(--notch) + var(--line) + .75px)) left / 51% 100% no-repeat,
+    radial-gradient(circle at calc(100% + var(--line)) 50%, transparent calc(var(--notch) + var(--line)), #000 calc(var(--notch) + var(--line) + .75px)) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle at calc(0px - var(--line)) 50%, transparent calc(var(--notch) + var(--line)), #000 calc(var(--notch) + var(--line) + .75px)) left / 51% 100% no-repeat,
+    radial-gradient(circle at calc(100% + var(--line)) 50%, transparent calc(var(--notch) + var(--line)), #000 calc(var(--notch) + var(--line) + .75px)) right / 51% 100% no-repeat;
 }
-.toast::after {
-  content: ''; position: absolute; inset: 0; z-index: -1; border: 12px solid transparent; border-radius: inherit; opacity: .30;
-  border-image: url('assets/art/notifications/toast-label-v1.png') 34 / 12px / 0 stretch;
-}
-.toast[data-family="perpeng"] { --toast-ink: #2f9a89; }
+.toast[data-family="perpeng"] { --toast-ink: #2f9a89; --toast-line: #a8d5cd; }
 html.is-locked .toast { bottom: calc(var(--sb) + 96px); }
 .toast-face {
   display: block; width: 32px; height: 32px; flex: none; background: var(--toast-ink);
@@ -606,7 +612,7 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 
   body::before { background: var(--canvas); }
   .topbar::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 1px 0 var(--hc-border); }
-  .tabs-in, .toast { background: var(--bg); border-color: var(--hc-border); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .tabs-in { background: var(--bg); border-color: var(--hc-border); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sheet { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
