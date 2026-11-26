@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=94';
-import { readExifDate } from './exif.js?v=94';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=94';
-import * as db from './db.js?v=94';
+} from './format.js?v=95';
+import { readExifDate } from './exif.js?v=95';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=95';
+import * as db from './db.js?v=95';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '94';
+const APP_VERSION = '95';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -252,7 +252,11 @@ async function loadRecords() {
 function tick() {
   const key = dayKey(new Date());
   if (key !== state.todayKey) {
-    if (state.selectedDay === state.todayKey) state.selectedDay = key;
+    if (state.selectedDay === state.todayKey) {
+      state.selectedDay = key;
+      const now = new Date();
+      state.month = new Date(now.getFullYear(), now.getMonth(), 1); // 자정에 달이 바뀌면 달력도 이번 달로
+    }
     state.todayKey = key;
     renderAll();
   }
@@ -614,15 +618,15 @@ function slotOpensAt(day, meal) {
   at.setHours(SLOT_OPEN[meal] ?? 0, 0, 0, 0);
   return at.getTime() > Date.now() ? at : null;
 }
+const slotOpenNote = (meal, at) => {
+  const h = at.getHours();
+  return `${mealLabel(meal)}은 ${h < 12 ? '오전' : '오후'} ${h % 12 || 12}시부터 올릴 수 있어요`;
+};
 
 function pickForSlot(el) {
   const meal = el.dataset.slot;
   const opens = slotOpensAt(state.selectedDay, meal);
-  if (opens) {
-    const h = opens.getHours();
-    showToast(`${mealLabel(meal)}은 ${h < 12 ? '오전' : '오후'} ${h % 12 || 12}시부터 올릴 수 있어요`);
-    return;
-  }
+  if (opens) { showToast(slotOpenNote(meal, opens)); return; }
   clearTimeout(el.tapTimer);
   el.classList.remove('is-tapped');
   void el.offsetWidth; // 연달아 눌러도 처음부터
@@ -1642,7 +1646,13 @@ async function persistEdit(e) {
 // 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 바꿀지 묻고, 취소하면 스탬프 화면에 그대로 남아 끼니를 고를 수 있다
 function readyToKeep(e) {
   if (timeBlocked(e.takenAt)) { showToast(editBlockNote(e.takenAt)); return false; }
-  const taken = mealTaken(dayKey(e.takenAt), e.meal, e.id);
+  // 오늘의 아직 안 열린 끼니(달력 칸과 같은 규칙: 아침 3시 · 점심 9시 · 저녁 15시)로는 남기지 않는다
+  const day = dayKey(e.takenAt);
+  const opens = MAIN_MEALS.includes(e.meal) ? slotOpensAt(day, e.meal) : null;
+  if (opens) { showToast(slotOpenNote(e.meal, opens)); return false; }
+  const taken = mealTaken(day, e.meal, e.id);
+  // 앞서 바꾸기로 했던 사진이 지금 끼니 · 날과 겹치지 않으면 바꾸기는 취소 (끼니를 바꾼 뒤 엉뚱한 사진이 지워지지 않게)
+  if (e.replaceId && e.replaceId !== taken?.id) e.replaceId = null;
   if (taken && e.replaceId !== taken.id) {
     if (!window.confirm(`이날 ${mealLabel(e.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요?`)) {
       showToast('끼니를 바꾸면 따로 남길 수 있어요');
