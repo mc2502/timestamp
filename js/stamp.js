@@ -9,7 +9,7 @@
 //  meal    혼합     왼쪽 위 끼니 라벨 + 시각 + 날짜 (여러 가지를 섞어 한 묶음으로)
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=101';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=102';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -170,7 +170,7 @@ const DRAW = {
     ctx.fillStyle = c.fill;
     ctx.fill();
     noShadow(ctx);
-    ctx.fillStyle = c.fill === '#191f28' ? '#ffffff' : '#191f28';
+    ctx.fillStyle = '#191f28';
     ctx.textBaseline = 'middle';
     fillTracked(ctx, label, x + 26 * u, top + ph / 2 + 2 * u, lp, TRACK.label);
 
@@ -193,9 +193,8 @@ const DRAW = {
     const h = 88 * u;
     const x = 48 * u;
     const y = side - 64 * u - h;
-    const dark = c.fill !== '#191f28';
     roundRect(ctx, x, y, tw + 64 * u, h, h / 2);
-    ctx.fillStyle = dark ? 'rgba(17, 20, 26, 0.52)' : 'rgba(255, 255, 255, 0.78)';
+    ctx.fillStyle = 'rgba(17, 20, 26, 0.52)';
     ctx.fill();
     ctx.fillStyle = c.fill;
     ctx.textBaseline = 'middle';
@@ -214,7 +213,7 @@ const DRAW = {
 // 도장이 사진 왼쪽 아래 모서리에 걸쳐 찍힌다: 원의 일부는 사진 밖으로 잘려 나가고,
 // 글씨는 보이는 쪽(오른쪽 위)으로 옮겨 다 읽히게 한다.
 //   r: 반지름, bleed: 사진 밖으로 나간 길이, shift: 글씨를 보이는 쪽으로 옮기는 길이 (모두 u)
-export const SEAL_EDGE = { r: 158, bleed: 66, shift: 12 }; // 글씨 크기는 그대로, 원은 조금 크게 왼쪽 아래 모서리 밖으로 더 걸치고 글씨는 보이는 쪽으로
+const SEAL_EDGE = { r: 158, bleed: 66, shift: 12 }; // 글씨 크기는 그대로, 원은 조금 크게 왼쪽 아래 모서리 밖으로 더 걸치고 글씨는 보이는 쪽으로
 // 도장 고리 그림: 앱이 불러와 넣어 준다(없으면 가는 선 고리). 검정 한 색 그림을 글자색으로 칠해 쓰고, 칠한 것은 기억해 둔다
 export const SEAL_RING = { img: null }; // 앱은 고무 도장 고리(assets/art/seal-ring-rough.png)를 넣는다
 export const SEAL_DISC = { img: null }; // 고리 바깥선을 따라 만든 원판 모양(assets/art/seal-disc-rough.png)
@@ -223,7 +222,12 @@ function tintedRing(img, color, px) {
   const key = `${img.src}|${color}|${px}`;
   let c = ringCache.get(key);
   if (!c) {
-    if (ringCache.size > 12) ringCache.clear();
+    if (ringCache.size >= 4) {
+      const oldest = ringCache.keys().next().value;
+      const canvas = ringCache.get(oldest);
+      canvas.width = canvas.height = 1;
+      ringCache.delete(oldest);
+    }
     c = document.createElement('canvas');
     c.width = c.height = px;
     const x = c.getContext('2d');

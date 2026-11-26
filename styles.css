@@ -33,7 +33,6 @@
   --glow-violet: rgba(201, 187, 231, .37);
   --glow-mint: rgba(170, 222, 222, .48);
 
-
   --font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 
   --space-nav-height: 62px;
@@ -131,16 +130,6 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 }
 html.is-scrolled .topbar::before { opacity: 1; }
 html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
-.topbar-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
-.topbar-text > b { font-size: 24px; line-height: 32px; font-weight: 800; letter-spacing: -.03em; }
-.topbar-text > span { font-size: 13px; line-height: 20px; font-weight: 500; color: var(--ink3); }
-.topbar-text > span b { font-size: 15px; font-weight: 700; color: var(--ink2); margin-right: 1px; }
-.icon-btn {
-  flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--ink2);
-  background: rgba(231, 238, 247, .62); box-shadow: var(--shadow-chip); transition: transform .2s;
-}
-.icon-btn svg { width: 22px; height: 22px; }
-.icon-btn:active { transform: scale(.94); }
 
 /* ── 끼니 거르기: 유리 세그먼트 하나 (흰 손잡이가 미끄러진다) ── */
 .seg-filter {
@@ -156,26 +145,28 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 }
 .seg-filter button { position: relative; z-index: 1; display: grid; place-items: center; text-align: center; border-radius: 18px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ink3); transition: color .2s; }
 .seg-filter [aria-pressed="true"] { color: var(--ink); font-weight: 700; }
-
 /* ── 사진: 날짜 머리글(오늘은 크게, 이게 화면의 제목) + 3열, 카드 여백 12px · 모서리 12px ── */
-.grid-day, .day-head {
+.grid-day {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   padding: 24px var(--gr) 10px var(--gl);
 }
 #album-grid > section:first-child .grid-day { padding-top: 8px; }
-.grid-day h2, .day-head h3 { display: flex; align-items: baseline; gap: 7px; font-size: 16px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; } /* PT Note 기록 제목(.row-t)과 같은 글꼴 */
+
+.grid-day h2 { display: flex; align-items: baseline; gap: 7px; font-size: 16px; line-height: 24px; font-weight: 700; letter-spacing: -.02em; } /* PT Note 기록 제목(.row-t)과 같은 글꼴 */
 .grid-day.is-today h2 { font-size: 20px; line-height: 28px; font-weight: 800; letter-spacing: -.03em; }
-.grid-day h2 small, .day-head h3 small { font-size: 12px; font-weight: 500; letter-spacing: -.03em; color: var(--ink2); } /* 오늘 · 어제 옆 날짜 — PT Note ‘54회차’와 같은 글꼴 */
-.grid-day > span, .day-head > span { font-size: 12px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
-.grid-day > span b, .day-head > span b { font-size: 14px; font-weight: 650; color: var(--ink2); margin-right: 1px; }
+
+.grid-day h2 small { font-size: 12px; font-weight: 500; letter-spacing: -.03em; color: var(--ink2); }
+/* 오늘 · 어제 옆 날짜 — PT Note ‘54회차’와 같은 글꼴 */
+.grid-day > span { font-size: 12px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
+
+.grid-day > span b { font-size: 14px; font-weight: 650; color: var(--ink2); margin-right: 1px; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 var(--gr) 0 var(--gl); } /* 사진도 제목 · 끼니 줄 · 카드 · 날짜와 같은 왼쪽 · 오른쪽 선 */
 .tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); transition: transform .2s; }
 .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; transition: filter .2s; }
 .tile:active { transform: scale(.96); }
 .tile:active img { filter: brightness(.92); }
 .tile:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-.tile-add { display: grid; place-items: center; background: rgba(255, 255, 255, .5); border: 1.5px dashed rgba(49, 130, 246, .4); color: var(--blue-ink); }
-.tile-add svg { width: 28px; height: 28px; }
+
 .tile.is-new img { animation: tile-in .5s cubic-bezier(.34, 1.56, .64, 1); }
 @keyframes tile-in { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
 
@@ -186,13 +177,8 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .intro p { margin-top: 8px; font-size: 14px; color: var(--ink3); }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 13px; padding: 40px 0; text-align: center; color: var(--ink3); font-size: 14px; }
 .empty img { width: 72px; height: 72px; }
-
 /* ── 달력: 날짜 숫자 아래 마스코트 얼굴 스탬프 (PT Note WeekStrip 방식) ── */
-.mon-n { display: flex; gap: 6px; }
-.mon-n button { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(231, 238, 247, .62); box-shadow: var(--shadow-chip); }
-.mon-n button:disabled { opacity: .35; cursor: default; }
-.mon-n i { width: 9px; height: 9px; border-left: 2px solid var(--ink2); border-bottom: 2px solid var(--ink2); transform: rotate(45deg); margin-left: 4px; }
-.mon-n button:last-child i { transform: rotate(-135deg); margin-left: -4px; }
+
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 4px; padding: 2px 12px 4px; }
 .cal .hd { padding: 2px 0 6px; font-size: 12px; font-weight: 600; color: var(--ink3); text-align: center; }
 .cal .hd.sun { color: var(--sun); }
@@ -298,12 +284,11 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .btn.ico { flex: none; width: 52px; min-height: 52px; padding: 0; border-radius: 16px; background: rgba(25, 31, 40, .055); color: var(--ink2); transition: background-color .15s, transform .2s; }
 .btn.ico:active { background: rgba(25, 31, 40, .1); }
 .btn.ico svg { width: 22px; height: 22px; }
-.btn.sec { background: var(--bg); color: var(--ink2); border: 1px solid var(--line); }
+
 .btn:active:not(:disabled) { transform: scale(.97); }
 .btn:disabled { opacity: .45; cursor: default; }
 .btn.is-busy { opacity: .7; }
 .pt-text-button { min-height: 44px; padding: 10px 4px; color: var(--blue-ink); font-size: 14px; font-weight: 600; line-height: 1.5; }
-.pt-text-button.danger { color: var(--err); }
 
 /* ── 시트 (흰색, 아래에서 올라옴) ── */
 .sheet {
@@ -332,9 +317,8 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 
 .msg { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 10px 13px; border-radius: 12px; font-size: 12.5px; font-weight: 700; line-height: 1.5; }
 .msg-face { width: 26px; height: 26px; flex: none; animation: face-pop .36s cubic-bezier(.34, 1.56, .64, 1); }
-.msg.ok { color: var(--green); background: rgba(0, 127, 64, .12); }
+
 .msg.err { color: var(--err); background: rgba(176, 64, 42, .12); }
-.msg.warn { color: var(--blue-ink); background: rgba(27, 100, 218, .1); }
 
 /* 사진 보기 */
 /* 사진 보기 머리: 시트 위쪽과 사진 사이에 숨 쉴 여백, 날짜는 사진과 같은 왼쪽 선(20px) */
@@ -362,14 +346,9 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .switch input:checked + i { background: var(--blue-ink); }
 .switch input:checked + i::after { transform: translateX(20px); }
 .switch input:focus-visible + i { outline: 2px solid var(--blue); outline-offset: 2px; }
-.set-details summary { display: flex; align-items: center; justify-content: space-between; min-height: 56px; font-size: 15px; font-weight: 650; cursor: pointer; list-style: none; }
-.set-details summary::-webkit-details-marker { display: none; }
-.set-details summary::after { content: ''; width: 8px; height: 8px; border-right: 2px solid var(--ink-off); border-bottom: 2px solid var(--ink-off); transform: rotate(45deg); margin: -4px 4px 0 0; transition: transform .2s; }
-.set-details[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
+
 .set-p { font-size: 13px; line-height: 1.6; color: var(--ink2); padding: 12px 0; }
-.set-steps { margin: 0 0 14px 18px; font-size: 13px; line-height: 1.6; color: var(--ink2); }
-.set-steps li + li { margin-top: 4px; }
-.set-steps b { font-weight: 650; color: var(--ink); }
+
 .set-about { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); }
 .set-about .pt-text-button { flex: none; }
 
@@ -516,23 +495,44 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .btn.sub:disabled { color: #a9b3c0; }
 
 /* ── 즉시 저장 알림 ── */
-/* 알림: 위쪽(상태 표시줄 아래)은 아이폰이 흐리게 덮고 눈길도 덜 가서, 아래 탭바 바로 위에 진한 알약으로 띄운다.
-   스탬프 화면 · 사진 보기처럼 화면이 열려 있으면 그 아래 버튼들 위로 */
+/* 잉크 도장이 찍힌 작은 라벨. 도장과 문구를 한 묶음으로 가운데 정렬하고,
+   짧은 알림은 내용만큼만, 긴 알림은 줄 수만큼 늘어난다. 위치는 화면별 기존 규칙 유지. */
 .toast {
   position: fixed; z-index: 400; bottom: calc(var(--nav-bottom) + var(--nav-height) + 14px); left: 0; right: 0; width: max-content; margin-inline: auto;
-  display: flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); min-height: 44px; padding: 6px 14px 6px 8px;
-  border-radius: 24px; background: rgba(25, 31, 40, .92); box-shadow: 0 8px 24px -8px rgba(13, 20, 33, .45);
-  font-size: 13.5px; line-height: 20px; font-weight: 600; color: #fff; pointer-events: none; animation: toast-in .28s ease;
+  display: flex; align-items: center; gap: 10px; max-width: min(390px, calc(100% - 40px)); min-height: 52px; padding: 10px 18px 10px 14px;
+  isolation: isolate; border-radius: 11px; background: transparent; box-shadow: 0 4px 14px -3px rgba(36, 86, 159, .16);
+  font-size: 14px; line-height: 21px; font-weight: 600; letter-spacing: -.012em; color: #24569f;
+  --toast-ink: #4a7fd0; pointer-events: none; animation: toast-in .24s ease-out;
 }
+.toast::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: #fff;
+  /* 작은 양쪽 홈만 남기고, 칸을 나누는 배경이나 점선은 쓰지 않는다. */
+  -webkit-mask: radial-gradient(circle at 0 50%, transparent 0 3px, #000 3.7px) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent 0 3px, #000 3.7px) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle at 0 50%, transparent 0 3px, #000 3.7px) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent 0 3px, #000 3.7px) right / 51% 100% no-repeat;
+}
+.toast::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; border: 12px solid transparent; border-radius: inherit; opacity: .30;
+  border-image: url('assets/art/notifications/toast-label-v1.png') 34 / 12px / 0 stretch;
+}
+.toast[data-family="perpeng"] { --toast-ink: #2f9a89; }
 html.is-locked .toast { bottom: calc(var(--sb) + 96px); }
 /* 스탬프 화면에서는 아래쪽 시각 · 끼니 줄을 가리지 않게, 머리 줄과 사진 사이 빈 띠에 */
 html:has(#editor:not([hidden])) .toast { bottom: auto; top: calc(var(--st) + 52px); animation-name: toast-down; }
 @keyframes toast-down { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
-.toast-face { width: 28px; height: 28px; border-radius: 50%; flex: none; }
-.toast.pop .toast-face { animation: face-pop .36s cubic-bezier(.34, 1.56, .64, 1); }
-.toast-text { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; padding-right: 6px; }
-.toast-btn { position: relative; flex: none; min-height: 32px; padding: 0 12px; border-radius: 16px; background: var(--blue-ink); color: var(--on-ink); font-size: 13px; font-weight: 700; }
-.toast-btn::before { content: ''; position: absolute; inset: -6px; }
+.toast-face {
+  display: block; width: 32px; height: 32px; flex: none; background: var(--toast-ink);
+  -webkit-mask: url('assets/art/stamp/odung-smile.png') center / contain no-repeat;
+  mask: url('assets/art/stamp/odung-smile.png') center / contain no-repeat;
+}
+.toast[data-family="perpeng"] .toast-face {
+  -webkit-mask-image: url('assets/art/stamp/perpeng-smile.png'); mask-image: url('assets/art/stamp/perpeng-smile.png');
+}
+.toast.pop .toast-face { animation: toast-seal-pop .28s ease-out; }
+.toast-text { display: block; min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
+@keyframes toast-seal-pop { 0% { transform: scale(.88); } 65% { transform: scale(1.04); } 100% { transform: none; } }
+
 @keyframes toast-in { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes face-pop { 0% { transform: scale(.5) rotate(-60deg); } 60% { transform: scale(1.14); } 100% { transform: none; } }
 
@@ -577,7 +577,7 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .card { background: var(--bg); border-color: var(--hc-border); }
+
   body::before { background: var(--canvas); }
   .topbar::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 1px 0 var(--hc-border); }
   .tabs-in, .toast { background: var(--bg); border-color: var(--hc-border); -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -586,7 +586,8 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 
 /* ── 테두리: 배경과 섞여 잘 안 보이던 둥근 버튼 · 칩 · 설정 묶음에 옅은 선 (진하지 않게) ── */
 :root { --ring: rgba(109, 134, 164, .24); }
-.icon-btn, .ed-icon, .mon-n button {
+
+ .ed-icon {
   background: rgba(255, 255, 255, .58);
   box-shadow: var(--shadow-chip), 0 0 0 1px var(--ring), 0 1px 3px rgba(29, 54, 86, .06);
 }
@@ -595,7 +596,6 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 
 /* ── 탭바: 이름 없이 아이콘만 ── */
 .tab .nav-glyph { width: 25px; height: 25px; }
-
 
 /* ── 버튼: 리퀴드 글라스 (뒤가 은은히 비치는 유리 + 밝은 테두리, 그림자는 아주 옅게) ──
    둥근 버튼 하나, 버튼 두 개를 묶은 캡슐, 끼니 세그먼트, 탭바가 모두 같은 재질 */
@@ -610,12 +610,15 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
   --glass-press: rgba(25, 31, 40, .06);
   --glass-lens: rgba(25, 31, 40, .07);
 }
-.icon-btn, .ed-icon, .btn-pill, .seg-filter, .tabs-in {
+
+ .ed-icon, .btn-pill, .seg-filter, .tabs-in {
   border: 0; background: var(--glass-fill); box-shadow: var(--glass-shadow);
   -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
 }
-.icon-btn, .ed-icon { color: var(--ink); transition: transform .2s; }
-.icon-btn:active, .ed-icon:active { transform: scale(.94); }
+
+ .ed-icon { color: var(--ink); transition: transform .2s; }
+
+ .ed-icon:active { transform: scale(.94); }
 
 /* 캡슐: 관련된 버튼 두 개를 한 덩어리로 */
 .btn-pill { flex: none; display: flex; align-items: center; height: 44px; padding: 0 3px; border-radius: 22px; gap: 0; }
@@ -625,9 +628,6 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 }
 .btn-pill > button:active { background: var(--glass-press); transform: scale(.94); }
 .btn-pill svg { width: 22px; height: 22px; }
-.mon-n.btn-pill { gap: 0; }
-.mon-n.btn-pill button { width: 44px; height: 38px; border-radius: 19px; background: none; box-shadow: none; }
-.mon-n.btn-pill i { border-color: var(--ink); }
 
 /* 끼니 세그먼트 · 탭바: 같은 유리 위에 회색 렌즈가 미끄러진다 */
 .seg-filter::before { background: var(--glass-lens); box-shadow: none; }
@@ -640,7 +640,8 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .sheet-x:active { transform: scale(.94); }
 
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .icon-btn, .ed-icon, .btn-pill, .seg-filter, .tabs-in, .today-card {
+
+ .ed-icon, .btn-pill, .seg-filter, .tabs-in, .today-card {
     background: var(--bg); box-shadow: 0 0 0 1px var(--hc-border); -webkit-backdrop-filter: none; backdrop-filter: none;
   }
 }
@@ -665,7 +666,7 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .pt-card-title h2 { font-size: 20px; line-height: 28px; font-weight: 800; letter-spacing: -.03em; color: var(--ink); }
 .pt-card-title p { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 14px; line-height: 20px; color: var(--ink3); white-space: nowrap; }
 .pt-card-title p b { font-weight: 700; color: var(--ink2); }
-.pt-badge { font-style: normal; padding: 3px 8px; border-radius: 8px; background: var(--blue-soft); color: var(--blue-ink); font-size: 13px; line-height: 18px; font-weight: 700; }
+
 .pt-nav { flex: none; display: flex; gap: 8px; }
 .pt-nav button {
   width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%;
@@ -757,3 +758,14 @@ html[data-refresh-state="refreshing"] .pull-refresh-dots { display: inline-flex;
 .slot-lb svg { flex: none; width: 13px; height: 13px; color: var(--calendar-solo-ring); }
 .slot-lb.is-wait { color: var(--ink3); font-weight: 600; }
 
+/* 읽기 전 빈 앨범이 먼저 보이지 않게, 현재 상태를 조용히 알린다. */
+.boot-status { margin: 36px var(--gr) 24px var(--gl); color: var(--ink3); font-size: 14px; line-height: 22px; text-align: center; }
+.boot-status button { display: block; margin: 12px auto; min-height: 44px; padding: 0 16px; color: var(--blue-ink); }
+.backup-actions { display: grid; gap: 2px; padding-bottom: 6px; }
+.backup-actions button { min-height: 44px; text-align: left; color: var(--blue-ink); font-size: 14px; font-weight: 600; }
+.backup-actions button:disabled { opacity: .5; }
+.backup-status { min-height: 36px; margin-top: 0; }
+.mp-labels > span.has-photo::after { content: ''; position: absolute; width: 3px; height: 3px; border-radius: 50%; background: currentColor; bottom: 5px; left: calc(50% - 1.5px); }
+.mp-labels > span { position: relative; }
+/* 고정 바탕이나 이미 흐려진 상단 안에서는 겹치는 유리 레이어를 만들지 않는다. */
+.today-card, .meal-card, .topbar .seg-filter, .topbar .btn-pill, .ed-fit, .ed-hint { -webkit-backdrop-filter: none; backdrop-filter: none; }

@@ -1,25 +1,26 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=101';
-import { readExifDate } from './exif.js?v=101';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=101';
-import * as db from './db.js?v=101';
-import { albumCaption } from './album-copy.js?v=101';
+} from './format.js?v=102';
+import { readExifDate } from './exif.js?v=102';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=102';
+import * as db from './db.js?v=102';
+import { albumCaption } from './album-copy.js?v=102';
+import { createBackup, readBackup } from './backup.js?v=102';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '101';
+const APP_VERSION = '102';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// 저장본: 정사각형, 한 변 1080~1620px (캐릭터 그림이 흐려지지 않는 크기, 카카오톡 전송에도 충분)
+// 새 저장본만 1080~1440px JPEG로 만든다. 이미 보관한 사진은 다시 압축하지 않는다.
 const OUT_MIN = 1080;
-const OUT_MAX = 1620;
+const OUT_MAX = 1440;
 const MAX_ZOOM = 3;
-const JPEG_QUALITY = 0.92;
+const JPEG_QUALITY = 0.85;
 const RELAUNCH_AFTER = 3 * 60 * 1000; // 이만큼 쉬었다 돌아오면 ‘앱 열면 바로 카메라’를 다시 띄운다
 
 /* ── 이 기기에만 남는 값 ── */
@@ -46,14 +47,12 @@ const saveSettings = () => local.set(SETTINGS_KEY, JSON.stringify(settings));
 
 const ART = {
   odung: {
-    camera: 'assets/mascots/odung-camera-v2.png',
     face: 'assets/mascots/odung-calendar-face-v7.png',
     hero: 'assets/art/odung-hero.png', // 앱 아이콘과 같은 그림 (첫 화면 · 시작 화면)
     empty: 'assets/art/odung-empty.png', // 빈 접시 (사진이 없는 끼니 · 날)
     album: 'assets/art/album/odung.png', // 카메라를 길게 누르면 뜨는 ‘앨범에서 고르기’: 앨범 든 오둥이
   },
   perpeng: {
-    camera: 'assets/mascots/perpeng-camera-v2.png',
     face: 'assets/mascots/perpeng-calendar-face-v4.png',
     hero: 'assets/art/perpeng-hero.png',
     empty: 'assets/art/perpeng-empty.png',
@@ -63,8 +62,8 @@ const ART = {
 
 // 캐릭터 스탬프에 그때그때 다르게 나오는 모습들 (PT Note 디자인 시스템 그림)
 const POSES = {
-  odung: ['assets/mascots/odung-camera-v2.png', ...['summary', 'strength', 'running', 'stairs', 'pt', 'solo', 'fullbody'].map((p) => `assets/poses/odung-${p}.png`)],
-  perpeng: ['assets/mascots/perpeng-camera-v2.png', ...['summary', 'running', 'stairs', 'pt', 'solo', 'fullbody', 'chest', 'arms'].map((p) => `assets/poses/perpeng-${p}.png`)],
+  odung: ['assets/mascots/odung-camera-v3.png', ...['summary', 'strength', 'running', 'stairs', 'pt', 'solo', 'fullbody'].map((p) => `assets/poses/odung-${p}.png`)],
+  perpeng: ['assets/mascots/perpeng-camera-v3.png', ...['summary', 'running', 'stairs', 'pt', 'solo', 'fullbody', 'chest', 'arms'].map((p) => `assets/poses/perpeng-${p}.png`)],
 };
 
 function chooseFamily() {
@@ -82,6 +81,7 @@ const state = {
   thumbUrls: new Map(),
   fresh: new Set(),
   dbOk: true,
+  loaded: false,
   view: 'album',
   filter: FILTERS.some(([id]) => id === local.get('timestamp:filter')) ? local.get('timestamp:filter') : 'all',
   month: null,
@@ -108,7 +108,20 @@ function rememberPlace() {
 function recallPlace() {
   try { return JSON.parse(sessionStorage.getItem(PLACE_KEY) || 'null'); } catch { return null; }
 }
+let activeWork = 0;
+let pendingReload = false;
+let pickingFile = false;
+function beginWork() { activeWork++; }
+function endWork() {
+  activeWork = Math.max(0, activeWork - 1);
+  resumeReload();
+}
+function resumeReload() {
+  if (!pendingReload || activeWork || pickingFile || openSheets.length) return;
+  setTimeout(() => { if (pendingReload && !activeWork && !pickingFile && !openSheets.length) reload(); }, 1500);
+}
 function reload() {
+  if (activeWork || pickingFile || openSheets.length) { pendingReload = true; return; }
   rememberPlace();
   location.reload();
 }
@@ -143,12 +156,11 @@ async function init() {
   $('#app-version').textContent = `TimeStamp 버전 ${APP_VERSION}. 화면을 아래로 당기면 새로고침하면서 새 버전도 받아요.`;
   window.__tsBooted = true;
   try { sessionStorage.removeItem('timestamp:healed'); } catch { /* 없어도 된다 */ }
-  if (settings.launchCamera) openLaunch();
-
   charsReady();
   fontsReady();
   await loadRecords();
   renderAll();
+  if (settings.launchCamera) openLaunch();
   if (place?.y > 0) window.scrollTo({ top: place.y });
   window.addEventListener('pagehide', rememberPlace);
 
@@ -157,7 +169,7 @@ async function init() {
     if (document.hidden) { state.hiddenAt = Date.now(); rememberPlace(); return; }
     tick();
     checkForUpdate();
-    if (settings.launchCamera && !openSheets.length && state.hiddenAt && Date.now() - state.hiddenAt > RELAUNCH_AFTER) openLaunch();
+    if (settings.launchCamera && !openSheets.length && !activeWork && !pickingFile && state.hiddenAt && Date.now() - state.hiddenAt > RELAUNCH_AFTER) openLaunch();
   });
   setTimeout(checkForUpdate, 3000);
 
@@ -174,37 +186,37 @@ async function checkForUpdate() {
   if (checkingUpdate || navigator.onLine === false) return;
   checkingUpdate = true;
   try {
-    const res = await fetch(`index.html?check=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`index.html?check=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(3500) });
     const html = res.ok ? await res.text() : '';
     const latest = /app\.js\?v=(\d+)/.exec(html)?.[1];
-    if (latest && latest !== APP_VERSION && !openSheets.length && !refreshing) {
+    if (latest && latest !== APP_VERSION && !refreshing) {
       reload();
-      return;
     }
   } catch { /* 확인 못 해도 지금 버전으로 계속 쓴다 */ }
   checkingUpdate = false;
 }
 
-// 캐릭터 스탬프에 쓸 여러 모습의 오둥이·퍼펭이를 모두 미리 받아 둔다
-let charsLoading = null;
-function charsReady() {
-  if (!charsLoading) {
-    // 고무 도장 고리와, 그 바깥선을 따라 만든 원판 (못 받으면 반듯한 원 + 가는 선 고리로)
-    const sealPart = (holder, src) => new Promise((resolve) => {
+// 현재 쓰는 포즈만 기다린다. 느리거나 실패한 그림은 다음 선택 때 다시 받을 수 있다.
+const imageJobs = new Map();
+function loadArt(src, done) {
+  if (!imageJobs.has(src)) {
+    const job = new Promise((resolve) => {
       const img = new Image();
-      img.onload = () => { holder.img = img; resolve(); };
-      img.onerror = () => resolve();
+      img.onload = () => { done(img); resolve(); schedulePreview(); };
+      img.onerror = () => { imageJobs.delete(src); resolve(); };
       img.src = src;
     });
-    const seal = [sealPart(SEAL_RING, 'assets/art/seal-ring-rough.png'), sealPart(SEAL_DISC, 'assets/art/seal-disc-rough.png')];
-    charsLoading = Promise.all([...seal, ...Object.entries(POSES).flatMap(([who, list]) => list.map((src, i) => new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => { (state.chars[who] ||= [])[i] = img; resolve(); };
-      img.onerror = () => resolve();
-      img.src = src;
-    })))]);
+    imageJobs.set(src, job);
   }
-  return charsLoading;
+  return imageJobs.get(src);
+}
+function charsReady(pick = { [state.family]: 0 }) {
+  const jobs = [
+    loadArt('assets/art/seal-ring-rough.png', (img) => { SEAL_RING.img = img; }),
+    loadArt('assets/art/seal-disc-rough.png', (img) => { SEAL_DISC.img = img; }),
+    ...Object.entries(pick).map(([who, i]) => loadArt(POSES[who][i], (img) => { (state.chars[who] ||= [])[i] = img; })),
+  ];
+  return Promise.race([Promise.all(jobs), wait(2500)]);
 }
 
 // 무작위로 한 모습. 바로 전과 같은 모습은 피한다.
@@ -244,10 +256,10 @@ async function loadRecords() {
   try {
     const list = await db.all();
     state.records = list.sort((a, b) => a.takenAt - b.takenAt);
+    state.dbOk = true;
   } catch {
     state.dbOk = false;
-    state.records = [];
-  }
+  } finally { state.loaded = true; }
 }
 
 function tick() {
@@ -474,7 +486,6 @@ function bindEvents() {
     if (tab) { showView(tab.dataset.view); return; }
     const filter = e.target.closest('[data-filter]');
     if (filter) { setFilter(filter.dataset.filter); return; }
-    if (e.target.closest('[data-add]')) { openInput('#input-camera'); return; }
     const slot = e.target.closest('[data-slot]');
     if (slot) { pickForSlot(slot); return; }
     const photo = e.target.closest('[data-id]');
@@ -491,11 +502,15 @@ function bindEvents() {
   bindAddButton();
   $('#input-photo').addEventListener('change', (e) => handleFile(e.target.files?.[0]));
   $('#input-camera').addEventListener('change', (e) => handleFile(e.target.files?.[0], { camera: true }));
+  for (const input of [$('#input-photo'), $('#input-camera')]) input.addEventListener('cancel', () => { pickingFile = false; pendingTarget = null; resumeReload(); });
 
   $('#launch-shoot').addEventListener('click', () => { closeSheet($('#launch')); openInput('#input-camera'); });
   $('#launch-album').addEventListener('click', () => { closeSheet($('#launch')); openInput('#input-photo'); });
 
   $('#open-settings').addEventListener('click', () => { renderStorageNote(); openSheet($('#settings')); });
+  $('#backup-export').addEventListener('click', exportBackup);
+  $('#backup-import').addEventListener('click', () => { $('#input-backup').value = ''; $('#input-backup').click(); });
+  $('#input-backup').addEventListener('change', (e) => restoreBackup(e.target.files?.[0]));
 
   $('#mon-prev').addEventListener('click', () => shiftMonth(-1));
   $('#mon-next').addEventListener('click', () => shiftMonth(1));
@@ -593,16 +608,19 @@ function buzz() {
 // target: 달력의 끼니 칸에서 열었을 때 그 날 · 끼니. 다른 곳에서 열면 지워져서 엉뚱한 칸에 들어가지 않는다
 let pendingTarget = null;
 function openInput(sel, { target = null } = {}) {
+  if (activeWork || !state.loaded || !state.dbOk) { showToast('기록을 확인한 뒤 다시 시도해 주세요'); return; }
   pendingTarget = target;
   const input = $(sel);
   input.value = '';
+  pickingFile = true;
   input.click();
 }
 
 function handleFile(file, { camera = false } = {}) {
   const target = pendingTarget;
   pendingTarget = null;
-  if (!file) return;
+  pickingFile = false;
+  if (!file || activeWork) { resumeReload(); return; }
   // 끼니 칸에서 고른 사진은 스탬프 화면 없이 그 칸에 바로 (있던 사진은 새 사진으로 바뀐다)
   if (target) quickSave(file, { target });
   else if (settings.instantSave) quickSave(file);
@@ -710,11 +728,14 @@ function closeSheet(sheet) {
     appRoot.inert = false;
     document.documentElement.classList.remove('is-locked');
   }
+  resumeReload();
   const back = sheet.returnFocus;
   if (back && document.contains(back) && !back.closest('[hidden]')) back.focus({ preventScroll: true });
 }
 
 function requestClose(sheet) {
+  if (sheet.id === 'settings' && backupBusy) return;
+  if (sheet.id === 'viewer' && activeWork) return;
   if (sheet.id === 'editor') closeEditor();
   else if (sheet.id === 'viewer') closeViewer();
   else closeSheet(sheet);
@@ -728,7 +749,9 @@ function showMsg(slot, kind, text) {
 
 function openLaunch() {
   const now = new Date();
-  $('#launch-t').innerHTML = `${mealLabel(mealFor(now))} 사진을<br>찍어 볼까요?`;
+  const meal = mealFor(now);
+  const done = recordsOn(dayKey(now)).some((r) => r.meal === meal);
+  $('#launch-t').innerHTML = done ? `${mealLabel(meal)} 사진을<br>잘 남겼어요` : `${mealLabel(meal)} 사진을<br>찍어 볼까요?`;
   $('#launch-date').textContent = `${monthDay(now)} ${fmtClock(now)}`;
   openSheet($('#launch'));
 }
@@ -737,10 +760,11 @@ function openLaunch() {
 
 let toastTimer = 0;
 
-// 알림 한 줄 (공유 화면은 열지 않는다: 남긴 사진은 이미 앱에 있고, 사진 앱 저장은 사진 보기에서 길게 눌러 아이폰 메뉴로)
+// 짧은 알림은 3초, 긴 안내는 읽을 시간을 더 준다. 저장 중 알림은 완료될 때까지 유지.
 function showToast(text, { pop = false, stay = false } = {}) {
   const el = $('#toast');
   clearTimeout(toastTimer);
+  el.dataset.family = state.family;
   $('#toast-text').textContent = text;
   el.classList.remove('pop');
   el.hidden = false;
@@ -748,7 +772,7 @@ function showToast(text, { pop = false, stay = false } = {}) {
     void el.offsetWidth;
     el.classList.add('pop');
   }
-  if (!stay) toastTimer = setTimeout(hideToast, 3000);
+  if (!stay) toastTimer = setTimeout(hideToast, clamp(text.length * 90, 3000, 6500));
 }
 
 function hideToast() {
@@ -776,39 +800,11 @@ function forgetThumb(id) {
 }
 
 function upsertRecord(rec) {
+  backupFile = null;
   forgetThumb(rec.id);
   const i = state.records.findIndex((r) => r.id === rec.id);
   if (i >= 0) state.records[i] = rec; else state.records.push(rec);
   state.records.sort((a, b) => a.takenAt - b.takenAt);
-}
-
-// 아이폰 사파리는 저장소에서 꺼낸 사진(Blob)을 같은 기록에 그대로 다시 넣으면, 덮어쓰면서 원래 파일을 지워
-// 사진이 깨질 수 있다. 끼니 · 공유 표시만 바꿀 때도 사진은 새 Blob으로 복사해서 넣는다
-async function freshBlobs(rec) {
-  const out = { ...rec };
-  for (const key of ['blob', 'thumb', 'original']) {
-    const b = rec[key];
-    if (!(b instanceof Blob)) continue;
-    const data = await b.arrayBuffer();
-    out[key] = b instanceof File
-      ? new File([data], b.name, { type: b.type, lastModified: b.lastModified })
-      : new Blob([data], { type: b.type });
-  }
-  return out;
-}
-
-// 저장에 성공하면 실제로 저장된 기록(새 Blob)을, 못 하면 null을 돌려준다
-async function updateRecord(rec) {
-  let saved;
-  try {
-    saved = await freshBlobs(rec);
-    await db.put(saved);
-  } catch {
-    return null;
-  }
-  upsertRecord(saved);
-  renderAll();
-  return saved;
 }
 
 // 한 끼니에 한 장: 같은 날 같은 끼니(아침 · 점심 · 저녁)에 이미 있는 사진. 간식 · 끼니 없음은 여러 장이어도 된다
@@ -817,11 +813,13 @@ function mealTaken(day, meal, exceptId = null) {
   return state.records.find((r) => r.day === day && r.meal === meal && r.id !== exceptId) || null;
 }
 
-async function removeRecord(id) {
-  try { await db.remove(id); } catch { return false; }
+function forgetRecord(id) {
+  backupFile = null;
   forgetThumb(id);
   state.records = state.records.filter((r) => r.id !== id);
-  return true;
+}
+function showSavedRecord(meal) {
+  if (state.filter !== 'all' && state.filter !== meal) setFilter('all');
 }
 
 const stampedName = (date) => `TimeStamp_${fileStamp(date)}.jpg`;
@@ -830,8 +828,7 @@ const stampedName = (date) => `TimeStamp_${fileStamp(date)}.jpg`;
 
 function renderAll() {
   renderAlbum();
-  renderCalendar();
-  renderDay();
+  if (state.loaded) { renderCalendar(); renderDay(); }
 }
 
 // 오늘 카드: 지금 끼니를 아직 안 찍었으면 권하고, 찍었으면 칭찬한다. 사진이 있고 ‘전체’를 볼 때만
@@ -863,12 +860,16 @@ function tileHtml(r, animate) {
   return `<button class="tile${fresh}" type="button" data-id="${r.id}" aria-label="${label}"><img src="${thumbUrl(r)}" alt="" loading="lazy"></button>`;
 }
 
-const CAMERA_SVG = $('#add svg').outerHTML;
 
 // 앨범: 윗줄엔 끼니 칩과 설정만. 오늘 날짜는 첫 묶음 머리글로 한 번만 (크게, 이게 화면의 제목)
 function renderAlbum() {
   const has = state.records.length > 0;
-  $('#album-intro').hidden = has;
+  $('#album-intro').hidden = has || !state.loaded || !state.dbOk;
+  $('#boot-status').hidden = state.loaded && state.dbOk;
+  if (state.loaded && !state.dbOk) {
+    $('#boot-status span').textContent = '사진첩을 열지 못했어요. 다시 열어 주세요';
+    $('#boot-retry').hidden = false;
+  }
   $('#filters').hidden = !has;
   $('#album-meta').textContent = has ? `총 ${state.records.length}장` : '';
 
@@ -894,8 +895,7 @@ function renderAlbum() {
     const items = (byDay.get(key) || []).sort((a, b) => a.takenAt - b.takenAt); // 하루 안에서는 아침 → 점심 → 저녁 순
     const d = fromDayKey(key);
     const count = items.length ? `<b>${items.length}</b>장` : '아직 없어요';
-    const tiles = items.length ? items.map((r) => tileHtml(r, animate)).join('')
-      : `<button class="tile tile-add" type="button" data-add aria-label="오늘 사진 찍기">${CAMERA_SVG}</button>`;
+    const tiles = items.map((r) => tileHtml(r, animate)).join('');
     return `<section aria-label="${monthDay(d)}"><div class="grid-day${key === todayKey ? ' is-today' : ''}"><h2>${dayHeading(d)}</h2><span>${count}</span></div>`
       + `<div class="grid">${tiles}</div></section>`;
   }).join('');
@@ -1052,14 +1052,65 @@ function renderDay() {
 
 async function renderStorageNote() {
   const n = state.records.length;
-  const originals = state.records.filter((r) => r.original).length;
   let size = '';
   try {
     const est = await navigator.storage?.estimate?.();
     if (est?.usage) size = ` · 약 ${Math.max(1, Math.round(est.usage / 1048576))}MB`;
   } catch { /* 크기는 못 보여 줘도 된다 */ }
-  const base = n ? `사진 ${n}장${originals ? `(원본 ${originals}장 포함)` : ''}${size}` : '아직 남긴 사진이 없어요';
-  $('#storage-note').textContent = `${base}. 이 아이폰에만 저장돼서 다른 기기에서는 보이지 않아요.`;
+  const base = n ? `사진 ${n}장${size}` : '아직 남긴 사진이 없어요';
+  $('#storage-note').textContent = `${base}. 이 기기에만 보관돼요. 백업 파일을 따로 저장해 두면 다시 불러올 수 있어요.`;
+}
+
+/* ── 백업: 먼저 검증한 뒤 기존 기록에 없는 사진만 복원 ── */
+let backupFile = null;
+let backupBusy = false;
+function backupStatus(text) { $('#backup-status').textContent = text; }
+function setBackupBusy(busy) {
+  backupBusy = busy;
+  $('#backup-export').disabled = $('#backup-import').disabled = busy;
+}
+async function exportBackup() {
+  if (backupBusy) return;
+  setBackupBusy(true);
+  beginWork();
+  try {
+    if (!backupFile) {
+      backupStatus('백업 파일을 만들고 있어요');
+      const records = await db.all();
+      if (!records.length) { backupStatus('아직 백업할 사진이 없어요'); return; }
+      backupFile = await createBackup(records, (n, total) => backupStatus(`사진 ${n} / ${total}장 준비 중`));
+    }
+    const result = await shareFiles([backupFile]);
+    if (result === 'retry') {
+      $('#backup-export').textContent = '준비한 백업 파일 저장';
+      backupStatus('파일을 준비했어요. 위 버튼을 한 번 더 눌러 파일에 저장해 주세요');
+    } else if (result === 'cancelled') {
+      backupStatus('저장을 취소했어요. 다시 눌러 백업 파일을 저장할 수 있어요');
+    } else if (result === 'error') {
+      backupStatus('저장 화면을 열지 못했어요. 다시 눌러 주세요');
+    } else {
+      backupStatus('백업 파일을 파일 앱이나 다른 기기에 보관해 주세요');
+      backupFile = null;
+      $('#backup-export').textContent = '백업 파일 만들기';
+    }
+  } catch (err) { backupStatus((/백업/.test(err.message) ? err.message : '백업 파일을 만들지 못했어요. 다시 시도해 주세요')); }
+  finally { setBackupBusy(false); endWork(); }
+}
+async function restoreBackup(file) {
+  if (!file || backupBusy) return;
+  setBackupBusy(true);
+  beginWork();
+  try {
+    backupStatus('백업 파일을 확인하고 있어요');
+    const records = await readBackup(file, (n, total) => backupStatus(`사진 ${n} / ${total}장 확인 중`));
+    const result = await db.merge(records);
+    await loadRecords();
+    renderAll();
+    renderStorageNote();
+    backupFile = null;
+    backupStatus(`${result.added}장을 복원했어요${result.skipped ? `. 이미 있는 ${result.skipped}장은 그대로 뒀어요` : ''}`);
+  } catch (err) { backupStatus((/백업/.test(err.message) ? err.message : '복원하지 못했어요. 기존 사진은 그대로 있어요')); }
+  finally { setBackupBusy(false); endWork(); }
 }
 
 /* ── 사진 읽기 · 스탬프 찍기 (스탬프 화면과 즉시 저장이 함께 쓴다) ── */
@@ -1077,7 +1128,7 @@ function loadPhoto(file) {
 // 촬영 시각: EXIF → 파일 시각(1분 넘게 차이 날 때만) → 지금
 async function readPhoto(file) {
   const useTime = settings.photoTime !== false; // 설정에서 끄면 사진의 시각은 보지 않는다
-  const [{ img, url }, exifDate] = await Promise.all([loadPhoto(file), useTime ? readExifDate(file) : null, fontsReady(), charsReady()]);
+  const [{ img, url }, exifDate] = await Promise.all([loadPhoto(file), useTime ? readExifDate(file) : null, fontsReady()]);
   let takenAt;
   let timeSource;
   if (!useTime) { takenAt = new Date(); timeSource = 'set'; } // 지금 시각 (스탬프 화면에서 바꿀 수 있다)
@@ -1163,6 +1214,8 @@ async function renderStamped(img, rect, info, look, frame = {}) {
 // target: 달력의 끼니 칸이나 사진 보기의 ‘바꾸기’에서 골랐을 때 그 날 · 끼니(· 바꿀 사진). 스탬프 화면 없이 바로 넣고,
 // 있던 사진은 새 사진으로 바꾼다
 async function quickSave(file, { target = null } = {}) {
+  if (activeWork) return;
+  beginWork();
   showToast('사진을 남기고 있어요', { stay: true });
   let photo;
   try {
@@ -1175,21 +1228,26 @@ async function quickSave(file, { target = null } = {}) {
       ? (target.replaceOf ? state.records.find((r) => r.id === target.replaceOf) : mealTaken(target.day, target.meal)) || null
       : null;
     // 그 날 사진이 아니면(시각이 없는 사진 포함) 바뀔 사진의 시각, 빈 칸이면 그 날의 끼니 시각으로
-    if (target && dayKey(photo.takenAt) !== target.day) photo.takenAt = prev ? new Date(prev.takenAt) : slotTime(target);
+    const adjusted = target && dayKey(photo.takenAt) !== target.day;
+    if (adjusted) photo.takenAt = prev ? new Date(prev.takenAt) : slotTime(target);
     const side = Math.min(photo.W0, photo.H0);
     const rect = { x: (photo.W0 - side) / 2, y: (photo.H0 - side) / 2, side };
     if (timeBlocked(photo.takenAt)) { showToast(blockNote(photo.takenAt)); return; }
     const meal = target ? target.meal : mealFor(photo.takenAt);
+    const opens = target && slotOpensAt(target.day, meal);
+    if (opens) { showToast(slotOpenNote(meal, opens)); return; }
     const replacing = prev;
     if (!target && mealTaken(dayKey(photo.takenAt), meal)) {
-      URL.revokeObjectURL(photo.url);
+      const duplicateDay = dayKey(photo.takenAt);
+      releasePhoto(photo);
       photo = null;
-      showToast(`이날 ${mealLabel(meal)} 사진이 이미 있어서 스탬프 화면을 열었어요`);
-      startEdit(file);
+      await startEdit(file, { notice: `${dayKey(new Date()) === duplicateDay ? '오늘' : '이날'} ${mealLabel(meal)} 사진이 있어요. 바꾸거나 다른 끼니로 남겨 주세요` });
       return;
     }
     const look = { style: settings.stampStyle, color: settings.stampColor };
     const pick = { odung: randomPose('odung'), perpeng: randomPose('perpeng') };
+    await charsReady(pick);
+    if (POSES[look.style] && !poseImages(pick)[look.style]) throw new Error('art');
     const out = await renderStamped(photo.img, rect, { date: photo.takenAt, meal, chars: poseImages(pick) }, look);
     const rec = {
       id: uid(),
@@ -1201,37 +1259,33 @@ async function quickSave(file, { target = null } = {}) {
       height: out.size,
       blob: out.file,
       thumb: out.thumb,
-      original: null,
       createdAt: Date.now(),
-      savedAt: null,
-      sentAt: null,
     };
-    let kept = false;
-    if (state.dbOk) {
-      try { await db.put(rec); kept = true; } catch { kept = false; }
+    try { await db.put(rec, replacing?.id); }
+    catch {
+      await startEdit(file, { target, notice: '저장하지 못했어요. 사진은 여기 있어요. 완료를 눌러 다시 시도해 주세요' });
+      return;
     }
-    if (kept) {
-      if (replacing) await removeRecord(replacing.id); // 그 칸에 있던 사진은 앱에서만 뺀다 (아이폰 앨범의 사진은 그대로)
-      upsertRecord(rec);
-      state.fresh.add(rec.id);
-      if (target) {
-        renderAll(); // 달력은 그대로 두고, 그 칸에 새 사진
-      } else {
-        if (state.view !== 'album') showView('album');
-        if (state.filter !== 'all' && state.filter !== meal) state.filter = 'all';
-        renderAll();
-        window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
-      }
+    state.dbOk = true;
+    if (replacing) forgetRecord(replacing.id);
+    upsertRecord(rec);
+    state.fresh.add(rec.id);
+    if (!target) {
+      if (state.view !== 'album') showView('album');
+      showSavedRecord(meal);
+      window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
     }
+    renderAll();
     playStampSound();
     const done = target
       ? `${mealLabel(meal) ? `${mealLabel(meal)} ` : ''}사진을 ${replacing ? '교체했어요' : '남겼어요'}`
       : `${fmtClock(photo.takenAt)} 사진을 남겼어요`;
-    showToast(kept ? done : '이 기기에는 남기지 못했어요', { pop: true });
+    showToast(adjusted ? `${done}. 다른 날 사진이라 ${shortWhen(photo.takenAt)}으로 넣었어요` : done, { pop: true });
   } catch {
-    showToast('사진을 열지 못했어요. 다시 시도해 주세요');
+    await startEdit(file, { target, notice: '사진 준비가 늦어지고 있어요. 확인한 뒤 완료를 눌러 주세요' });
   } finally {
-    if (photo?.url) URL.revokeObjectURL(photo.url);
+    releasePhoto(photo);
+    endWork();
   }
 }
 
@@ -1252,7 +1306,6 @@ const E = {
   time: $('#ed-time'),
   timeText: $('#ed-time-text'),
   timePill: $('#ed-time-pill'),
-  seg: $('#meal-seg'),
   done: $('#ed-done'),
   save: $('#ed-save'),
 };
@@ -1285,10 +1338,11 @@ const TIME_NOTES = {
 const infoOf = (e) => ({ date: e.takenAt, meal: e.meal, chars: poseImages(e.pose), charPos: e.charPos });
 const lookOf = (e, pop = null) => ({ style: e.style, color: e.color, pop });
 
-async function startEdit(file, { camera = false } = {}) {
+async function startEdit(file, { camera = false, target = null, notice = null } = {}) {
+  hideToast();
   const mine = {
-    id: uid(), createdAt: Date.now(), version: 0, job: null, timer: 0, source: file,
-    file: null, thumb: null, savedAt: null, sentAt: null, persistedVersion: null,
+    id: uid(), createdAt: Date.now(), version: 0, job: null, source: file, busy: false,
+    file: null, thumb: null, persistedVersion: null,
     meal: null, mealAuto: true, ready: false, crop: null, cropMoved: false,
     style: settings.stampStyle, color: settings.stampColor,
     pose: { odung: randomPose('odung'), perpeng: randomPose('perpeng') }, // 사진마다 다른 모습
@@ -1323,7 +1377,19 @@ async function startEdit(file, { camera = false } = {}) {
     Object.assign(mine, photo);
     // 방금 카메라로 찍은 사진이면 지금 시각이 곧 찍은 시각이다
     if (camera && mine.timeSource !== 'exif') mine.timeSource = 'camera';
-    mine.meal = mealFor(mine.takenAt);
+    mine.meal = target ? target.meal : mealFor(mine.takenAt);
+    if (target) {
+      const prev = state.records.find((r) => r.id === target.replaceOf) || mealTaken(target.day, target.meal);
+      if (dayKey(mine.takenAt) !== target.day) {
+        mine.takenAt = prev ? new Date(prev.takenAt) : slotTime(target);
+        mine.timeSource = 'edited';
+        notice = `${notice || ''} 다른 날 사진이라 ${shortWhen(mine.takenAt)}으로 맞췄어요`.trim();
+      }
+      mine.replaceId = prev?.id || null;
+      mine.mealAuto = false;
+    }
+    await charsReady(mine.pose);
+    if (ed !== mine) { releasePhoto(mine); return; }
     mine.crop = { cx: mine.W0 / 2, cy: mine.H0 / 2, z: 1 };
 
     buildPreview(mine);
@@ -1336,7 +1402,7 @@ async function startEdit(file, { camera = false } = {}) {
     fillFields();
     stampIn();
     markDirty();
-    if (TIME_NOTES[mine.timeSource]) showToast(TIME_NOTES[mine.timeSource]);
+    if (notice || TIME_NOTES[mine.timeSource]) showToast(notice || TIME_NOTES[mine.timeSource]);
     setTimeout(() => { if (ed === mine) E.hint.classList.add('gone'); }, 2600);
   } catch {
     if (ed !== mine) return;
@@ -1379,8 +1445,9 @@ function fillLook() {
 
 // 다른 모습의 오둥이·퍼펭이로 바꾼다
 function shufflePose() {
-  if (!ed?.ready || !POSES[ed.style]) return;
+  if (!ed?.ready || ed.busy || !POSES[ed.style]) return;
   ed.pose = { ...ed.pose, [ed.style]: randomPose(ed.style, ed.pose[ed.style]) };
+  charsReady(ed.pose).then(() => { if (ed) { ed.stampLayer = null; schedulePreview(); } });
   stampIn();
   markDirty();
 }
@@ -1394,6 +1461,11 @@ function fillFields() {
   E.time.min = toLocalInput(FIRST_MONTH);
   E.time.max = toLocalInput(new Date(Date.now() + FUTURE_SLACK));
   E.timePill.classList.toggle('is-guess', Boolean(TIME_NOTES[ed.timeSource]));
+  $$('.mp-labels > span').forEach((el, i) => {
+    const exists = mealTaken(dayKey(d), MEAL_STOPS[i], ed.id);
+    el.classList.toggle('has-photo', Boolean(exists));
+    el.title = exists ? '이미 남긴 끼니' : '';
+  });
   edMealBar.show();
   fillLook();
 }
@@ -1414,7 +1486,8 @@ function mealBar(track, { current, choose, ready, live }) {
       el.classList.toggle('past', k < i);
     });
     track.setAttribute('aria-valuenow', String(i));
-    track.setAttribute('aria-valuetext', stopLabel(MEAL_STOPS[i]));
+    const exists = ed && mealTaken(dayKey(ed.takenAt), MEAL_STOPS[i], ed.id);
+    track.setAttribute('aria-valuetext', `${stopLabel(MEAL_STOPS[i])}${exists ? ', 사진 있음' : ''}`);
   };
   const show = () => paint(MEAL_STOPS.indexOf(current() ?? null));
   const pick = (i) => {
@@ -1469,7 +1542,7 @@ function mealBar(track, { current, choose, ready, live }) {
 
 const edMealBar = mealBar($('#meal-track'), {
   current: () => ed?.meal,
-  ready: () => Boolean(ed?.ready),
+  ready: () => Boolean(ed?.ready && !ed.busy),
   live: true, // 끄는 동안 사진 속 도장 글씨도 바로 바뀐다
   choose: (meal) => {
     ed.meal = meal;
@@ -1500,14 +1573,14 @@ function stampIn() {
 
 // 확대해도 흐려지지 않을 만큼만 줄인 미리보기용 사본
 function buildPreview(e) {
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
   const css = Math.max(200, E.preview.clientWidth || 402);
   const P = Math.round(css * dpr);
   E.canvas.width = P;
   E.canvas.height = P;
 
   const minSide = Math.min(e.W0, e.H0);
-  const k = Math.min(1, (P * 2.5) / minSide);
+  const k = Math.min(1, (css * 1.5) / minSide, 2048 / Math.max(e.W0, e.H0));
   const base = document.createElement('canvas');
   base.width = Math.max(1, Math.round(e.W0 * k));
   base.height = Math.max(1, Math.round(e.H0 * k));
@@ -1542,7 +1615,7 @@ function fillFit() {
 }
 
 function toggleFit() {
-  if (!ed?.ready || minZoom(ed) >= 0.995) return;
+  if (!ed?.ready || ed.busy || minZoom(ed) >= 0.995) return;
   const from = { ...ed.crop };
   const to = isFit(ed) ? { cx: ed.W0 / 2, cy: ed.H0 / 2, z: 1 } : { cx: ed.W0 / 2, cy: ed.H0 / 2, z: minZoom(ed) };
   ed.cropMoved = to.z !== 1;
@@ -1576,7 +1649,18 @@ function drawPreview(pop = null) {
   const ctx = c.getContext('2d');
   const r = cropRect(ed);
   drawCrop(ctx, ed.base, ed.baseK, r, c.width, ed.W0, ed.H0, ed.backdrop);
-  drawStamp(ctx, c.width, infoOf(ed), lookOf(ed, pop));
+  const key = JSON.stringify([ed.style, ed.color, +ed.takenAt, ed.meal, ed.pose, ed.charPos,
+    ...Object.values(poseImages(ed.pose)).map((img) => img?.src), SEAL_RING.img?.src, SEAL_DISC.img?.src]);
+  if (pop) drawStamp(ctx, c.width, infoOf(ed), lookOf(ed, pop));
+  else {
+    if (!ed.stampLayer || ed.stampKey !== key) {
+      if (!ed.stampLayer) ed.stampLayer = document.createElement('canvas');
+      ed.stampLayer.width = ed.stampLayer.height = c.width;
+      drawStamp(ed.stampLayer.getContext('2d'), c.width, infoOf(ed), lookOf(ed));
+      ed.stampKey = key;
+    }
+    ctx.drawImage(ed.stampLayer, 0, 0);
+  }
   E.reset.hidden = !ed.cropMoved && !ed.charPos;
   fillFit();
 }
@@ -1592,11 +1676,12 @@ function markDirty() {
   const mine = ed;
   mine.version++;
   mine.file = null;
-  clearTimeout(mine.timer);
-  mine.timer = setTimeout(() => { if (ed === mine) exportFor(mine, mine.version).catch(() => {}); }, 300);
+  mine.job = null;
 }
 
-function exportFor(e, v) {
+async function exportFor(e, v) {
+  await charsReady(e.pose);
+  if (POSES[e.style] && !poseImages(e.pose)[e.style]) throw new Error('art');
   if (e.job && e.job.v === v) return e.job.p;
   const p = renderStamped(e.img, cropRect(e), infoOf(e), lookOf(e), { W0: e.W0, H0: e.H0, backdrop: e.backdrop }).then((out) => {
     if (e.version !== v) return null;
@@ -1604,13 +1689,13 @@ function exportFor(e, v) {
     e.thumb = out.thumb;
     e.outSize = out.size;
     return e.file;
-  });
+  }).catch((err) => { e.job = null; throw err; });
   e.job = { v, p };
   return p;
 }
 
 async function persistEdit(e) {
-  if (!state.dbOk || !e.file) return false;
+  if (!e.file) return false;
   const isNew = e.persistedVersion === null;
   const rec = {
     id: e.id,
@@ -1622,20 +1707,19 @@ async function persistEdit(e) {
     height: e.outSize,
     blob: e.file,
     thumb: e.thumb,
-    original: null,
     createdAt: e.createdAt,
-    savedAt: e.savedAt,
-    sentAt: e.sentAt,
   };
   try {
-    await db.put(rec);
+    await db.put(rec, e.replaceId);
+    state.dbOk = true;
   } catch {
     return false;
   }
   e.persistedVersion = e.version;
   upsertRecord(rec);
   if (isNew) state.fresh.add(rec.id);
-  if (e.replaceId) { await removeRecord(e.replaceId); e.replaceId = null; } // 같은 끼니의 먼저 있던 사진은 앱에서 뺀다
+  if (e.replaceId) { forgetRecord(e.replaceId); e.replaceId = null; }
+  showSavedRecord(e.meal);
   renderAll();
   return true;
 }
@@ -1655,7 +1739,7 @@ function readyToKeep(e) {
   // 앞서 바꾸기로 했던 사진이 지금 끼니 · 날과 겹치지 않으면 바꾸기는 취소 (끼니를 바꾼 뒤 엉뚱한 사진이 지워지지 않게)
   if (e.replaceId && e.replaceId !== taken?.id) e.replaceId = null;
   if (taken && e.replaceId !== taken.id) {
-    if (!window.confirm(`이날 ${mealLabel(e.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요?`)) {
+    if (!window.confirm(`${day === dayKey(new Date()) ? '오늘' : '이날'} ${mealLabel(e.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요?`)) {
       showToast('끼니를 바꾸면 따로 남길 수 있어요');
       return false;
     }
@@ -1664,29 +1748,46 @@ function readyToKeep(e) {
   return true;
 }
 
-function editorDone() {
-  const mine = ed;
-  if (!mine?.ready || !readyToKeep(mine)) return;
-  closeEditor({ keep: true });
+function setEditorBusy(mine, busy) {
+  mine.busy = busy;
+  E.done.disabled = E.save.disabled = busy;
+  $('#ed-close').disabled = busy;
+  $('.ed-panel').inert = busy;
+  E.preview.inert = busy;
+  E.sheet.setAttribute('aria-busy', String(busy));
 }
-
-async function editorSave() {
+async function finishEditor(share = false) {
   const mine = ed;
-  if (!mine?.ready || !readyToKeep(mine)) return;
-  let file = mine.file;
-  if (!file) {
-    E.save.classList.add('is-busy');
-    try { await exportFor(mine, mine.version); } catch { /* 아래에서 알린다 */ } finally { E.save.classList.remove('is-busy'); }
-    file = mine.file;
-    if (!file) { showToast('사진을 준비하지 못했어요. 다시 시도해 주세요'); return; }
+  if (!mine?.ready || mine.busy || !readyToKeep(mine)) return;
+  setEditorBusy(mine, true);
+  beginWork();
+  showToast(share ? '사진을 준비하고 있어요' : '사진을 남기고 있어요', { stay: true });
+  try {
+    if (!mine.file) await exportFor(mine, mine.version);
+    if (share) {
+      hideToast();
+      const result = await shareFiles([mine.file]);
+      if (result === 'cancelled') return;
+      if (result === 'retry') { showToast('사진을 준비했어요. 앨범 저장을 한 번 더 눌러 주세요'); return; }
+      if (result === 'error') { showToast('저장 화면을 열지 못했어요. 다시 시도해 주세요'); return; }
+    }
+    showToast('사진을 남기고 있어요', { stay: true });
+    const replacing = Boolean(mine.replaceId);
+    if (!await persistEdit(mine)) {
+      showToast('저장하지 못했어요. 사진은 여기 있어요. 완료를 눌러 다시 시도해 주세요', { stay: true });
+      return;
+    }
+    setEditorBusy(mine, false);
+    closeEditor();
+    showToast(`${mealLabel(mine.meal) ? `${mealLabel(mine.meal)} ` : ''}사진을 ${replacing ? '교체했어요' : '남겼어요'}`, { pop: true });
+  } catch { showToast('사진을 준비하지 못했어요. 다시 시도해 주세요'); }
+  finally {
+    if (ed === mine) setEditorBusy(mine, false);
+    endWork();
   }
-  const result = await shareFiles([file]);
-  if (ed !== mine || result === 'cancelled') return;
-  if (result === 'retry') { showToast('사진을 준비했어요. 한 번 더 눌러 주세요'); return; }
-  if (result === 'error') { showToast('저장 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요'); return; }
-  mine.savedAt = Date.now();
-  closeEditor({ keep: true });
 }
+const editorDone = () => finishEditor(false);
+const editorSave = () => finishEditor(true);
 
 // 아이폰 공유 화면을 연다(‘이미지 저장’을 고르면 사진 앱에). 공유를 못 쓰는 브라우저에서는 파일로 내려받는다
 async function shareFiles(files) {
@@ -1712,31 +1813,26 @@ async function shareFiles(files) {
   return 'downloaded';
 }
 
-async function keepEdit(e) {
-  try {
-    if (!e.file) await exportFor(e, e.version);
-  } catch { /* 아래에서 못 남겼다고 알린다 */ }
-  const replacing = Boolean(e.replaceId);
-  const kept = await persistEdit(e);
-  const label = mealLabel(e.meal);
-  showToast(kept ? `${label ? `${label} ` : ''}사진을 ${replacing ? '교체했어요' : '남겼어요'}` : '이 기기에는 기록을 남기지 못했어요');
-  return kept;
+function releasePhoto(photo) {
+  if (!photo) return;
+  if (photo.url) URL.revokeObjectURL(photo.url);
+  if (photo.img) { photo.img.removeAttribute('src'); photo.img = null; }
+  for (const key of ['base', 'backdrop', 'stampLayer']) {
+    if (photo[key]) photo[key].width = photo[key].height = 1;
+    photo[key] = null;
+  }
+  photo.source = photo.file = photo.thumb = photo.job = null;
 }
 
-// keep: 완료 · 앨범 저장에서만. X나 바깥을 눌러 닫으면 남기지 않는다
-function closeEditor({ keep = false } = {}) {
+// 쓰기가 끝난 다음에만 닫는다. 실패하면 편집 중인 사진을 그대로 둔다.
+function closeEditor() {
+  if (ed?.busy) return;
   const mine = ed;
-  if (mine) clearTimeout(mine.timer);
   ed = null;
   E.canvas.width = E.canvas.height = 1;
   closeSheet(E.sheet);
-  const free = () => {
-    if (!mine) return;
-    if (mine.url) URL.revokeObjectURL(mine.url);
-    if (mine.base) mine.base.width = mine.base.height = 1;
-  };
-  if (keep && mine?.ready) keepEdit(mine).finally(free); // 화면은 바로 닫고, 남기는 건 뒤에서
-  else free();
+  hideToast();
+  releasePhoto(mine);
 }
 
 function bindEditor() {
@@ -1746,10 +1842,11 @@ function bindEditor() {
 
   E.strip.addEventListener('click', (e) => {
     const b = e.target.closest('[data-style]');
-    if (!b || !ed?.ready) return;
+    if (!b || !ed?.ready || ed.busy) return;
     if (b.dataset.style === ed.style) { shufflePose(); return; } // 고른 캐릭터를 한 번 더 누르면 다른 모습
     {
       ed.style = b.dataset.style;
+      charsReady(ed.pose).then(() => { if (ed) { ed.stampLayer = null; schedulePreview(); } });
       settings.stampStyle = ed.style;
       saveSettings();
       fillLook();
@@ -1760,7 +1857,7 @@ function bindEditor() {
 
   E.swatches.addEventListener('click', (e) => {
     const b = e.target.closest('[data-color]');
-    if (!b || !ed?.ready || b.dataset.color === ed.color) return;
+    if (!b || !ed?.ready || ed.busy || b.dataset.color === ed.color) return;
     ed.color = b.dataset.color;
     settings.stampColor = ed.color;
     saveSettings();
@@ -1770,7 +1867,7 @@ function bindEditor() {
 
 
   E.time.addEventListener('change', () => {
-    if (!ed?.ready) return;
+    if (!ed?.ready || ed.busy) return;
     const d = fromLocalInput(E.time.value);
     if (!d) { fillFields(); return; }
     if (timeBlocked(d)) { showToast(editBlockNote(d)); fillFields(); return; } // 원래 시각으로 되돌린다
@@ -1784,7 +1881,7 @@ function bindEditor() {
   E.fit.addEventListener('click', toggleFit);
 
   E.reset.addEventListener('click', () => {
-    if (!ed?.ready) return;
+    if (!ed?.ready || ed.busy) return;
     ed.crop = { cx: ed.W0 / 2, cy: ed.H0 / 2, z: 1 };
     ed.cropMoved = false;
     ed.charPos = null; // 캐릭터도 도장 옆으로
@@ -1819,7 +1916,7 @@ function bindEditor() {
   };
 
   E.preview.addEventListener('pointerdown', (e) => {
-    if (!ed?.ready || e.target.closest('button')) return;
+    if (!ed?.ready || ed.busy || e.target.closest('button')) return;
     e.preventDefault();
     if (gesture?.mode === 'char') return; // 캐릭터를 옮기는 중엔 다른 손가락은 무시
     E.hint.classList.add('gone');
@@ -1875,7 +1972,7 @@ function bindEditor() {
       const moved = gesture.moved;
       gesture = null;
       E.preview.classList.remove('grabbing');
-      if (!ed?.ready) return;
+      if (!ed?.ready || ed.busy) return;
       ed.gesturing = false;
       lastTap = 0;
       if (moved) changed();
@@ -1886,7 +1983,7 @@ function bindEditor() {
     E.preview.classList.remove('grabbing');
     const moved = gesture?.moved;
     gesture = null;
-    if (!ed?.ready) return;
+    if (!ed?.ready || ed.busy) return;
     ed.gesturing = false;
     if (moved) {
       lastTap = 0;
@@ -1903,7 +2000,7 @@ function bindEditor() {
 
   // Mac 미리보기용: 휠로 확대
   E.preview.addEventListener('wheel', (e) => {
-    if (!ed?.ready) return;
+    if (!ed?.ready || ed.busy) return;
     e.preventDefault();
     ed.crop.z = clamp(ed.crop.z * Math.exp(-e.deltaY * 0.0015), minZoom(ed), MAX_ZOOM);
     ed.cropMoved = true;
@@ -1957,26 +2054,27 @@ function closeViewer() {
 // 사진 보기를 닫고 바로 사진 고르기를 연다(아이폰은 누른 그 순간에 열어야 해서). 고르면 스탬프 화면 없이
 // 같은 날 · 같은 끼니로 들어가고 이 사진은 앱에서 빠진다
 function viewerReplace() {
-  if (!vw) return;
+  if (!vw || activeWork) return;
   const { id, day, meal } = vw.rec;
   closeViewer();
   openInput('#input-photo', { target: { day, meal: meal ?? null, replaceOf: id } });
 }
 
 async function viewerDelete() {
-  if (!vw) return;
+  if (!vw || activeWork) return;
   if (!window.confirm('이 사진을 앱에서 지울까요? 아이폰 사진 앱에 있는 사진은 그대로 남아요.')) return;
   const { id } = vw.rec;
+  beginWork();
   try {
     await db.remove(id);
   } catch {
     showMsg(V.msg, 'err', '지우지 못했어요. 잠시 후 다시 시도해 주세요.');
     return;
-  }
-  forgetThumb(id);
-  state.records = state.records.filter((r) => r.id !== id);
+  } finally { endWork(); }
+  forgetRecord(id);
   closeViewer();
   renderAll();
+  showToast('사진을 지웠어요');
 }
 
 function bindViewer() {

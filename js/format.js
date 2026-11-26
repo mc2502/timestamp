@@ -1,12 +1,9 @@
 // 날짜·시간 표기와 식사 구분. 스탬프 표기: 2026년 11월 23일 (월) / 오전 7:46
 
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
-const ORDINALS = ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'];
 
 export const pad2 = (n) => String(n).padStart(2, '0');
 
-export const fmtDate = (d) => `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}`;
-export const fmtTime = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 export const weekday = (d) => WEEKDAYS[d.getDay()];
 export const fmtLongDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${weekday(d)})`;
 
@@ -26,13 +23,6 @@ export function fromDayKey(key) {
 
 export const fileStamp = (d) =>
   `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}`;
-
-// ‘11월 넷째 주’ — 일요일 시작 주 기준
-export function weekLabel(d) {
-  const firstWeekday = new Date(d.getFullYear(), d.getMonth(), 1).getDay();
-  const n = Math.floor((d.getDate() - 1 + firstWeekday) / 7);
-  return `${d.getMonth() + 1}월 ${ORDINALS[n]} 주`;
-}
 
 export function relDay(d, now = new Date()) {
   const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
