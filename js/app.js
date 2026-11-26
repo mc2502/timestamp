@@ -1141,6 +1141,9 @@ async function quickSave(file, { target = null } = {}) {
   let photo;
   try {
     photo = await readPhoto(file);
+    // 2026년 11월 1일 전이나 미래에 찍힌 사진은 어디로 넣든 받지 않는다.
+    // 달력 칸 · 사진 교체하기에서 그 날 시각으로 옮기기 전에, 사진에 남은 원래 시각으로 먼저 본다
+    if (timeBlocked(photo.takenAt)) { showToast(blockNote(photo.takenAt)); return; }
     // 바뀔 사진: 사진 보기의 ‘바꾸기’면 그 사진, 달력 칸이면 그 칸에 있던 사진
     const prev = target
       ? (target.replaceOf ? state.records.find((r) => r.id === target.replaceOf) : mealTaken(target.day, target.meal)) || null
