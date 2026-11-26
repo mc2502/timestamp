@@ -1,13 +1,14 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=100';
-import { readExifDate } from './exif.js?v=100';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=100';
-import * as db from './db.js?v=100';
+} from './format.js?v=101';
+import { readExifDate } from './exif.js?v=101';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=101';
+import * as db from './db.js?v=101';
+import { albumCaption } from './album-copy.js?v=101';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '100';
+const APP_VERSION = '101';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -843,7 +844,7 @@ function renderTodayCard(has, todayKey) {
   const today = recordsOn(todayKey);
   const done = today.some((r) => r.meal === meal);
   const title = done ? `${mealLabel(meal)} 사진까지 남겼어요` : `${mealLabel(meal)} 사진을 찍어 볼까요?`;
-  const sub = today.length ? `오늘 ${today.length}장 남겼어요` : '찍는 순간의 날짜와 시각이 함께 남아요';
+  const sub = albumCaption(meal, done, todayKey);
   $('#today-t').textContent = title;
   $('#today-s').textContent = sub;
   card.classList.toggle('is-done', done);
