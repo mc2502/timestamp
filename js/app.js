@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=90';
-import { readExifDate } from './exif.js?v=90';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=90';
-import * as db from './db.js?v=90';
+} from './format.js?v=91';
+import { readExifDate } from './exif.js?v=91';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=91';
+import * as db from './db.js?v=91';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '90';
+const APP_VERSION = '91';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -152,7 +152,6 @@ async function init() {
   window.addEventListener('pagehide', rememberPlace);
 
   setInterval(() => tick(), 15000);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) keepQuietly(); });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { state.hiddenAt = Date.now(); rememberPlace(); return; }
     tick();
@@ -1226,6 +1225,7 @@ const E = {
   timePill: $('#ed-time-pill'),
   seg: $('#meal-seg'),
   done: $('#ed-done'),
+  save: $('#ed-save'),
 };
 
 // 미래 사진은 남기지 않는다: 지금보다 2시간 넘게 뒤의 시각이면 미래로 본다
@@ -1270,6 +1270,7 @@ async function startEdit(file, { camera = false } = {}) {
   E.skel.hidden = false;
   E.reset.hidden = true;
   E.done.disabled = true;
+  E.save.disabled = true;
   E.timeText.textContent = '';
   E.timePill.classList.remove('is-guess');
   E.skel.classList.remove('is-err');
@@ -1302,6 +1303,7 @@ async function startEdit(file, { camera = false } = {}) {
     E.skel.hidden = true;
     E.canvas.hidden = false;
     E.done.disabled = false;
+    E.save.disabled = false;
     fillFields();
     stampIn();
     markDirty();
@@ -1609,18 +1611,70 @@ async function persistEdit(e) {
   return true;
 }
 
-// 스탬프 화면에 올라온 사진은 이미 앱에 올린 것으로 본다: 따로 ‘저장’ 없이, ‘완료’나 닫기를 누르면 지금 모습 그대로
-// 앨범 탭 · 달력에 남는다. 스탬프 찍힌 사진을 카카오톡 등으로 보내고 싶으면 사진 보기의 ‘앨범에 저장하기’로.
-// 그날 그 끼니 사진이 이미 있으면 바꿀지 묻고, 취소하면 이 새 사진은 남기지 않는다 (한 끼니에 한 장)
-function keepChoice(e) {
-  if (!e?.ready || timeBlocked(e.takenAt) || e.persistedVersion === e.version) return false;
+// 스탬프 화면 아래 두 버튼과 위의 X
+//  · 완료: 앱(앨범 탭 · 달력)에 남기고 닫는다
+//  · 앨범 저장: 아이폰 공유 화면의 ‘이미지 저장’으로 사진 앱에 넣고, 앱에도 남기고 닫는다 (웹앱은 공유 화면 없이 바로 넣을 수 없다)
+//  · X(닫기): 남기지 않고 닫는다
+// 한 끼니에 한 장: 그날 그 끼니 사진이 이미 있으면 바꿀지 묻고, 취소하면 스탬프 화면에 그대로 남아 끼니를 고를 수 있다
+function readyToKeep(e) {
+  if (timeBlocked(e.takenAt)) { showToast(editBlockNote(e.takenAt)); return false; }
   const taken = mealTaken(dayKey(e.takenAt), e.meal, e.id);
   if (taken && e.replaceId !== taken.id) {
-    const ok = window.confirm(`이날 ${mealLabel(e.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요? 취소하면 이 사진은 남기지 않아요.`);
-    if (!ok) return false;
+    if (!window.confirm(`이날 ${mealLabel(e.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요?`)) {
+      showToast('끼니를 바꾸면 따로 남길 수 있어요');
+      return false;
+    }
     e.replaceId = taken.id;
   }
   return true;
+}
+
+function editorDone() {
+  const mine = ed;
+  if (!mine?.ready || !readyToKeep(mine)) return;
+  closeEditor({ keep: true });
+}
+
+async function editorSave() {
+  const mine = ed;
+  if (!mine?.ready || !readyToKeep(mine)) return;
+  let file = mine.file;
+  if (!file) {
+    E.save.classList.add('is-busy');
+    try { await exportFor(mine, mine.version); } catch { /* 아래에서 알린다 */ } finally { E.save.classList.remove('is-busy'); }
+    file = mine.file;
+    if (!file) { showToast('사진을 준비하지 못했어요. 다시 시도해 주세요'); return; }
+  }
+  const result = await shareFiles([file]);
+  if (ed !== mine || result === 'cancelled') return;
+  if (result === 'retry') { showToast('사진을 준비했어요. 한 번 더 눌러 주세요'); return; }
+  if (result === 'error') { showToast('저장 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요'); return; }
+  mine.savedAt = Date.now();
+  closeEditor({ keep: true });
+}
+
+// 아이폰 공유 화면을 연다(‘이미지 저장’을 고르면 사진 앱에). 공유를 못 쓰는 브라우저에서는 파일로 내려받는다
+async function shareFiles(files) {
+  if (navigator.canShare && navigator.canShare({ files })) {
+    try {
+      await navigator.share({ files });
+      return 'shared';
+    } catch (err) {
+      if (err?.name === 'AbortError') return 'cancelled';
+      if (err?.name === 'NotAllowedError') return 'retry';
+      return 'error';
+    }
+  }
+  for (const f of files) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(f);
+    a.download = f.name;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  return 'downloaded';
 }
 
 async function keepEdit(e) {
@@ -1634,9 +1688,9 @@ async function keepEdit(e) {
   return kept;
 }
 
-function closeEditor() {
+// keep: 완료 · 앨범 저장에서만. X나 바깥을 눌러 닫으면 남기지 않는다
+function closeEditor({ keep = false } = {}) {
   const mine = ed;
-  const keep = keepChoice(mine);
   if (mine) clearTimeout(mine.timer);
   ed = null;
   E.canvas.width = E.canvas.height = 1;
@@ -1646,22 +1700,14 @@ function closeEditor() {
     if (mine.url) URL.revokeObjectURL(mine.url);
     if (mine.base) mine.base.width = mine.base.height = 1;
   };
-  if (keep) keepEdit(mine).finally(free); // 화면은 바로 닫고, 남기는 건 뒤에서
+  if (keep && mine?.ready) keepEdit(mine).finally(free); // 화면은 바로 닫고, 남기는 건 뒤에서
   else free();
 }
 
-// 스탬프 화면을 연 채 다른 앱으로 가도(카톡 등) 사진은 남겨 둔다. 끼니가 겹치면 묻지 않고 두었다가 닫을 때 묻는다
-function keepQuietly() {
-  const mine = ed;
-  if (!mine?.ready || timeBlocked(mine.takenAt) || mine.persistedVersion === mine.version) return;
-  const taken = mealTaken(dayKey(mine.takenAt), mine.meal, mine.id);
-  if (taken && mine.replaceId !== taken.id) return;
-  (mine.file ? Promise.resolve() : exportFor(mine, mine.version)).then(() => persistEdit(mine)).catch(() => {});
-}
-
 function bindEditor() {
-  $('#ed-close').addEventListener('click', closeEditor);
-  E.done.addEventListener('click', closeEditor); // 완료 = 닫기 = 앱에 남기기
+  $('#ed-close').addEventListener('click', () => closeEditor()); // 남기지 않고 닫기
+  E.done.addEventListener('click', editorDone);
+  E.save.addEventListener('click', editorSave);
 
   E.strip.addEventListener('click', (e) => {
     const b = e.target.closest('[data-style]');

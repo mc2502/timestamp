@@ -100,6 +100,12 @@ button, input { font: inherit; color: inherit; }
 button { background: none; border: 0; text-align: left; cursor: pointer; }
 button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 img { display: block; }
+/* 앱처럼: 길게 눌러도 글자가 선택(범위)되지 않고, 그림에 아이폰 메뉴가 뜨지 않게. 입력 칸만 예외.
+   사진 보기의 큰 사진만 길게 누르면 아이폰 메뉴(‘사진 앱에 저장’)가 나온다 */
+body { -webkit-user-select: none; user-select: none; }
+img { -webkit-touch-callout: none; }
+#vw-img { -webkit-touch-callout: default; }
+input, textarea { -webkit-user-select: text; user-select: text; }
 [hidden] { display: none !important; }
 .vh { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
@@ -503,7 +509,11 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .swatches.is-off { opacity: .35; pointer-events: none; }
 
 /* 저장 · 보내기: 옅은 청색 판 하나, 그림자 · 테두리 없이 */
-.ed-actions { display: flex; margin-top: 2px; }
+.ed-actions { display: flex; gap: 8px; margin-top: 2px; }
+/* 스탬프 화면 아래 두 버튼: 앨범 저장(옅은 회색) · 완료(옅은 청색) */
+.btn.sub { min-height: 52px; border-radius: 16px; background: rgba(25, 31, 40, .055); color: var(--ink2); transition: background-color .15s, transform .2s; }
+.btn.sub:active { background: rgba(25, 31, 40, .1); }
+.btn.sub:disabled { color: #a9b3c0; }
 
 /* ── 즉시 저장 알림 ── */
 .toast {
