@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=98';
-import { readExifDate } from './exif.js?v=98';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=98';
-import * as db from './db.js?v=98';
+} from './format.js?v=99';
+import { readExifDate } from './exif.js?v=99';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=99';
+import * as db from './db.js?v=99';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '98';
+const APP_VERSION = '99';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -320,8 +320,8 @@ const easeOutBack = (p) => {
    맨 위에서 당기면 화면 전체가 고무줄처럼 무겁게 따라 내려오고, 다음 마스코트 얼굴이 굴러 들어온다.
    덜 당기고 놓으면 튕기듯 제자리로, 충분히 당기고 놓으면 조금 내려온 채로 새로고침한다. */
 
-const PULL_READY = 76; // 화면이 이만큼 내려오면 놓을 준비가 된다
-const PULL_HOLD = 64; // 새로고침하는 동안 내려와 있는 높이 (알약이 딱 제자리에 오는 높이, 알약 아래 16px 틈)
+const PULL_READY = 78; // 화면이 이만큼 내려오면 놓을 준비가 된다
+const PULL_HOLD = 66; // 새로고침하는 동안 내려와 있는 높이 (알약이 딱 제자리에 오는 높이, 알약 아래 16px 틈)
 const SPRING = 'transform .42s cubic-bezier(.22, .8, .25, 1)'; // PT Note 탭 렌즈 곡선, 넘치지 않는다
 let refreshing = false;
 let pillTimer = 0;

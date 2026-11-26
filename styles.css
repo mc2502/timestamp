@@ -534,7 +534,7 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 /* ── 당겨서 새로고침 (PT Note PullRefresh) ── */
 /* 상태 표시줄 바로 아래(약 20px)는 아이폰이 흐리게 덮는 곳이라, 알약은 그보다 아래에 둔다 */
 .pull-refresh {
-  position: fixed; z-index: 15; top: calc(var(--st) + 14px); left: 0; right: 0; width: max-content; min-width: 152px; will-change: transform, opacity;
+  position: fixed; z-index: 15; top: calc(var(--st) + 16px); left: 0; right: 0; width: max-content; min-width: 152px; will-change: transform, opacity;
   max-width: calc(100% - 32px); margin-inline: auto; display: flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 40px; padding: 10px 14px; border-radius: 22px; color: var(--ink2); font-size: 13px; line-height: 20px;
   font-weight: 600; white-space: nowrap; pointer-events: none; --mascot-tone: var(--blue-ink);
