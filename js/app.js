@@ -1,16 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput, keepPhrases,
-} from './format.js?v=110';
-import { readExifDate } from './exif.js?v=110';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=110';
-import * as db from './db.js?v=110';
-import { albumCaption } from './album-copy.js?v=110';
-import { createBackup, readBackup } from './backup.js?v=110';
-import { RELEASES, APP_VERSION } from './releases.js?v=110';
+} from './format.js?v=111';
+import { readExifDate } from './exif.js?v=111';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=111';
+import * as db from './db.js?v=111';
+import { albumCaption } from './album-copy.js?v=111';
+import { createBackup, readBackup } from './backup.js?v=111';
+import { RELEASES, APP_VERSION } from './releases.js?v=111';
 
 // 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
-const APP_BUILD = '110';
+const APP_BUILD = '111';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1359,7 +1359,7 @@ async function quickSave(file, { target = null } = {}) {
       window.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
     }
     renderAll();
-    if (!plain) playStampSound();
+    if (style !== 'none') playStampSound(); // 스탬프를 찍을 때만 소리
     const done = target
       ? `${mealLabel(meal) ? `${mealLabel(meal)} ` : ''}사진을 ${replacing ? '교체했어요' : '남겼어요'}`
       : `${fmtClock(photo.takenAt)} 사진을 남겼어요`;
@@ -1453,6 +1453,8 @@ async function startEdit(file, { camera = false, target = null, notice = null } 
   E.hint.classList.remove('gone');
   buildStrip();
   openSheet(E.sheet);
+  E.strip.scrollLeft = 0;
+  revealTile(E.strip.querySelector('[aria-checked="true"]'));
 
   try {
     const photo = await readPhoto(file);
@@ -1512,7 +1514,19 @@ const STYLE_GLYPH = {
   film: '<b class="g-film">\'26</b>',
   meal: '<span class="g-mix"><b></b><i></i><i></i></span>', // 끼니 꼬리표 + 시각 + 날짜를 섞은 모양
   capsule: '<span class="g-capsule"></span>',
+  none: '<span class="g-none"></span>', // 빗금 친 동그라미: 스탬프 없음
 };
+// 스탬프 줄은 칸 크기를 그대로 두고 옆으로 넘긴다. 고른 칸이 가려져 있으면 보이게 옮긴다
+function revealTile(tile, smooth = false) {
+  if (!tile) return;
+  const strip = E.strip.getBoundingClientRect();
+  const r = tile.getBoundingClientRect();
+  const pad = parseFloat(getComputedStyle(E.strip).paddingLeft) || 0;
+  const left = r.left - (strip.left + pad);
+  const right = r.right - (strip.right - pad);
+  const dx = left < 0 ? left : right > 0 ? right : 0;
+  if (dx) E.strip.scrollBy({ left: dx, behavior: smooth && !reducedMotion() ? 'smooth' : 'auto' });
+}
 function buildStrip() {
   E.strip.innerHTML = STYLES.map((s) =>
     `<button class="st-tile" type="button" role="radio" data-style="${s.id}" aria-checked="${s.id === ed.style}" aria-label="${s.label}"${s.character ? ' aria-description="한 번 더 누르면 다른 포즈"' : ''}>`
@@ -1678,7 +1692,7 @@ function stampIn({ preview = false } = {}) {
   const mine = ed;
   if (!mine) return;
   const motion = mine.stampMotion = (mine.stampMotion || 0) + 1;
-  playStampSound();
+  if (mine.style !== 'none') playStampSound(); // ‘없음’은 찍는 소리 없이
   if (!settings.effects || reducedMotion()) { drawPreview(); return; }
   const start = performance.now();
   const dur = preview ? 180 : 380;
@@ -1977,6 +1991,7 @@ function bindEditor() {
   E.strip.addEventListener('click', (e) => {
     const b = e.target.closest('[data-style]');
     if (!b || !ed?.ready || ed.busy) return;
+    revealTile(b, true);
     if (b.dataset.style === ed.style) { shufflePose(); return; } // 고른 캐릭터를 한 번 더 누르면 다른 모습
     {
       const mine = ed;

@@ -9,7 +9,7 @@
 //  meal    혼합     왼쪽 위 끼니 라벨 + 시각 + 날짜 (여러 가지를 섞어 한 묶음으로)
 //  capsule 캡슐     왼쪽 아래 반투명 둥근 바탕 위 한 줄
 
-import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=110';
+import { fmtLongDate, fmtClock, monthDay, mealLabel, pad2 } from './format.js?v=111';
 
 const FONT = '"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
 
@@ -20,7 +20,8 @@ export const STYLES = [
   { id: 'capsule', label: '캡슐' },
   { id: 'meal', label: '혼합' },
   { id: 'big', label: '크게' },
-  { id: 'film', label: '필름' }, // 맨 오른쪽
+  { id: 'film', label: '필름' },
+  { id: 'none', label: '없음' }, // 맨 오른쪽: 스탬프 없이 사진만 (가로로 넘겨서 고른다)
 ];
 
 // 글자색: 흰색 · 하늘색(앱 아이콘) · 민트(오둥이가 든 책 색).
@@ -31,7 +32,7 @@ export const COLORS = {
 };
 
 // 필름 스탬프는 색을 고르지 않는다 (필름 카메라 날짜의 주황색)
-export const styleUsesColor = (style) => style !== 'film';
+export const styleUsesColor = (style) => style !== 'film' && style !== 'none';
 
 const font = (weight, px) => `${weight} ${px}px ${FONT}`;
 
@@ -109,6 +110,7 @@ function anchor(style, side, u) {
  * opts: { style, color, pop: { scale, alpha } | null }
  */
 export function drawStamp(ctx, side, info, { style = 'basic', color = 'white', pop = null } = {}) {
+  if (style === 'none') return; // ‘없음’: 사진만
   const u = side / 1080;
   const c = COLORS[color] || COLORS.white;
   ctx.save();

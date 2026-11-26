@@ -1,5 +1,5 @@
 // 달력 칸에서 올린 사진은 스탬프 없이 사진만, 사진 보기의 ‘사진 교체하기’는 스탬프 화면을 거쳐 보던 사진 대신 들어가고,
-// 즉시 저장(카메라)은 그대로 스탬프가 찍히는지 확인한다.
+// 즉시 저장(카메라)은 그대로 스탬프가 찍히고, 스탬프 화면의 ‘없음’은 사진만 남는지 확인한다.
 // 실행: PLAYWRIGHT_MODULE=/path/to/playwright node scripts/check-calendar-plain.cjs  (격리된 저장소 · 가짜 사진만 사용)
 const http = require('node:http');
 const fs = require('node:fs');
@@ -133,8 +133,47 @@ server.listen(0, '127.0.0.1', async () => {
     const d = await page.evaluate(async () => { const r = (await window.records()).find((x) => x.meal === 'dinner'); return r && { style: r.style, ink: await window.inkOf(r.blob) }; });
     console.log('instant save', JSON.stringify(d));
     assert.ok(d && d.style !== 'none' && d.ink.offRatio > 0.005, '즉시 저장은 스탬프가 있어야 함');
+    // 5) 스탬프 화면에서 ‘없음’(맨 오른쪽, 옆으로 넘겨서)을 고르면 스탬프 없이 사진만 남는다
+    await page.evaluate(() => {
+      localStorage.setItem('timestamp:settings', JSON.stringify({ ...JSON.parse(localStorage.getItem('timestamp:settings') || '{}'), instantSave: false }));
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.__tsBooted);
+    await page.evaluate(async () => {
+      const c4 = document.createElement('canvas'); c4.width = 1200; c4.height = 900;
+      const x = c4.getContext('2d'); x.fillStyle = '#cfe3d4'; x.fillRect(0, 0, 1200, 900);
+      window.photo = new File([await new Promise((r) => c4.toBlob(r, 'image/jpeg', 0.92))], 'none.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+      const input = document.querySelector('#input-photo');
+      input.click = () => { const dt = new DataTransfer(); dt.items.add(window.photo); input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true })); };
+      window.records = () => new Promise((resolve, reject) => {
+        const req = indexedDB.open('timestamp');
+        req.onsuccess = () => { const g = req.result.transaction('photos').objectStore('photos').getAll(); g.onsuccess = () => resolve(g.result); g.onerror = () => reject(g.error); };
+        req.onerror = () => reject(req.error);
+      });
+      window.inkOf = async (blob) => {
+        const bmp = await createImageBitmap(blob); const c5 = document.createElement('canvas'); c5.width = bmp.width; c5.height = bmp.height;
+        const x5 = c5.getContext('2d'); x5.drawImage(bmp, 0, 0); const d = x5.getImageData(0, 0, c5.width, c5.height).data;
+        let off = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 0xcf) + Math.abs(d[i + 1] - 0xe3) + Math.abs(d[i + 2] - 0xd4) > 30) off++;
+        return { offRatio: off / (d.length / 4) };
+      };
+      document.querySelector('#input-photo').click();
+    });
+    await page.waitForSelector('#editor:not([hidden])');
+    await page.waitForFunction(() => !document.querySelector('#ed-done').disabled);
+    const strip = await page.evaluate(() => { const el = document.querySelector('#style-strip'); return { scrolls: el.scrollWidth > el.clientWidth, tiles: el.querySelectorAll('[data-style]').length }; });
+    assert.deepEqual(strip, { scrolls: true, tiles: 8 });
+    await page.locator('[data-style="none"]').click();
+    assert.equal(await page.locator('[data-style="none"]').getAttribute('aria-checked'), 'true');
+    if (out) await page.screenshot({ path: `${out}/style-none.png` });
+    await page.locator('#ed-done').click();
+    await page.waitForSelector('#editor', { state: 'hidden' });
+    await until(async () => (await window.records()).some((r) => r.style === 'none' && r.meal === 'dinner'));
+    const e = await page.evaluate(async () => { const r = (await window.records()).find((x) => x.meal === 'dinner'); return { style: r.style, ink: await window.inkOf(r.blob) }; });
+    console.log('stamp none', JSON.stringify(e));
+    assert.equal(e.style, 'none');
+    assert.ok(e.ink.offRatio < 0.001, '‘없음’을 고르면 스탬프가 없어야 함');
     assert.deepEqual(errors, []);
-    console.log('PASS 달력 칸은 스탬프 없음 · 사진 교체하기는 스탬프 화면에서 교체 · 즉시 저장은 스탬프 유지');
+    console.log('PASS 달력 칸은 스탬프 없음 · 사진 교체하기는 스탬프 화면에서 교체 · 즉시 저장은 스탬프 유지 · ‘없음’은 사진만');
   } finally { await browser.close(); server.close(); }
 });
 process.on('unhandledRejection', (e) => { console.error(e); process.exit(1); });

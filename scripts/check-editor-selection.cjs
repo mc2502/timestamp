@@ -52,7 +52,7 @@ const out=process.env.SCREENSHOT_DIR;
   await page.evaluate(()=>{qa.state.records=qa.state.records.filter(r=>r.meal==='breakfast'||r.meal==='lunch');qa.fillFields();window.stampFrames=[]});
   await page.locator('#meal-track').focus();await page.keyboard.press('Home');await page.keyboard.press('ArrowRight');
   let firstBounds;
-  for(const style of ['odung','perpeng','basic','capsule','meal','big','film']){
+  for(const style of ['odung','perpeng','basic','capsule','meal','big','film','none']){
    const button=page.locator(`[data-style="${style}"]`);await button.click();await page.waitForTimeout(230);
    assert.equal(await page.locator('#style-strip [aria-checked="true"]').count(),1);
    assert.equal(await button.getAttribute('aria-checked'),'true');
