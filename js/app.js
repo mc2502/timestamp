@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=84';
-import { readExifDate } from './exif.js?v=84';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=84';
-import * as db from './db.js?v=84';
+} from './format.js?v=85';
+import { readExifDate } from './exif.js?v=85';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=85';
+import * as db from './db.js?v=85';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '84';
+const APP_VERSION = '85';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -153,6 +153,7 @@ async function init() {
   window.addEventListener('pagehide', rememberPlace);
 
   setInterval(() => tick(), 15000);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) keepQuietly(); });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { state.hiddenAt = Date.now(); rememberPlace(); return; }
     tick();
@@ -1702,22 +1703,54 @@ async function persistEdit(e) {
   return true;
 }
 
+// 스탬프 화면에 올라온 사진은 이미 앱에 올린 것으로 본다: 따로 ‘저장’ 없이, 닫으면 지금 모습 그대로 앨범 탭 · 달력에 남는다.
+// 아래 ‘앨범에 저장하기’는 스탬프 찍힌 사진을 아이폰 앨범 · 카카오톡으로 보내고 싶을 때만.
+// 그날 그 끼니 사진이 이미 있으면 바꿀지 묻고, 취소하면 이 새 사진은 남기지 않는다 (한 끼니에 한 장)
+function keepChoice(e) {
+  if (!e?.ready || timeBlocked(e.takenAt) || e.persistedVersion === e.version) return false;
+  const taken = mealTaken(dayKey(e.takenAt), e.meal, e.id);
+  if (taken && e.replaceId !== taken.id) {
+    const ok = window.confirm(`이날 ${mealLabel(e.meal)} 사진이 이미 있어요.\n새 사진으로 바꿀까요? 취소하면 이 사진은 남기지 않아요.`);
+    if (!ok) return false;
+    e.replaceId = taken.id;
+  }
+  return true;
+}
+
+async function keepEdit(e) {
+  try {
+    if (!e.file) await exportFor(e, e.version);
+  } catch { /* 아래에서 못 남겼다고 알린다 */ }
+  const replacing = Boolean(e.replaceId);
+  const kept = await persistEdit(e);
+  const label = mealLabel(e.meal);
+  showToast(kept ? `${label ? `${label} ` : ''}사진을 ${replacing ? '바꿨어요' : '남겼어요'}` : '이 기기에는 기록을 남기지 못했어요');
+  return kept;
+}
+
 function closeEditor() {
-  if (ed?.ready) {
-    if (ed.persistedVersion === null) {
-      if (!window.confirm('이 사진은 아직 저장하지 않았어요. 닫을까요?')) return;
-    } else if (ed.persistedVersion !== ed.version) {
-      if (!window.confirm('저장한 뒤에 바꾼 내용은 앨범에 남지 않아요. 닫을까요?')) return;
-    }
-  }
-  if (ed) {
-    clearTimeout(ed.timer);
-    if (ed.url) URL.revokeObjectURL(ed.url);
-    if (ed.base) ed.base.width = ed.base.height = 1;
-  }
+  const mine = ed;
+  const keep = keepChoice(mine);
+  if (mine) clearTimeout(mine.timer);
   ed = null;
   E.canvas.width = E.canvas.height = 1;
   closeSheet(E.sheet);
+  const free = () => {
+    if (!mine) return;
+    if (mine.url) URL.revokeObjectURL(mine.url);
+    if (mine.base) mine.base.width = mine.base.height = 1;
+  };
+  if (keep) keepEdit(mine).finally(free); // 화면은 바로 닫고, 남기는 건 뒤에서
+  else free();
+}
+
+// 스탬프 화면을 연 채 다른 앱으로 가도(카톡 등) 사진은 남겨 둔다. 끼니가 겹치면 묻지 않고 두었다가 닫을 때 묻는다
+function keepQuietly() {
+  const mine = ed;
+  if (!mine?.ready || timeBlocked(mine.takenAt) || mine.persistedVersion === mine.version) return;
+  const taken = mealTaken(dayKey(mine.takenAt), mine.meal, mine.id);
+  if (taken && mine.replaceId !== taken.id) return;
+  (mine.file ? Promise.resolve() : exportFor(mine, mine.version)).then(() => persistEdit(mine)).catch(() => {});
 }
 
 function bindEditor() {
