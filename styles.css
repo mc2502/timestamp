@@ -538,10 +538,11 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
   min-height: 40px; padding: 10px 14px; border-radius: 22px; color: var(--ink2); font-size: 13px; line-height: 20px;
   font-weight: 600; white-space: nowrap; pointer-events: none; --mascot-tone: var(--blue-ink);
 }
+/* 유리 흐림(backdrop-filter)은 쓰지 않는다: 화면이 당겨져 움직이는 동안 아이폰에서 알약 윗부분이 뭉개져 보여서.
+   뒤는 어차피 맨 위 단색 배경이라 거의 불투명한 바탕이면 보기엔 같다 */
 .pull-refresh::before {
   content: ''; position: absolute; inset: 0; z-index: -1; border: 1px solid var(--glass-rim); border-radius: inherit;
-  background: rgba(248, 251, 255, .94); box-shadow: 0 3px 12px rgba(29, 54, 86, .08);
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  background: rgba(248, 251, 255, .98); box-shadow: 0 3px 12px rgba(29, 54, 86, .08);
 }
 .pull-refresh.has-face { padding: 6px 16px 6px 6px; }
 .pull-refresh[data-family="odung"] { --mascot-tone: #4e8ee8; }
