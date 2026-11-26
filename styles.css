@@ -160,7 +160,16 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .grid-day > span { font-size: 12px; font-weight: 500; color: var(--ink3); white-space: nowrap; }
 
 .grid-day > span b { font-size: 14px; font-weight: 650; color: var(--ink2); margin-right: 1px; }
-.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 0 var(--gr) 0 var(--gl); } /* 사진도 제목 · 끼니 줄 · 카드 · 날짜와 같은 왼쪽 · 오른쪽 선 */
+/* 사진도 제목 · 끼니 줄 · 카드 · 날짜와 같은 왼쪽 · 오른쪽 선.
+   하루 사진은 한 줄: 칸 크기는 세 칸이 맞던 그대로이고, 간식까지 네 장 이상이면 아래로 내리지 않고 옆으로 넘긴다.
+   위아래 4px 여유는 초점 테두리가 잘리지 않게 (같은 만큼 바깥 여백을 줄여 자리는 그대로) */
+.grid {
+  display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 8px) / 3); gap: 4px;
+  padding: 4px var(--gr) 4px var(--gl); margin-block: -4px; scroll-padding-inline: var(--gl) var(--gr);
+  overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none;
+}
+.grid::-webkit-scrollbar { display: none; }
+.grid > .tile { scroll-snap-align: start; }
 .tile { position: relative; display: block; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--skeleton); transition: transform .2s; }
 .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; transition: filter .2s; }
 .tile:active { transform: scale(.96); }
