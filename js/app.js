@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=85';
-import { readExifDate } from './exif.js?v=85';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=85';
-import * as db from './db.js?v=85';
+} from './format.js?v=86';
+import { readExifDate } from './exif.js?v=86';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=86';
+import * as db from './db.js?v=86';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '85';
+const APP_VERSION = '86';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -609,7 +609,23 @@ function handleFile(file, { camera = false } = {}) {
 
 // 달력의 끼니 칸: 그림은 그대로 두고, 누르면 사진을 골라 그 칸에 바로 넣는다. 빈 칸은 올리기, 사진이 있는 칸은 바꾸기.
 // 누른 순간에만 옅은 테두리가 잠깐 켜졌다 사라진다
+// 오늘 칸은 아직 안 온 끼니를 미리 채우지 않게, 끼니 시간보다 2시간 앞서 열린다 (지난날은 언제든)
+const SLOT_OPEN = { breakfast: 3, lunch: 9, dinner: 15 };
+function slotOpensAt(day, meal) {
+  if (day !== dayKey(new Date())) return null;
+  const at = fromDayKey(day);
+  at.setHours(SLOT_OPEN[meal] ?? 0, 0, 0, 0);
+  return at.getTime() > Date.now() ? at : null;
+}
+
 function pickForSlot(el) {
+  const meal = el.dataset.slot;
+  const opens = slotOpensAt(state.selectedDay, meal);
+  if (opens) {
+    const h = opens.getHours();
+    showToast(`${mealLabel(meal)}은 ${h < 12 ? '오전' : '오후'} ${h % 12 || 12}시부터 올릴 수 있어요`);
+    return;
+  }
   clearTimeout(el.tapTimer);
   el.classList.remove('is-tapped');
   void el.offsetWidth; // 연달아 눌러도 처음부터
