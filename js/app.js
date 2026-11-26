@@ -1,16 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput, keepPhrases,
-} from './format.js?v=116';
-import { readExifDate } from './exif.js?v=116';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=116';
-import * as db from './db.js?v=116';
-import { albumCaption } from './album-copy.js?v=116';
-import { createBackup, readBackup } from './backup.js?v=116';
-import { RELEASES, APP_VERSION } from './releases.js?v=116';
+} from './format.js?v=117';
+import { readExifDate } from './exif.js?v=117';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=117';
+import * as db from './db.js?v=117';
+import { albumCaption } from './album-copy.js?v=117';
+import { createBackup, readBackup } from './backup.js?v=117';
+import { RELEASES, APP_VERSION } from './releases.js?v=117';
 
 // 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
-const APP_BUILD = '116';
+const APP_BUILD = '117';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
