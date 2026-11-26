@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=88';
-import { readExifDate } from './exif.js?v=88';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=88';
-import * as db from './db.js?v=88';
+} from './format.js?v=89';
+import { readExifDate } from './exif.js?v=89';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=89';
+import * as db from './db.js?v=89';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '88';
+const APP_VERSION = '89';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -733,7 +733,7 @@ function openLaunch() {
 
 let toastTimer = 0;
 
-// 알림 한 줄 (공유 화면은 열지 않는다: 남긴 사진은 이미 앱에 있고, 사진 앱 저장은 사진 보기에서 길게 눌러서)
+// 알림 한 줄 (공유 화면은 열지 않는다: 남긴 사진은 이미 앱에 있고, 사진 앱 저장은 사진 보기에서 길게 눌러 아이폰 메뉴로)
 function showToast(text, { pop = false, stay = false } = {}) {
   const el = $('#toast');
   clearTimeout(toastTimer);

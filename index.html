@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=88">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=88">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=88">
+<link rel="manifest" href="manifest.webmanifest?v=89">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=89">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=89">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=88">
+<link rel="stylesheet" href="styles.css?v=89">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=88"></script>
+<script type="module" src="js/app.js?v=89"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -186,7 +186,7 @@
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=88" alt="" aria-hidden="true" width="40" height="40">
+          <img class="about-icon" src="assets/icons/icon-192.png?v=89" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
@@ -253,7 +253,6 @@
     <div class="sheet-b">
       <div class="viewer-img"><img id="vw-img" alt=""></div>
       <div class="msg-slot" id="vw-msg" aria-live="polite"></div>
-      <p class="vw-hint">사진을 길게 누르면 ‘사진 앱에 저장’이 나와요</p>
     </div>
     <div class="sheet-f">
       <button class="btn ico" type="button" id="vw-del" aria-label="이 사진 지우기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>
