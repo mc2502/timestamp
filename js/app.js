@@ -1,15 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=104';
-import { readExifDate } from './exif.js?v=104';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=104';
-import * as db from './db.js?v=104';
-import { albumCaption } from './album-copy.js?v=104';
-import { createBackup, readBackup } from './backup.js?v=104';
+} from './format.js?v=105';
+import { readExifDate } from './exif.js?v=105';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=105';
+import * as db from './db.js?v=105';
+import { albumCaption } from './album-copy.js?v=105';
+import { createBackup, readBackup } from './backup.js?v=105';
+import { RELEASES, APP_VERSION } from './releases.js?v=105';
 
-// 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '104';
+// 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
+const APP_BUILD = '105';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -153,7 +154,8 @@ async function init() {
   bindViewer();
   fillSettings();
   renderAll();
-  $('#app-version').textContent = `TimeStamp 버전 ${APP_VERSION}. 화면을 아래로 당기면 새로고침하면서 새 버전도 받아요.`;
+  $('#app-version').textContent = `버전 ${APP_VERSION}`;
+  renderReleaseNotes();
   window.__tsBooted = true;
   try { sessionStorage.removeItem('timestamp:healed'); } catch { /* 없어도 된다 */ }
   charsReady();
@@ -189,7 +191,7 @@ async function checkForUpdate() {
     const res = await fetch(`index.html?check=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(3500) });
     const html = res.ok ? await res.text() : '';
     const latest = /app\.js\?v=(\d+)/.exec(html)?.[1];
-    if (latest && latest !== APP_VERSION && !refreshing) {
+    if (latest && latest !== APP_BUILD && !refreshing) {
       reload();
     }
   } catch { /* 확인 못 해도 지금 버전으로 계속 쓴다 */ }
@@ -700,6 +702,34 @@ function shiftMonth(delta) {
 
 function fillSettings() {
   for (const input of $$('[data-setting]')) input.checked = Boolean(settings[input.dataset.setting]);
+}
+
+function renderReleaseNotes() {
+  const fragment = document.createDocumentFragment();
+  for (const release of RELEASES) {
+    const entry = document.createElement('article');
+    entry.className = 'release-entry';
+    const header = document.createElement('header');
+    const version = document.createElement('h3');
+    version.textContent = release.version;
+    const date = document.createElement('time');
+    date.dateTime = release.date;
+    const [y, m, d] = release.date.split('-');
+    date.textContent = `${y}. ${Number(m)}. ${Number(d)}`;
+    header.append(version, date);
+    const title = document.createElement('p');
+    title.className = 'release-title';
+    title.textContent = release.title;
+    const list = document.createElement('ul');
+    for (const change of release.changes) {
+      const item = document.createElement('li');
+      item.textContent = change;
+      list.append(item);
+    }
+    entry.append(header, title, list);
+    fragment.append(entry);
+  }
+  $('#release-list').replaceChildren(fragment);
 }
 
 /* ── 시트 ── */

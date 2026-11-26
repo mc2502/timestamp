@@ -7,6 +7,10 @@ const path=require('node:path');
  const root=path.resolve(__dirname,'..');
  const source=await fs.readFile(path.join(root,'sw.js'),'utf8');
  const current=Number(/const VERSION = '(\d+)'/.exec(source)[1]);
+ const releaseSource=await fs.readFile(path.join(root,'js/releases.js'),'utf8');
+ const publicVersion=/version:\s*'([^']+)'/.exec(releaseSource)[1];
+ const nextParts=publicVersion.split('.').map(Number);nextParts[2]++;
+ const nextPublicVersion=nextParts.join('.');
  let version=current,slow=false,slowBody=false;const requests=[];
  const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');requests.push(url.pathname+url.search);
@@ -15,7 +19,8 @@ const path=require('node:path');
   try{
    let body=await fs.readFile(path.join(root,relative));
    const ext=path.extname(relative),text=['.js','.html','.css','.webmanifest'].includes(ext);
-   if(text)body=Buffer.from(body.toString().replace(/\?v=\d+/g,`?v=${version}`).replace(/const (APP_VERSION|VERSION) = '\d+';/g,(_,n)=>`const ${n} = '${version}';`));
+   if(text)body=Buffer.from(body.toString().replace(/\?v=\d+/g,`?v=${version}`).replace(/const (APP_BUILD|VERSION) = '\d+';/g,(_,n)=>`const ${n} = '${version}';`));
+   if(relative==='js/releases.js'&&version>current)body=Buffer.from(body.toString().replace(`version: '${publicVersion}'`,`version: '${nextPublicVersion}'`));
    if(slow&&relative==='index.html'&&!url.searchParams.has('check'))await new Promise(r=>setTimeout(r,8000));
    if(slowBody && relative==='index.html'&&!url.searchParams.has('check')){res.writeHead(200,{'content-type':'text/html'});res.write(body.subarray(0,50));await new Promise(r=>setTimeout(r,8000));res.end(body.subarray(50));return}
    res.writeHead(200,{'content-type':({'.js':'text/javascript','.html':'text/html','.css':'text/css','.webmanifest':'application/manifest+json','.png':'image/png'})[ext]||'application/octet-stream','cache-control':'no-store'}).end(body);
@@ -55,11 +60,13 @@ const path=require('node:path');
    assert.equal(requests.some(x=>x.startsWith('/assets/')&&!x.includes('/icons/')),false);
    assert.equal(await page.evaluate(()=>caches.has('unrelated-app')),true);
    await page.reload();await page.waitForFunction(()=>window.__tsBooted);
-   assert.match(await page.locator('#app-version').textContent(),new RegExp(`버전 ${version}`));
+   assert.equal(await page.locator('#app-version').textContent(),`버전 ${nextPublicVersion}`);
   });
   await check('업데이트한 버전도 오프라인 실행',async()=>{
    await context.setOffline(true);await page.reload();await page.waitForFunction(()=>window.__tsBooted);
-   assert.match(await page.locator('#app-version').textContent(),new RegExp(`버전 ${version}`));
+   assert.equal(await page.locator('#app-version').textContent(),`버전 ${nextPublicVersion}`);
+   await page.locator('#open-settings').click();await page.locator('#release-notes summary').click();
+   assert.equal(await page.locator('.release-entry h3').first().textContent(),nextPublicVersion);
    const files=await page.evaluate(async()=>{const c=await caches.open('timestamp-art-v1');return(await c.keys()).length});
    assert.ok(files>40);
   });

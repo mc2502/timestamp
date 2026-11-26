@@ -349,8 +349,25 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 
 .set-p { font-size: 13px; line-height: 1.6; color: var(--ink2); padding: 12px 0; }
 
-.set-about { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); }
+.set-about { display: flex; align-items: center; gap: 12px; padding: 16px 0; }
+.set-about .about-icon { flex: none; border-radius: 10px; }
+.set-app-name { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+.set-app-name b { font-size: 15px; font-weight: 650; line-height: 22px; }
+#app-version { font-size: 13px; line-height: 20px; color: var(--ink3); }
 .set-about .pt-text-button { flex: none; }
+.release-notes { border-top: 1px solid var(--line); }
+.release-notes summary { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; font-size: 14px; font-weight: 600; }
+.release-notes summary::-webkit-details-marker { display: none; }
+.release-notes summary svg { width: 16px; height: 16px; flex: none; color: var(--ink3); transition: transform .18s; }
+.release-notes[open] summary svg { transform: rotate(90deg); }
+.release-entry { padding: 8px 0 20px; }
+.release-entry + .release-entry { border-top: 1px solid var(--line); padding-top: 20px; }
+.release-entry header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.release-entry h3 { font-size: 17px; line-height: 24px; font-weight: 700; color: #24569f; }
+.release-entry time { font-size: 12px; line-height: 18px; color: var(--ink3); white-space: nowrap; }
+.release-title { font-size: 14px; line-height: 22px; font-weight: 600; margin-bottom: 8px; }
+.release-entry ul { padding-left: 16px; color: var(--ink2); font-size: 13px; line-height: 21px; }
+.release-entry li + li { margin-top: 6px; }
 
 /* 앱 열면 바로 카메라 */
 .pt-entry-hero { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0 18px; }

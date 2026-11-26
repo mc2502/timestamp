@@ -1,5 +1,5 @@
 // 버전 숫자는 scripts/bump-version.sh 가 올린다.
-const VERSION = '104';
+const VERSION = '105';
 const CACHE = `timestamp-v${VERSION}`;
 const ART_CACHE = 'timestamp-art-v1';
 const SHELL = [
@@ -14,6 +14,7 @@ const SHELL = [
   `./js/db.js?v=${VERSION}`,
   `./js/backup.js?v=${VERSION}`,
   `./js/album-copy.js?v=${VERSION}`,
+  `./js/releases.js?v=${VERSION}`,
   './assets/mascots/odung-camera-v3.png',
   './assets/mascots/perpeng-camera-v3.png',
   './assets/poses/odung-fullbody.png',

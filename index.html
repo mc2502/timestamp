@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜와 시각을 남기고 달력으로 돌아보는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=104">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=104">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=104">
+<link rel="manifest" href="manifest.webmanifest?v=105">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=105">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=105">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=104">
+<link rel="stylesheet" href="styles.css?v=105">
 <script>
   // 느린 시작은 저장본을 지우거나 자동 새로고침하지 않는다.
   window.setTimeout(function () {
@@ -28,7 +28,7 @@
     if (retry) retry.hidden = false;
   }, 6000);
 </script>
-<script type="module" src="js/app.js?v=104"></script>
+<script type="module" src="js/app.js?v=105"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -179,11 +179,18 @@
         <div class="backup-actions"><button type="button" id="backup-export">백업 파일 만들기</button><button type="button" id="backup-import">백업에서 되살리기</button></div>
         <p class="set-p backup-status" id="backup-status" role="status">복원할 때 기존 사진은 바꾸지 않고, 없는 기록만 추가해요</p>
         <input class="vh" type="file" id="input-backup" accept=".timestamp,application/octet-stream" tabindex="-1" aria-hidden="true">
+      </section>
+
+      <section class="set-group set-app" aria-label="앱 정보">
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=104" alt="" aria-hidden="true" width="40" height="40">
-          <p class="set-p" id="app-version"></p>
+          <img class="about-icon" src="assets/icons/icon-192.png?v=105" alt="" aria-hidden="true" width="40" height="40">
+          <div class="set-app-name"><b>TimeStamp</b><span id="app-version"></span></div>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
+        <details class="release-notes" id="release-notes">
+          <summary>업데이트 노트<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7l-7 7"/></svg></summary>
+          <div id="release-list"></div>
+        </details>
       </section>
     </div>
   </div>
