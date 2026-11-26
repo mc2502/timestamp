@@ -12,12 +12,12 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="description" content="식단 사진에 날짜, 요일, 시각을 찍어 트레이너에게 보내는 앱">
 <title>TimeStamp</title>
-<link rel="manifest" href="manifest.webmanifest?v=87">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=87">
-<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=87">
+<link rel="manifest" href="manifest.webmanifest?v=88">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=88">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=88">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="styles.css?v=87">
+<link rel="stylesheet" href="styles.css?v=88">
 <script>
   // 배포 직후 예전 파일과 새 파일이 섞여 앱이 시작하지 못하면, 한 번만 캐시를 비우고 새로 불러온다.
   (function () {
@@ -38,7 +38,7 @@
     setTimeout(function () { if (!window.__tsBooted) heal(); }, 6000);
   })();
 </script>
-<script type="module" src="js/app.js?v=87"></script>
+<script type="module" src="js/app.js?v=88"></script>
 </head>
 <body>
 <div id="app" class="app">
@@ -129,7 +129,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite" hidden>
   <img class="toast-face" data-art="face" alt="" aria-hidden="true" width="28" height="28">
   <span class="toast-text" id="toast-text"></span>
-  <button class="toast-btn" type="button" id="toast-send" hidden>앨범에 저장</button>
 </div>
 
 <!-- 당겨서 새로고침: 다음에 올 마스코트 얼굴이 굴러 들어온다 (PT Note) -->
@@ -179,31 +178,15 @@
           <span class="switch"><input type="checkbox" role="switch" data-setting="photoTime" aria-describedby="d-phototime"><i aria-hidden="true"></i></span>
         </label>
         <label class="set-row">
-          <span class="set-m"><b>원본 사진도 저장</b><span id="d-original">스탬프 없는 원본도 함께 남겨 두고, 사진 보기에서 따로 저장할 수 있어요. 카카오톡에는 스탬프 사진만 가요.</span></span>
-          <span class="switch"><input type="checkbox" role="switch" data-setting="saveOriginal" aria-describedby="d-original"><i aria-hidden="true"></i></span>
-        </label>
-        <label class="set-row">
           <span class="set-m"><b>셔터 소리 · 스탬프 효과</b><span id="d-effects">스탬프가 찍힐 때 소리와 움직임이 나와요. 무음 모드에서는 소리가 나지 않아요.</span></span>
           <span class="switch"><input type="checkbox" role="switch" data-setting="effects" aria-describedby="d-effects"><i aria-hidden="true"></i></span>
         </label>
       </section>
 
-      <details class="set-group set-details">
-        <summary>아이폰 사진 앱에 따로 모으기</summary>
-        <p class="set-p">웹앱은 사진 앱에 앨범을 직접 만들 수 없어요. 단축어를 한 번 만들어 두면 공유 화면에서 ‘TimeStamp’ 앨범으로 바로 넣을 수 있어요.</p>
-        <ol class="set-steps">
-          <li>사진 앱에서 ‘TimeStamp’ 앨범을 만들어요.</li>
-          <li>단축어 앱에서 새 단축어를 만들고 이름을 ‘TimeStamp 앨범에 저장’으로 정해요.</li>
-          <li>설정(ⓘ)에서 <b>공유 시트에 보기</b>를 켜고, 받는 항목을 이미지로 정해요.</li>
-          <li>동작 <b>사진 앨범에 저장</b>을 넣고 앨범을 ‘TimeStamp’로 골라요.</li>
-          <li>이제 ‘앨범에 저장’을 누른 뒤 공유 화면에서 이 단축어를 골라요.</li>
-        </ol>
-      </details>
-
       <section class="set-group">
         <p class="set-p" id="storage-note"></p>
         <div class="set-about">
-          <img class="about-icon" src="assets/icons/icon-192.png?v=87" alt="" aria-hidden="true" width="40" height="40">
+          <img class="about-icon" src="assets/icons/icon-192.png?v=88" alt="" aria-hidden="true" width="40" height="40">
           <p class="set-p" id="app-version"></p>
           <button class="pt-text-button" type="button" id="refresh-now">새로고침</button>
         </div>
@@ -270,9 +253,7 @@
     <div class="sheet-b">
       <div class="viewer-img"><img id="vw-img" alt=""></div>
       <div class="msg-slot" id="vw-msg" aria-live="polite"></div>
-      <div class="vw-more" id="vw-more" hidden>
-        <button class="pt-text-button" type="button" id="vw-orig">원본 사진도 저장하기</button>
-      </div>
+      <p class="vw-hint">사진을 길게 누르면 ‘사진 앱에 저장’이 나와요</p>
     </div>
     <div class="sheet-f">
       <button class="btn ico" type="button" id="vw-del" aria-label="이 사진 지우기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg></button>

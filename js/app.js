@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=87';
-import { readExifDate } from './exif.js?v=87';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=87';
-import * as db from './db.js?v=87';
+} from './format.js?v=88';
+import { readExifDate } from './exif.js?v=88';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=88';
+import * as db from './db.js?v=88';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '87';
+const APP_VERSION = '88';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -33,7 +33,6 @@ const settings = {
   launchCamera: false,
   instantSave: false,
   photoTime: true, // 사진에 남은 촬영 시각(EXIF)을 쓴다. 끄면 지금 시각
-  saveOriginal: false,
   effects: true,
   stampStyle: null, // 마지막에 쓴 스탬프 (즉시 저장도 이걸로). 처음엔 그날의 캐릭터
   stampColor: 'white',
@@ -505,7 +504,6 @@ function bindEvents() {
     });
   }
 
-  $('#toast-send').addEventListener('click', toastSend);
 
   for (const sheet of $$('.sheet')) {
     sheet.addEventListener('click', (e) => {
@@ -734,51 +732,24 @@ function openLaunch() {
 /* ── 알림 ── */
 
 let toastTimer = 0;
-let toastFile = null;
-let toastRecordId = null;
 
-let toastMark = true;
-
-// file이 있으면 오른쪽에 공유 버튼(label). mark: 공유를 마치면 그 사진을 ‘공유했어요’로 표시
-function showToast(text, { file = null, recordId = null, label = '앨범에 저장', mark = true, pop = false, stay = false } = {}) {
+// 알림 한 줄 (공유 화면은 열지 않는다: 남긴 사진은 이미 앱에 있고, 사진 앱 저장은 사진 보기에서 길게 눌러서)
+function showToast(text, { pop = false, stay = false } = {}) {
   const el = $('#toast');
   clearTimeout(toastTimer);
   $('#toast-text').textContent = text;
-  toastFile = file;
-  toastRecordId = recordId;
-  toastMark = mark;
-  $('#toast-send').hidden = !file;
-  $('#toast-send').textContent = label;
   el.classList.remove('pop');
   el.hidden = false;
   if (pop && settings.effects && !reducedMotion()) {
     void el.offsetWidth;
     el.classList.add('pop');
   }
-  if (!stay) toastTimer = setTimeout(hideToast, file ? 6000 : 3000);
+  if (!stay) toastTimer = setTimeout(hideToast, 3000);
 }
 
 function hideToast() {
   clearTimeout(toastTimer);
   $('#toast').hidden = true;
-  toastFile = null;
-  toastRecordId = null;
-}
-
-async function toastSend() {
-  if (!toastFile) return;
-  const file = toastFile;
-  const id = toastRecordId;
-  const mark = toastMark;
-  const label = $('#toast-send').textContent;
-  clearTimeout(toastTimer);
-  const result = await shareFiles([file]);
-  if (result === 'cancelled') { toastTimer = setTimeout(hideToast, 4000); return; }
-  if (result === 'retry') { showToast('한 번 더 눌러 주세요', { file, recordId: id, label, mark, stay: true }); return; }
-  if (result === 'error') { showToast('공유 화면을 열지 못했어요'); return; }
-  const rec = mark && state.records.find((r) => r.id === id);
-  if (rec) await updateRecord({ ...rec, sentAt: Date.now() });
-  showToast(result === 'downloaded' ? '사진을 내려받았어요' : '다 됐어요');
 }
 
 /* ── 기록 데이터 ── */
@@ -849,18 +820,7 @@ async function removeRecord(id) {
   return true;
 }
 
-// 저장과 보내기는 같은 아이폰 공유 화면이라 어디로 갔는지는 알 수 없다
-function statusText(rec) {
-  return rec.sentAt || rec.savedAt ? '공유했어요' : '';
-}
-
 const stampedName = (date) => `TimeStamp_${fileStamp(date)}.jpg`;
-
-function originalFile(blob, date) {
-  const type = blob.type || 'image/jpeg';
-  const ext = type.includes('png') ? 'png' : type.includes('heic') ? 'heic' : 'jpg';
-  return new File([blob], `TimeStamp_${fileStamp(date)}_원본.${ext}`, { type });
-}
 
 /* ── 화면 그리기 ── */
 
@@ -1173,32 +1133,6 @@ async function renderStamped(img, rect, info, look, frame = {}) {
   return { file: new File([blob], stampedName(info.date), { type: 'image/jpeg', lastModified: info.date.getTime() }), thumb, size: S };
 }
 
-// 공유 화면을 연다. 공유를 못 쓰는 브라우저에서는 파일로 내려받는다.
-async function shareFiles(files) {
-  let list = files;
-  if (navigator.canShare && list.length > 1 && !navigator.canShare({ files: list })) list = [files[0]];
-  if (navigator.canShare && navigator.canShare({ files: list })) {
-    try {
-      await navigator.share({ files: list });
-      return 'shared';
-    } catch (err) {
-      if (err?.name === 'AbortError') return 'cancelled';
-      if (err?.name === 'NotAllowedError') return 'retry';
-      return 'error';
-    }
-  }
-  for (const f of list) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(f);
-    a.download = f.name;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  }
-  return 'downloaded';
-}
-
 /* ── 즉시 저장: 스탬프 화면 없이, 가운데를 정사각형으로, 마지막에 쓴 스탬프로 ── */
 
 // target: 달력의 끼니 칸이나 사진 보기의 ‘바꾸기’에서 골랐을 때 그 날 · 끼니(· 바꿀 사진). 스탬프 화면 없이 바로 넣고,
@@ -1239,7 +1173,7 @@ async function quickSave(file, { target = null } = {}) {
       height: out.size,
       blob: out.file,
       thumb: out.thumb,
-      original: settings.saveOriginal ? file : null,
+      original: null,
       createdAt: Date.now(),
       savedAt: null,
       sentAt: null,
@@ -1265,8 +1199,7 @@ async function quickSave(file, { target = null } = {}) {
     const done = target
       ? `${mealLabel(meal) ? `${mealLabel(meal)} ` : ''}사진을 ${replacing ? '바꿨어요' : '남겼어요'}`
       : `${fmtClock(photo.takenAt)} 사진을 남겼어요`;
-    // 달력 칸에서 넣은 사진은 앨범에서 고른 것이라 ‘앨범에 저장’을 붙이지 않는다
-    showToast(kept ? done : '이 기기에는 남기지 못했어요', target ? { pop: true } : { file: out.file, recordId: kept ? rec.id : null, pop: true });
+    showToast(kept ? done : '이 기기에는 남기지 못했어요', { pop: true });
   } catch {
     showToast('사진을 열지 못했어요. 다시 시도해 주세요');
   } finally {
@@ -1658,7 +1591,7 @@ async function persistEdit(e) {
     height: e.outSize,
     blob: e.file,
     thumb: e.thumb,
-    original: settings.saveOriginal ? e.source : null,
+    original: null,
     createdAt: e.createdAt,
     savedAt: e.savedAt,
     sentAt: e.sentAt,
@@ -1913,8 +1846,7 @@ function viewerTitles(rec) {
   const d = new Date(rec.takenAt);
   // 끼니는 바꿀 수 없고 제목에 붙여 보여 준다 (끼니는 찍을 때 스탬프 화면에서 정한다)
   V.title.textContent = rec.meal ? `${monthDay(d)} ${mealLabel(rec.meal)}` : monthDay(d);
-  const status = statusText(rec);
-  V.sub.textContent = `${fmtClock(d)}${status ? ` · ${status}` : ''}`;
+  V.sub.textContent = fmtClock(d);
 }
 
 function openViewer(id) {
@@ -1926,7 +1858,6 @@ function openViewer(id) {
     url: URL.createObjectURL(rec.blob),
   };
   viewerTitles(rec);
-  $('#vw-more').hidden = !rec.original;
   V.img.src = vw.url;
   V.img.alt = `${monthDay(d)} ${fmtClock(d)}에 찍은 ${mealLabel(rec.meal) || ''} 사진`.replace(/\s+/g, ' ');
   showMsg(V.msg, '', '');
@@ -1951,20 +1882,9 @@ function viewerReplace() {
   openInput('#input-photo', { target: { day, meal: meal ?? null, replaceOf: id } });
 }
 
-// 스탬프 없는 원본 (설정에서 ‘원본 사진도 저장’을 켰을 때 남겨 둔 것)
-async function viewerOriginal() {
-  if (!vw?.rec.original) return;
-  const mine = vw;
-  const result = await shareFiles([originalFile(mine.rec.original, new Date(mine.rec.takenAt))]);
-  if (vw !== mine || result === 'cancelled') return;
-  if (result === 'retry') { showMsg(V.msg, 'warn', '한 번 더 눌러 주세요.'); return; }
-  if (result === 'error') { showMsg(V.msg, 'err', '공유 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.'); return; }
-  showMsg(V.msg, 'ok', result === 'downloaded' ? '원본을 내려받았어요.' : '원본도 다 됐어요.');
-}
-
 async function viewerDelete() {
   if (!vw) return;
-  if (!window.confirm('이 사진을 앱에서 지울까요? 아이폰 앨범에 저장한 사진은 그대로 남아요.')) return;
+  if (!window.confirm('이 사진을 앱에서 지울까요? 아이폰 사진 앱에 있는 사진은 그대로 남아요.')) return;
   const { id } = vw.rec;
   try {
     await db.remove(id);
@@ -1980,7 +1900,6 @@ async function viewerDelete() {
 
 function bindViewer() {
   $('#vw-replace').addEventListener('click', viewerReplace);
-  $('#vw-orig').addEventListener('click', viewerOriginal);
   $('#vw-del').addEventListener('click', viewerDelete);
 }
 
