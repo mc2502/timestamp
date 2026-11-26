@@ -1,5 +1,5 @@
 // 버전 숫자는 scripts/bump-version.sh 가 올린다.
-const VERSION = '103';
+const VERSION = '104';
 const CACHE = `timestamp-v${VERSION}`;
 const ART_CACHE = 'timestamp-art-v1';
 const SHELL = [

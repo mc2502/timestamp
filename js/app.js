@@ -1,15 +1,15 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=103';
-import { readExifDate } from './exif.js?v=103';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=103';
-import * as db from './db.js?v=103';
-import { albumCaption } from './album-copy.js?v=103';
-import { createBackup, readBackup } from './backup.js?v=103';
+} from './format.js?v=104';
+import { readExifDate } from './exif.js?v=104';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=104';
+import * as db from './db.js?v=104';
+import { albumCaption } from './album-copy.js?v=104';
+import { createBackup, readBackup } from './backup.js?v=104';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '103';
+const APP_VERSION = '104';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -1447,12 +1447,6 @@ function fillLook() {
   for (const b of $$('[data-style]', E.strip)) {
     const on = b.dataset.style === ed.style;
     b.setAttribute('aria-checked', String(on));
-    if (on) {
-      const l = b.offsetLeft - 10;
-      const r = b.offsetLeft + b.offsetWidth + 34 - E.strip.clientWidth;
-      if (E.strip.scrollLeft > l) E.strip.scrollLeft = l;
-      else if (E.strip.scrollLeft < r) E.strip.scrollLeft = r;
-    }
   }
   for (const b of $$('[data-color]', E.swatches)) b.setAttribute('aria-checked', String(b.dataset.color === ed.color));
   E.swatches.classList.toggle('is-off', !styleUsesColor(ed.style));
@@ -1461,9 +1455,10 @@ function fillLook() {
 // 다른 모습의 오둥이·퍼펭이로 바꾼다
 function shufflePose() {
   if (!ed?.ready || ed.busy || !POSES[ed.style]) return;
+  const mine = ed;
   ed.pose = { ...ed.pose, [ed.style]: randomPose(ed.style, ed.pose[ed.style]) };
-  charsReady(ed.pose).then(() => { if (ed) { ed.stampLayer = null; schedulePreview(); } });
-  stampIn();
+  charsReady(ed.pose).then(() => { if (ed === mine) { ed.stampLayer = null; schedulePreview(); } });
+  stampIn({ preview: true });
   markDirty();
 }
 
@@ -1511,15 +1506,25 @@ const stopLabel = (m) => mealLabel(m) || '끼니 없음';
 function mealBar(track, { current, choose, ready, live }) {
   const n = MEAL_STOPS.length;
   const labels = $$('.mp-labels > span', track);
+  const fills = $$('.mp-records > i', track);
   const paint = (p) => {
     const i = clamp(Math.round(p), 0, n - 1);
+    // 간식·끼니 없음도 기록 색상은 표시한다. 한 장 제한/교체 여부와는 별개다.
+    const records = ed?.ready ? recordsOn(dayKey(ed.takenAt)).filter((r) => r.id !== ed.id) : [];
+    const occupied = MEAL_STOPS.map((meal) => records.some((r) => (r.meal ?? null) === meal));
     track.style.setProperty('--p', String(p / (n - 1)));
+    track.classList.toggle('record-selected', occupied[i]);
+    fills.forEach((el, k) => {
+      el.classList.toggle('recorded', occupied[k]);
+      el.classList.toggle('join-left', occupied[k] && Boolean(occupied[k - 1]));
+      el.classList.toggle('join-right', occupied[k] && Boolean(occupied[k + 1]));
+    });
     labels.forEach((el, k) => {
       el.classList.toggle('on', k === i);
+      el.classList.toggle('recorded', occupied[k]);
     });
     track.setAttribute('aria-valuenow', String(i));
-    const exists = ed && mealTaken(dayKey(ed.takenAt), MEAL_STOPS[i], ed.id);
-    track.setAttribute('aria-valuetext', `${stopLabel(MEAL_STOPS[i])}${exists ? ', 사진 있음' : ''}`);
+    track.setAttribute('aria-valuetext', `${stopLabel(MEAL_STOPS[i])}${occupied[i] ? ', 사진 있음' : ''}`);
   };
   const show = () => paint(MEAL_STOPS.indexOf(current() ?? null));
   const pick = (i) => {
@@ -1584,21 +1589,25 @@ const edMealBar = mealBar($('#meal-track'), {
   },
 });
 
-// 스탬프 효과: 글씨가 크게 내려앉았다가 제자리에 멈춘다
-function stampIn() {
+// 처음 찍을 때는 도장 효과, 모양을 고를 때는 농도를 유지한 작은 움직임만 준다.
+function stampIn({ preview = false } = {}) {
+  const mine = ed;
+  if (!mine) return;
+  const motion = mine.stampMotion = (mine.stampMotion || 0) + 1;
   playStampSound();
   if (!settings.effects || reducedMotion()) { drawPreview(); return; }
-  const mine = ed;
   const start = performance.now();
-  const dur = 380;
-  drawPreview({ scale: 1.45, alpha: 0 });
+  const dur = preview ? 180 : 380;
+  const lift = preview ? .06 : .45;
+  drawPreview({ scale: 1 + lift, alpha: preview ? 1 : 0 });
   // 화면이 잠시 가려져 애니메이션이 멈춰도 스탬프는 반드시 제자리에 그려 둔다
-  setTimeout(() => { if (ed === mine) drawPreview(); }, dur + 120);
+  setTimeout(() => { if (ed === mine && mine.stampMotion === motion) drawPreview(); }, dur + 120);
   const step = (now) => {
-    if (ed !== mine || mine.gesturing) { drawPreview(); return; }
+    if (ed !== mine || mine.stampMotion !== motion) return;
+    if (mine.gesturing) { drawPreview(); return; }
     const p = Math.min(1, (now - start) / dur);
     if (p >= 1) { drawPreview(); return; }
-    drawPreview({ scale: 1.45 - 0.45 * easeOutBack(Math.max(0, p)), alpha: clamp(p * 3, 0, 1) });
+    drawPreview({ scale: 1 + lift * (1 - easeOutBack(Math.max(0, p))), alpha: preview ? 1 : clamp(p * 3, 0, 1) });
     requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -1880,12 +1889,13 @@ function bindEditor() {
     if (!b || !ed?.ready || ed.busy) return;
     if (b.dataset.style === ed.style) { shufflePose(); return; } // 고른 캐릭터를 한 번 더 누르면 다른 모습
     {
+      const mine = ed;
       ed.style = b.dataset.style;
-      charsReady(ed.pose).then(() => { if (ed) { ed.stampLayer = null; schedulePreview(); } });
+      charsReady(ed.pose).then(() => { if (ed === mine) { ed.stampLayer = null; schedulePreview(); } });
       settings.stampStyle = ed.style;
       saveSettings();
       fillLook();
-      stampIn();
+      stampIn({ preview: true });
       markDirty();
     }
   });

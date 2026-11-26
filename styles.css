@@ -418,16 +418,17 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .ed-panel { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 0 16px calc(12px + var(--sb)); }
 
 .st-tiles { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
-.st-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; transition: transform .2s; }
-.st-tile:active { transform: scale(.95); }
+.st-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
 .t-box {
   width: 100%; max-width: 48px; aspect-ratio: 1; display: grid; place-items: center; border-radius: 14px;
-  background: rgba(255, 255, 255, .6); color: var(--ink2); transition: background-color .15s, color .15s;
+  background: rgba(255, 255, 255, .6); color: var(--ink2); box-shadow: inset 0 0 0 1.5px transparent;
+  transition: background-color .15s, color .15s, box-shadow .15s;
 }
 .t-box img { width: 32px; height: 32px; }
 .t-box svg { width: 20px; height: 20px; }
 .t-name { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink3); white-space: nowrap; transition: color .15s; }
-.st-tile[aria-checked="true"] .t-box { background: #d3e2f9; color: #24569f; }
+.st-tile[aria-checked="true"] .t-box { background: #c5dcfa; color: #1d477f; box-shadow: inset 0 0 0 1.5px #6899dc; }
+.st-tile:active .t-box { background: #bfd6f5; }
 .st-tile[aria-checked="true"] .t-name { color: #24569f; font-weight: 700; }
 .g-basic { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 22px; }
 .g-basic i { display: block; height: 3px; width: 100%; border-radius: 2px; background: currentColor; }
@@ -442,19 +443,26 @@ html[data-refresh-state] .topbar::before { opacity: 0; transition: none; }
 .g-mix i + i { height: 2.5px; width: 68%; }
 
 /* 식사: 이 화면에서 알약은 이것 하나 — 옅은 회색 판에 흰 손잡이 */
-/* 끼니 막대: 흰 손잡이 하나만 움직여 선택과 저장 여부가 섞이지 않게 한다. */
+/* 실제 기록이 있는 칸에는 옅은 색이 남고, 흰 손잡이는 현재 선택만 따라간다. */
 .ed-meal { display: block; }
 .mp-track {
   --p: .25;
   position: relative; width: 100%; height: 44px; border-radius: 22px; background: rgba(25, 31, 40, .055);
   touch-action: none; cursor: pointer; -webkit-user-select: none; user-select: none;
 }
+.mp-records { position: absolute; inset: 4px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); pointer-events: none; }
+.mp-records i { border-radius: 18px; }
+.mp-records i.recorded { background: #d2e3f9; }
+.mp-records i.join-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.mp-records i.join-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .mp-thumb {
   position: absolute; top: 4px; bottom: 4px; border-radius: 18px; background: #ffffff; box-shadow: 0 1px 4px rgba(22, 42, 66, .12);
   left: calc(4px + var(--p) * (100% - 8px) * 4 / 5); width: calc((100% - 8px) / 5); transition: left .3s cubic-bezier(.22, .8, .25, 1);
 }
+.mp-track.record-selected .mp-thumb { box-shadow: inset 0 0 0 1px #9bbce7, 0 1px 4px rgba(22, 42, 66, .12); }
 .mp-labels { position: absolute; inset: 0 4px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; pointer-events: none; }
 .mp-labels > span { text-align: center; font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: var(--ink3); transition: color .15s; }
+.mp-labels > span.recorded { color: #345d92; }
 .mp-labels > span.on { color: var(--ink); font-weight: 700; }
 .mp-track.is-dragging .mp-thumb { transition: none; }
 .mp-track:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
