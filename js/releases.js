@@ -1,9 +1,21 @@
-// 최신 버전을 맨 위에 추가한다. 공개 버전·날짜·변경 내용은 설정의 업데이트 노트에도 그대로 표시된다.
+// 최신 버전을 맨 위에 추가한다. 공개 버전·날짜·시간·변경 내용은 설정의 업데이트 노트에도 그대로 표시된다.
+// date · time은 배포한 한국 시각. 맨 위 항목은 scripts/bump-version.sh가 배포하는 순간의 시각으로 채운다.
 // build는 캐시 갱신용 내부 번호이며 앱 화면에는 표시하지 않는다.
 export const RELEASES = [
   {
+    version: '1.0.3',
+    date: '2026-11-26',
+    time: '18:21',
+    build: 113,
+    title: '업데이트 노트에 시간 표시',
+    changes: [
+      '업데이트 노트에 날짜와 함께 배포한 시간도 보여요',
+    ],
+  },
+  {
     version: '1.0.2',
     date: '2026-11-26',
+    time: '18:16',
     build: 112,
     title: '사진 넣기와 스탬프 고르기 다듬기',
     changes: [
@@ -16,6 +28,7 @@ export const RELEASES = [
   {
     version: '1.0.1',
     date: '2026-11-26',
+    time: '17:37',
     build: 106,
     title: '알림 라벨과 업데이트 다듬기',
     changes: [
@@ -27,6 +40,7 @@ export const RELEASES = [
   {
     version: '1.0.0',
     date: '2026-11-26',
+    time: '16:36',
     build: 105,
     title: 'TimeStamp의 첫 정식 버전',
     changes: [

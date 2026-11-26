@@ -1,16 +1,16 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput, keepPhrases,
-} from './format.js?v=112';
-import { readExifDate } from './exif.js?v=112';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=112';
-import * as db from './db.js?v=112';
-import { albumCaption } from './album-copy.js?v=112';
-import { createBackup, readBackup } from './backup.js?v=112';
-import { RELEASES, APP_VERSION } from './releases.js?v=112';
+} from './format.js?v=113';
+import { readExifDate } from './exif.js?v=113';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=113';
+import * as db from './db.js?v=113';
+import { albumCaption } from './album-copy.js?v=113';
+import { createBackup, readBackup } from './backup.js?v=113';
+import { RELEASES, APP_VERSION } from './releases.js?v=113';
 
 // 캐시 갱신용 번호. 사용자에게 보여 주는 버전은 releases.js에서 관리한다.
-const APP_BUILD = '112';
+const APP_BUILD = '113';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -729,9 +729,12 @@ function renderReleaseNotes() {
     const version = document.createElement('h3');
     version.textContent = release.version;
     const date = document.createElement('time');
-    date.dateTime = release.date;
+    // 배포한 한국 시각 그대로 보여 준다 (기기 시간대와 상관없이)
     const [y, m, d] = release.date.split('-');
-    date.textContent = `${y}. ${Number(m)}. ${Number(d)}`;
+    const [hh, mm] = (release.time || '').split(':').map(Number);
+    const clock = Number.isFinite(hh) && Number.isFinite(mm) ? ` ${hh < 12 ? '오전' : '오후'} ${hh % 12 || 12}:${String(mm).padStart(2, '0')}` : '';
+    date.dateTime = release.time ? `${release.date}T${release.time}+09:00` : release.date;
+    date.textContent = `${y}. ${Number(m)}. ${Number(d)}${clock}`;
     header.append(version, date);
     const title = document.createElement('p');
     title.className = 'release-title';

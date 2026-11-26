@@ -19,6 +19,7 @@ try {
     assert.match(release.version, semver, '버전은 1.0.0 형식으로 적어 주세요');
     assert.match(release.date, /^\d{4}-\d{2}-\d{2}$/, '날짜는 YYYY-MM-DD 형식이에요');
     assert.equal(new Date(`${release.date}T00:00:00Z`).toISOString().slice(0, 10), release.date, '날짜를 확인해 주세요');
+    assert.match(release.time ?? '', /^([01]\d|2[0-3]):[0-5]\d$/, '시간은 24시간 HH:MM 형식이에요 (배포 스크립트가 맨 위 항목을 채워요)');
     assert.ok(Number.isSafeInteger(release.build) && release.build > 0, '내부 배포 번호가 필요해요');
     assert.ok(typeof release.title === 'string' && release.title.trim(), '업데이트 제목을 적어 주세요');
     assert.ok(Array.isArray(release.changes) && release.changes.length && release.changes.every(s => typeof s === 'string' && s.trim()), '변경 내용을 한 가지 이상 적어 주세요');
