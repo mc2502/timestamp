@@ -4,6 +4,7 @@
 //  - 앨범 든 캐릭터 2장 → art/album/{odung,perpeng}.png (192px, 카메라 길게 누르기 버튼)
 //  - 빈 끼니 칸 그림 3장 → art/slot/{breakfast,lunch,dinner}.png (168px)
 //  - 달력 도장 6장 → art/stamp/{who}-{smile,yum,wink}.png (120px, 오둥이 하늘 잉크 · 퍼펭이 민트 잉크로 칠함)
+//  - 못 채운 날 도장 4장 → art/stamp/{who}-miss-{sad,hungry}.png (120px, 회색 잉크)
 //  - 사진 도장 고리 → art/seal-ring-rough.png (512px, 검정) + 고리 바깥선으로 만든 원판 art/seal-disc-rough.png
 import Foundation
 import CoreGraphics
@@ -126,21 +127,31 @@ for meal in ["breakfast", "lunch", "dinner"] {
 }
 
 // ── 2. 달력 도장: 테두리에 딱 맞게 잘라 120px, 잉크 색으로 ──
+func stamp(_ name: String, ink: (Int, Int, Int), out: String) {
+  let img = load(name)
+  let full = Bitmap(img)
+  let bb = bbox(full)
+  let side = CGFloat(max(bb.x1 - bb.x0, bb.y1 - bb.y0) + 1) * 1.03
+  let cx = CGFloat(bb.x0 + bb.x1 + 1) / 2, cy = CGFloat(img.height) - CGFloat(bb.y0 + bb.y1 + 1) / 2 // 그리기 좌표(y=0이 아래)로
+  let b = resample(img, crop: CGRect(x: cx - side / 2, y: cy - side / 2, width: side, height: side), size: 120)
+  let (r, g, bl) = ink
+  for i in stride(from: 0, to: b.w * b.h * 4, by: 4) {
+    let a = Int(b.p[i + 3])
+    b.p[i] = UInt8(r * a / 255); b.p[i + 1] = UInt8(g * a / 255); b.p[i + 2] = UInt8(bl * a / 255)
+  }
+  save(b.image, out)
+}
+// 세 끼를 채운 날: 오둥이 하늘 · 퍼펭이 민트 잉크
 let inks: [String: (Int, Int, Int)] = ["odung": (74, 127, 208), "perpeng": (47, 154, 137)]
 for who in ["odung", "perpeng"] {
   for face in ["smile", "yum", "wink"] {
-    let img = load("stamp-\(who)-\(face).png")
-    let full = Bitmap(img)
-    let bb = bbox(full)
-    let side = CGFloat(max(bb.x1 - bb.x0, bb.y1 - bb.y0) + 1) * 1.03
-    let cx = CGFloat(bb.x0 + bb.x1 + 1) / 2, cy = CGFloat(img.height) - CGFloat(bb.y0 + bb.y1 + 1) / 2 // 그리기 좌표(y=0이 아래)로
-    let b = resample(img, crop: CGRect(x: cx - side / 2, y: cy - side / 2, width: side, height: side), size: 120)
-    let (r, g, bl) = inks[who]!
-    for i in stride(from: 0, to: b.w * b.h * 4, by: 4) {
-      let a = Int(b.p[i + 3])
-      b.p[i] = UInt8(r * a / 255); b.p[i + 1] = UInt8(g * a / 255); b.p[i + 2] = UInt8(bl * a / 255)
-    }
-    save(b.image, "stamp/\(who)-\(face).png")
+    stamp("stamp-\(who)-\(face).png", ink: inks[who]!, out: "stamp/\(who)-\(face).png")
+  }
+}
+// 못 채운 날(지난날): 두 캐릭터 모두 회색 잉크 (#8b95a1)
+for who in ["odung", "perpeng"] {
+  for face in ["sad", "hungry"] {
+    stamp("stamp-\(who)-miss-\(face).png", ink: (139, 149, 161), out: "stamp/\(who)-miss-\(face).png")
   }
 }
 

@@ -1,13 +1,13 @@
 import {
   WEEKDAYS, MEALS, fmtClock, monthDay, dayKey, fromDayKey, fileStamp,
   relDay, mealLabel, mealFor, toLocalInput, fromLocalInput,
-} from './format.js?v=92';
-import { readExifDate } from './exif.js?v=92';
-import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=92';
-import * as db from './db.js?v=92';
+} from './format.js?v=93';
+import { readExifDate } from './exif.js?v=93';
+import { drawStamp, characterBox, SEAL_RING, SEAL_DISC, STYLES, COLORS, styleUsesColor } from './stamp.js?v=93';
+import * as db from './db.js?v=93';
 
 // 배포할 때 scripts/bump-version.sh 가 함께 올린다
-const APP_VERSION = '92';
+const APP_VERSION = '93';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -912,10 +912,28 @@ function dayHash(key) {
   h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13;
   return (h >>> 0) / 4294967296;
 }
+const dayTilt = (key) => Math.round((dayHash(`${key}~`) - 0.5) * 26); // -13° ~ 13°
 const dayStamp = (key) => ({
   src: DAY_STAMPS[Math.floor(dayHash(key) * DAY_STAMPS.length)],
-  tilt: Math.round((dayHash(`${key}~`) - 0.5) * 26), // -13° ~ 13°
+  tilt: dayTilt(key),
 });
+// 못 채운 날(11월 1일부터 어제까지, 세 끼를 다 못 채운 날)의 회색 도장 4종.
+// 캐릭터는 웃는 도장과 같은 방식(날짜 해시)으로 정하고, 그 캐릭터의 두 표정(아쉬움 · 배고픔)을 날짜마다 번갈아 쓴다.
+// 날짜로만 정해져서 다시 그려도 바뀌지 않는다
+const dayWho = (key) => (Math.floor(dayHash(key) * DAY_STAMPS.length) < 3 ? 'odung' : 'perpeng'); // DAY_STAMPS 앞 3개가 오둥이
+const missFaces = new Map();
+const missStamp = (key) => {
+  const who = dayWho(key);
+  // 11월 1일부터 이 날까지 같은 캐릭터가 정해진 날을 세어, 그 캐릭터 안에서 아쉬움 · 배고픔을 번갈아 (날짜만 보고 정한다)
+  let face = missFaces.get(key);
+  if (!face) {
+    let n = 0;
+    for (const d = new Date(FIRST_MONTH); dayKey(d) <= key; d.setDate(d.getDate() + 1)) if (dayWho(dayKey(d)) === who) n++;
+    face = n % 2 ? 'sad' : 'hungry';
+    missFaces.set(key, face);
+  }
+  return { src: `assets/art/stamp/${who}-miss-${face}.png`, tilt: dayTilt(key) };
+};
 // 밥상 카드의 캐릭터: 아직 안 먹은 날은 빈 그릇, 먹은 끼니가 있으면 마지막 끼니를 먹는 모습, 세 끼 다면 배부른 모습
 const mealArt = (pose) => (pose ? `assets/art/meal/${state.family}-${pose}.png` : art.empty);
 const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12l5 5l10 -10"/></svg>';
@@ -959,6 +977,7 @@ function renderCalendar() {
   $('#cal-meta').textContent = streak >= 2 ? `${streak}일 연속` : '';
 
   const todayKey = dayKey(now);
+  const firstKey = dayKey(FIRST_MONTH);
   const first = new Date(y, mo, 1).getDay();
   const last = new Date(y, mo + 1, 0).getDate();
 
@@ -971,13 +990,15 @@ function renderCalendar() {
     const future = key > todayKey;
     const selected = key === state.selectedDay;
     const cls = ['num', key === todayKey && 'today', selected && 'selected', future && 'off', got && 'has'].filter(Boolean).join(' ');
+    // 지난날인데 세 끼를 다 못 채웠으면 ‘못 채운 날’ 도장 (오늘 · 앞날은 아직 아니다)
+    const missed = !full && key < todayKey && key >= firstKey;
     const said = full ? ', 세 끼 다 남김'
       : got?.size ? `, ${MAIN_MEALS.filter((m) => got.has(m)).map(mealLabel).join(' · ')} 남김`
         : got ? ', 간식만 남김' : '';
-    const st = full && dayStamp(key);
-    const mark = full ? `<img class="day-seal" src="${st.src}" style="--tilt:${st.tilt}deg" alt="" aria-hidden="true">`
+    const st = full ? dayStamp(key) : missed ? missStamp(key) : null;
+    const mark = st ? `<img class="day-seal${missed ? ' is-miss' : ''}" src="${st.src}" style="--tilt:${st.tilt}deg" alt="" aria-hidden="true">`
       : got ? `<span class="day-dots" aria-hidden="true">${MAIN_MEALS.map((m) => `<i${got.has(m) ? ' class="on"' : ''}></i>`).join('')}</span>` : '';
-    html += `<button class="day" type="button" data-day="${key}" aria-pressed="${selected}" aria-label="${mo + 1}월 ${d}일${said}"${future ? ' disabled' : ''}>`
+    html += `<button class="day" type="button" data-day="${key}" aria-pressed="${selected}" aria-label="${mo + 1}월 ${d}일${said}${missed ? ', 못 채운 날' : ''}"${future ? ' disabled' : ''}>`
       + `<span class="${cls}">${d}</span>${mark}</button>`;
   }
   $('#cal').innerHTML = html;
